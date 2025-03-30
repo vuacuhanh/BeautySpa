@@ -1,0 +1,60 @@
+## Visual Studio và Visual Studio Code ##
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.njsproj
+*.pidb
+*.pyc
+*.pdb
+
+## Build output ##
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+## NuGet Packages ##
+*.nupkg
+packages/
+
+## User-specific files ##
+*.rsuser
+*.csproj.user
+*.vbproj.user
+
+## MSTest test Results ##
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+## Local development cache ##
+.npm
+.temp/
+
+## IDE specific files ##
+.idea/
+*.swp
+*.swo
+
+## Environment files ##
+.env
+*.env.local
+*.env.development
+*.env.production
+
+## Other ##
+*.log
+*.sql
+*.bak
+*.tmp
+*.cache
+*.DS_Store
+Thumbs.db
