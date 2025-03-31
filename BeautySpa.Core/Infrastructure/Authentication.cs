@@ -3,7 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
 
-namespace PetSpa.Core.Infrastructure
+namespace BeautySpa.Core.Infrastructure
 {
     public class Authentication
     {

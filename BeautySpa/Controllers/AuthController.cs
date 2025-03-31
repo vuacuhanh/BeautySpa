@@ -4,7 +4,7 @@ using BeautySpa.Services.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using PetSpa.Core.Infrastructure;
+using BeautySpa.Core.Infrastructure;
 
 namespace BeautySpa.API.Controllers
 {

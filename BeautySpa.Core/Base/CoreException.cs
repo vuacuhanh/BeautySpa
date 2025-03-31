@@ -12,21 +12,19 @@ namespace BeautySpa.Core.Base
             StatusCode = statusCode;
         }
 
-
         public string Code { get; }
-
         public int StatusCode { get; set; }
-
         [JsonExtensionData] public Dictionary<string, object> AdditionalData { get; set; }
     }
+
     public class BadRequestException : ErrorException
     {
         public BadRequestException(string errorCode, string message = null)
             : base(400, errorCode, message)
         {
         }
-        public BadRequestException(
-            ICollection<KeyValuePair<string, ICollection<string>>> errors)
+
+        public BadRequestException(ICollection<KeyValuePair<string, ICollection<string>>> errors)
             : base(400, new ErrorDetail
             {
                 ErrorCode = "bad_request",
@@ -35,34 +33,39 @@ namespace BeautySpa.Core.Base
         {
         }
     }
+
     public class ErrorException : Exception
     {
         public int StatusCode { get; }
-
         public ErrorDetail ErrorDetail { get; }
 
         public ErrorException(int statusCode, string errorCode, string message = null)
+            : base(message)
         {
             StatusCode = statusCode;
             ErrorDetail = new ErrorDetail
             {
                 ErrorCode = errorCode,
-                ErrorMessage = message
+                ErrorMessage = message ?? "An error occurred."
             };
         }
 
         public ErrorException(int statusCode, ErrorDetail errorDetail)
+            : base(errorDetail.ErrorMessage?.ToString())
         {
             StatusCode = statusCode;
             ErrorDetail = errorDetail;
         }
+
+        public override string Message => ErrorDetail.ErrorMessage?.ToString() ?? "An error occurred.";
     }
+
     public class ErrorDetail
     {
         [JsonPropertyName("errorCode")] public required string ErrorCode { get; set; }
-
         [JsonPropertyName("errorMessage")] public required object ErrorMessage { get; set; }
     }
+
     public class ErrorCode
     {
         public const string BadRequest = "Bad Request";
@@ -77,6 +80,7 @@ namespace BeautySpa.Core.Base
         public const string Conflicted = "Conflicted.";
         public const string InvalidInput = "Invalid input!";
     }
+
     public class ResponseCodeConstants
     {
         public const string NOT_FOUND = "Not found!";
