@@ -36,5 +36,4 @@
   <ItemGroup>
     <Folder Include="NewFolder\" />
   </ItemGroup>
-
 </Project>
