@@ -6,31 +6,23 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class Service : BaseEntity
     {
-        [Required]
-        [ForeignKey("ServiceProvider")]
-        public string ProviderId { get; set; }
-
-        [Required]
-        [ForeignKey("ServiceCategory")]
-        public string CategoryId { get; set; }
-
-        [Required]
-        [StringLength(100)]
-        public string ServiceName { get; set; }
-
-        public string Description { get; set; }
-
-        [Required]
+        public string ServiceName { get; set; } = string.Empty;
+        public string? Description { get; set; }
         public decimal Price { get; set; }
-
-        [Required]
         public int Duration { get; set; }
-
         public decimal? DiscountPrice { get; set; }
-
         public bool IsAvailable { get; set; } = true;
 
-        public virtual ServiceProvider ServiceProvider { get; set; }
-        public virtual ServiceCategory ServiceCategory { get; set; }
+        // Khóa ngoại
+        public Guid ProviderId { get; set; }
+        public virtual ApplicationUsers Provider { get; set; }
+
+        public string CategoryId { get; set; }
+        public virtual ServiceCategory Category { get; set; }
+
+        // Mối quan hệ
+        public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+        public virtual ICollection<ServicePromotion> ServicePromotions { get; set; } = new List<ServicePromotion>();
+        public virtual ICollection<ServiceImage> ServiceImages { get; set; } = new List<ServiceImage>();
     }
 }

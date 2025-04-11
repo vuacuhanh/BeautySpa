@@ -6,16 +6,11 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class ServiceImage : BaseEntity
     {
-        [Required]
-        [ForeignKey("Service")]
-        public string ServiceId { get; set; }
-
-        [Required]
-        [StringLength(255)]
-        public string ImageUrl { get; set; }
-
+        public string ImageUrl { get; set; } = string.Empty;
         public bool IsPrimary { get; set; } = false;
 
+        // Khóa ngoại
+        public string ServiceId { get; set; }
         public virtual Service Service { get; set; }
     }
 }
