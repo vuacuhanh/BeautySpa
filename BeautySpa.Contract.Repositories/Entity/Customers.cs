@@ -1,36 +1,34 @@
 ﻿using BeautySpa.Core.Base;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BeautySpa.Contract.Repositories.Entity
 {
     public class Customers : BaseEntity
     {
-        [Required]
-        [StringLength(15)]
-        public string PhoneNumber { get; set; }
+        public Guid UserId { get; set; }
 
-        [Required]
-        [StringLength(255)]
-        public string PasswordHash { get; set; }
+        public string FullName { get; set; } = string.Empty;
 
-        [Required]
-        [StringLength(100)]
-        public string FullName { get; set; }
+        public string? Email { get; set; }
 
-        [StringLength(100)]
-        public string Email { get; set; }
+        public string? AvatarUrl { get; set; }
 
-        [StringLength(255)]
-        public string AvatarUrl { get; set; }
-
-        [StringLength(10)]
-        public string Gender { get; set; }
+        public string? Gender { get; set; }
 
         public DateTime? DateOfBirth { get; set; }
 
         public bool IsVerified { get; set; } = false;
 
-        [StringLength(10)]
         public string Status { get; set; } = "active";
+
+        // Navigation properties
+        [ForeignKey("UserId")]
+        public virtual ApplicationUsers User { get; set; } = null!;
+
+        public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+        public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+        public virtual ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
+
     }
 }

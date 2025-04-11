@@ -6,21 +6,13 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class WorkingHour : BaseEntity
     {
-        [Required]
-        [ForeignKey("ServiceProvider")]
-        public string ProviderId { get; set; }
-
-        [Required]
-        public byte DayOfWeek { get; set; }
-
-        [Required]
+        public int DayOfWeek { get; set; }
         public TimeSpan OpeningTime { get; set; }
-
-        [Required]
         public TimeSpan ClosingTime { get; set; }
-
         public bool IsWorking { get; set; } = true;
 
-        public virtual ServiceProvider ServiceProvider { get; set; }
+        // Khóa ngoại
+        public Guid ProviderId { get; set; }
+        public virtual ApplicationUsers Provider { get; set; }
     }
 }

@@ -6,34 +6,24 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class Appointment : BaseEntity
     {
-        [Required]
-        [ForeignKey("Customer")]
-        public string CustomerId { get; set; }
-
-        [Required]
-        [ForeignKey("ServiceProvider")]
-        public string ProviderId { get; set; }
-
-        [Required]
-        [ForeignKey("Service")]
-        public string ServiceId { get; set; }
-
-        [Required]
         public DateTime AppointmentDate { get; set; }
-
-        [Required]
         public TimeSpan StartTime { get; set; }
-
-        [Required]
         public TimeSpan EndTime { get; set; }
-
-        [StringLength(20)]
         public string Status { get; set; } = "pending";
+        public string? Notes { get; set; }
 
-        public string Notes { get; set; }
+        // Khóa ngoại
+        public Guid CustomerId { get; set; }
+        public virtual ApplicationUsers Customer { get; set; }
 
-        public virtual Customers Customer { get; set; }
-        public virtual ServiceProvider ServiceProvider { get; set; }
+        public Guid ProviderId { get; set; }
+        public virtual ApplicationUsers Provider { get; set; }
+
+        public string ServiceId { get; set; }
         public virtual Service Service { get; set; }
+
+        // Mối quan hệ
+        public virtual Payment? Payment { get; set; }
+        public virtual Review? Review { get; set; }
     }
 }

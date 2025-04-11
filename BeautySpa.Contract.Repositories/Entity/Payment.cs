@@ -6,25 +6,14 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class Payment : BaseEntity
     {
-        [Required]
-        [ForeignKey("Appointment")]
-        public string AppointmentId { get; set; }
-
-        [Required]
         public decimal Amount { get; set; }
-
-        [Required]
-        [StringLength(20)]
-        public string PaymentMethod { get; set; }
-
-        [StringLength(100)]
-        public string TransactionId { get; set; }
-
-        [StringLength(20)]
+        public string PaymentMethod { get; set; } = string.Empty;
+        public string? TransactionId { get; set; }
         public string Status { get; set; } = "pending";
-
         public DateTime? PaymentDate { get; set; }
 
+        // Khóa ngoại
+        public string AppointmentId { get; set; }
         public virtual Appointment Appointment { get; set; }
     }
 }

@@ -6,15 +6,11 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class Favorite : BaseEntity
     {
-        [Required]
-        [ForeignKey("Customer")]
-        public string CustomerId { get; set; }
+        // Khóa ngoại
+        public Guid CustomerId { get; set; }
+        public virtual ApplicationUsers Customer { get; set; }
 
-        [Required]
-        [ForeignKey("ServiceProvider")]
-        public string ProviderId { get; set; }
-
-        public virtual Customers Customer { get; set; }
-        public virtual ServiceProvider ServiceProvider { get; set; }
+        public Guid ProviderId { get; set; }
+        public virtual ApplicationUsers Provider { get; set; }
     }
 }
