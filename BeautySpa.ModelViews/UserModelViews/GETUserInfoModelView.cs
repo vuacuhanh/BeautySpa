@@ -1,9 +1,12 @@
-﻿using BeautySpa.Core.Base;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace BeautySpa.Contract.Repositories.Entity
+namespace BeautySpa.ModelViews.UserModelViews
 {
-    public class UserInfor : BaseEntity
+    public class GETUserInfoModelView
     {
         public string FullName { get; set; } = string.Empty;
         public DateTime? DayofBirth { get; set; }
@@ -14,9 +17,5 @@ namespace BeautySpa.Contract.Repositories.Entity
         public string? BankAccount { get; set; }
         public string? BankAccountName { get; set; }
         public string? Bank { get; set; }
-
-        // Khóa ngoại
-        public Guid UserId { get; set; }
-        public virtual ApplicationUsers User { get; set; }
     }
 }

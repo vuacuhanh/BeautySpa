@@ -3,6 +3,7 @@ using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Services.Service;
 using Microsoft.Extensions.DependencyInjection;
 using BeautySpa.Repositories.UOW;
+using BeautySpa.Contract.Services.Interface;
 
 
 namespace BeautySpa.Services
@@ -29,6 +30,8 @@ namespace BeautySpa.Services
         public static void AddServices(this IServiceCollection services)
         {
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IRoles, RoleService>();
+            services.AddScoped<IUsers, UserService>();
         }
     }
 }

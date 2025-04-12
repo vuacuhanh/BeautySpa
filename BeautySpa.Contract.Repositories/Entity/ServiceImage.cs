@@ -10,7 +10,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public bool IsPrimary { get; set; } = false;
 
         // Khóa ngoại
-        public string ServiceId { get; set; }
+        public Guid ServiceId { get; set; }
         public virtual Service Service { get; set; }
     }
 }

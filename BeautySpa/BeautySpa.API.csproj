@@ -29,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BeautySpa.Contract.Repositories\BeautySpa.Contract.Repositories.csproj" />
     <ProjectReference Include="..\BeautySpa.Contract.Services\BeautySpa.Contract.Services.csproj" />
+    <ProjectReference Include="..\BeautySpa.Core\BeautySpa.Core.csproj" />
     <ProjectReference Include="..\BeautySpa.Repositories\BeautySpa.Repositories.csproj" />
     <ProjectReference Include="..\BeautySpa.Services\BeautySpa.Services.csproj" />
   </ItemGroup>

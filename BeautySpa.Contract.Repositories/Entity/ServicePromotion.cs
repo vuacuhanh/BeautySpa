@@ -6,10 +6,11 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class ServicePromotion : BaseEntity
     {
-        public string PromotionId { get; set; }
+        // Khóa ngoại
+        public Guid PromotionId { get; set; }
         public virtual Promotion Promotion { get; set; }
 
-        public string ServiceId { get; set; }
+        public Guid ServiceId { get; set; }
         public virtual Service Service { get; set; }
     }
 }

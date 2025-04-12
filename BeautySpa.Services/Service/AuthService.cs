@@ -5,13 +5,13 @@ using Microsoft.AspNetCore.Identity;
 using BeautySpa.Contract.Repositories.IUOW;
 using Microsoft.Extensions.Configuration;
 using BeautySpa.Core.Base;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace BeautySpa.Services.Service
 {
@@ -22,6 +22,7 @@ namespace BeautySpa.Services.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
+
         public AuthService(
             UserManager<ApplicationUsers> userManager,
             RoleManager<ApplicationRoles> roleManager,
@@ -35,7 +36,6 @@ namespace BeautySpa.Services.Service
             _configuration = configuration;
             _mapper = mapper;
         }
-
 
         public async Task<bool> ChangePasswordAsync(ChangePasswordAuthModelView changepass, Guid UserId)
         {
@@ -89,16 +89,8 @@ namespace BeautySpa.Services.Service
             return await GenerateJwtToken(user);
         }
 
-        public async Task<string?> SignUpAsync(SignUpAuthModelView signup, string roleName)
+        public async Task<string?> SignUpAsync(SignUpAuthModelView signup, Guid roleId)
         {
-            if (string.IsNullOrWhiteSpace(roleName))
-            {
-                roleName = "Customer";
-            }
-            if (roleName != "Customer" && roleName != "Admin" && roleName != "Employee")
-            {
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "RoleName not found.");
-            }
             if (string.IsNullOrWhiteSpace(signup.FullName))
                 throw new BadRequestException(ErrorCode.BadRequest, "Full name is required.");
 
@@ -108,21 +100,21 @@ namespace BeautySpa.Services.Service
             if (string.IsNullOrWhiteSpace(signup.Password) || signup.Password.Length < 6)
                 throw new BadRequestException(ErrorCode.InvalidInput, "Password must be at least 6 characters long.");
 
-            var user = _mapper.Map<ApplicationUsers>(signup);
+            // Kiểm tra vai trò tồn tại
+            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            if (role == null)
+            {
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Role not found.");
+            }
 
+            var user = _mapper.Map<ApplicationUsers>(signup);
             user.UserName = signup.Email;
 
             var result = await _userManager.CreateAsync(user, signup.Password);
 
             if (result.Succeeded)
             {
-                if (!await _roleManager.RoleExistsAsync(roleName))
-                {
-                    var role = new ApplicationRoles { Name = roleName };
-                    await _roleManager.CreateAsync(role);
-                }
-
-                result = await _userManager.AddToRoleAsync(user, roleName);
+                result = await _userManager.AddToRoleAsync(user, role.Name);
                 if (!result.Succeeded)
                     throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error adding role: " + string.Join(", ", result.Errors.Select(e => e.Description)));
                 return await GenerateJwtToken(user);
@@ -159,6 +151,8 @@ namespace BeautySpa.Services.Service
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddHours(1),
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"],
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 

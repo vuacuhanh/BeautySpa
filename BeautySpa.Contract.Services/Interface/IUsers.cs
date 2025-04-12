@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿
+using BeautySpa.Core.Base;
+using BeautySpa.ModelViews.UserModelViews;
 
+public interface IUsers
+{
+    Task<GETUserInfoModelView> GetByIdAsync(Guid id);
+    Task<BasePaginatedList<GETUserModelViews>> GetAllAsync(int pageNumber, int pageSize);
+    Task<GETUserInfoforcustomerModelView> GetCustomerInfoAsync(Guid id);
+    Task UpdateAsync(PUTUserModelViews model);
+    Task UpdateCustomerAsync(PUTuserforcustomer model);
+    Task DeleteAsync(Guid id);
 
-   public interface IUsers
-   {
-        //Task<Users> GetUserByIdAsync(int id);
-        //Task<IEnumerable<User>> GetAllUsersAsync();
-        //Task AddUserAsync(User user);
-        //Task UpdateUserAsync(User user);
-        //Task DeleteUserAsync(int id);
-    }
+}

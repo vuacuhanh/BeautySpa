@@ -6,7 +6,8 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class ApplicationUsers : IdentityUser<Guid>
     {
-        public virtual UserInfor? UserInfor { get; set; }
+        public bool IsVerified { get; set; } = false;
+        public string Status { get; set; } = "active";
         public string? CreatedBy { get; set; }
         public string? LastUpdatedBy { get; set; }
         public string? DeletedBy { get; set; }
@@ -15,6 +16,8 @@ namespace BeautySpa.Contract.Repositories.Entity
         public DateTimeOffset? DeletedTime { get; set; }
 
         // Mối quan hệ
+        public virtual UserInfor? UserInfor { get; set; }
+        public virtual ServiceProvider? ServiceProvider { get; set; }
         public virtual ICollection<Service> Services { get; set; } = new List<Service>();
         public virtual ICollection<WorkingHour> WorkingHours { get; set; } = new List<WorkingHour>();
         public virtual ICollection<Appointment> CustomerAppointments { get; set; } = new List<Appointment>();
@@ -30,7 +33,7 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         public ApplicationUsers()
         {
-            CreatedTime = CoreHelper.SystemTimeNow;
+            CreatedTime = DateTimeOffset.UtcNow;
             LastUpdatedTime = CreatedTime;
         }
     }

@@ -19,7 +19,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public Guid ProviderId { get; set; }
         public virtual ApplicationUsers Provider { get; set; }
 
-        public string ServiceId { get; set; }
+        public Guid ServiceId { get; set; }
         public virtual Service Service { get; set; }
 
         // Mối quan hệ

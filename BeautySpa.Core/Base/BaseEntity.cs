@@ -8,12 +8,13 @@ namespace BeautySpa.Core.Base
     {
         protected BaseEntity()
         {
-            Id = Guid.NewGuid().ToString("N");
+            Id = Guid.NewGuid();
             CreatedTime = CoreHelper.SystemTimeNow;
+            LastUpdatedTime = CreatedTime;
         }
 
         [Key]
-        public string Id { get; set; }
+        public Guid Id { get; set; }
         public string? CreatedBy { get; set; }
         public string? LastUpdatedBy { get; set; }
         public string? DeletedBy { get; set; }
