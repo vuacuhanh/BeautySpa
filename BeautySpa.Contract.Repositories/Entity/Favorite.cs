@@ -6,7 +6,6 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class Favorite : BaseEntity
     {
-        // Khóa ngoại
         public Guid CustomerId { get; set; }
         public virtual ApplicationUsers Customer { get; set; }
 

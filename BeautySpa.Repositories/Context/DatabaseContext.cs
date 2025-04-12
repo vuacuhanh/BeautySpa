@@ -16,6 +16,7 @@ namespace BeautySpa.Repositories.Context
         public DbSet<ApplicationLogin> ApplicationLogins => Set<ApplicationLogin>();
         public DbSet<ApplicationToken> ApplicationTokens => Set<ApplicationToken>();
         public DbSet<UserInfor> UserInfors { get; set; }
+        public DbSet<ServiceProvider> ServiceProviderInfos { get; set; }
         public DbSet<ServiceCategory> ServiceCategories { get; set; }
         public DbSet<Service> Services { get; set; }
         public DbSet<WorkingHour> WorkingHours { get; set; }
@@ -33,21 +34,20 @@ namespace BeautySpa.Repositories.Context
         {
             base.OnModelCreating(builder);
 
-            // Configure ApplicationUsers
+            // Cấu hình ApplicationUsers
             builder.Entity<ApplicationUsers>()
                 .HasOne(u => u.UserInfor)
                 .WithOne(ui => ui.User)
                 .HasForeignKey<UserInfor>(ui => ui.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure ServiceCategory
-            builder.Entity<ServiceCategory>()
-                .HasMany(sc => sc.Services)
-                .WithOne(s => s.Category)
-                .HasForeignKey(s => s.CategoryId)
-                .OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<ApplicationUsers>()
+                .HasOne(u => u.ServiceProvider)
+                .WithOne(spi => spi.Provider)
+                .HasForeignKey<ServiceProvider>(spi => spi.ProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure Service
+            // Cấu hình Service
             builder.Entity<Service>()
                 .HasOne(s => s.Provider)
                 .WithMany(u => u.Services)
@@ -55,24 +55,12 @@ namespace BeautySpa.Repositories.Context
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<Service>()
-                .HasMany(s => s.Appointments)
-                .WithOne(a => a.Service)
-                .HasForeignKey(a => a.ServiceId)
+                .HasOne(s => s.Category)
+                .WithMany(sc => sc.Services)
+                .HasForeignKey(s => s.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<Service>()
-                .HasMany(s => s.ServicePromotions)
-                .WithOne(sp => sp.Service)
-                .HasForeignKey(sp => sp.ServiceId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<Service>()
-                .HasMany(s => s.ServiceImages)
-                .WithOne(si => si.Service)
-                .HasForeignKey(si => si.ServiceId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // Configure WorkingHour
+            // Cấu hình WorkingHour
             builder.Entity<WorkingHour>()
                 .HasOne(wh => wh.Provider)
                 .WithMany(u => u.WorkingHours)
@@ -83,7 +71,7 @@ namespace BeautySpa.Repositories.Context
                 .HasIndex(wh => new { wh.ProviderId, wh.DayOfWeek })
                 .IsUnique();
 
-            // Configure Appointment
+            // Cấu hình Appointment
             builder.Entity<Appointment>()
                 .HasOne(a => a.Customer)
                 .WithMany(u => u.CustomerAppointments)
@@ -94,6 +82,12 @@ namespace BeautySpa.Repositories.Context
                 .HasOne(a => a.Provider)
                 .WithMany(u => u.ProviderAppointments)
                 .HasForeignKey(a => a.ProviderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Appointment>()
+                .HasOne(a => a.Service)
+                .WithMany(s => s.Appointments)
+                .HasForeignKey(a => a.ServiceId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<Appointment>()
@@ -108,7 +102,7 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey<Review>(r => r.AppointmentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure Review
+            // Cấu hình Review
             builder.Entity<Review>()
                 .HasOne(r => r.Customer)
                 .WithMany(u => u.CustomerReviews)
@@ -121,7 +115,7 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(r => r.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure Favorite
+            // Cấu hình Favorite
             builder.Entity<Favorite>()
                 .HasOne(f => f.Customer)
                 .WithMany(u => u.CustomerFavorites)
@@ -138,14 +132,14 @@ namespace BeautySpa.Repositories.Context
                 .HasIndex(f => new { f.CustomerId, f.ProviderId })
                 .IsUnique();
 
-            // Configure Notification
+            // Cấu hình Notification
             builder.Entity<Notification>()
                 .HasOne(n => n.User)
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure Promotion
+            // Cấu hình Promotion
             builder.Entity<Promotion>()
                 .HasOne(p => p.Provider)
                 .WithMany(u => u.Promotions)
@@ -158,12 +152,25 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(sp => sp.PromotionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure ServicePromotion
+            // Cấu hình ServicePromotion
+            builder.Entity<ServicePromotion>()
+                .HasOne(sp => sp.Service)
+                .WithMany(s => s.ServicePromotions)
+                .HasForeignKey(sp => sp.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             builder.Entity<ServicePromotion>()
                 .HasIndex(sp => new { sp.PromotionId, sp.ServiceId })
                 .IsUnique();
 
-            // Configure Message
+            // Cấu hình ServiceImage
+            builder.Entity<ServiceImage>()
+                .HasOne(si => si.Service)
+                .WithMany(s => s.ServiceImages)
+                .HasForeignKey(si => si.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Cấu hình Message
             builder.Entity<Message>()
                 .HasOne(m => m.Sender)
                 .WithMany(u => u.SentMessages)
@@ -176,7 +183,7 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(m => m.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure decimal precision
+            // Cấu hình độ chính xác cho các trường decimal
             builder.Entity<Payment>()
                 .Property(p => p.Amount)
                 .HasPrecision(10, 2);

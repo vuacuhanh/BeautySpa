@@ -50,6 +50,11 @@ namespace BeautySpa.Core.Base
         {
             return new BaseResponseModel<T>(StatusCodes.Status500InternalServerError, code, data, additionalData);
         }
+
+        public static object? BadRequestResponseModel(object value, string message)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class BaseResponseModel : BaseResponseModel<object>

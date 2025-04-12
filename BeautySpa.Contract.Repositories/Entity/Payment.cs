@@ -13,7 +13,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public DateTime? PaymentDate { get; set; }
 
         // Khóa ngoại
-        public string AppointmentId { get; set; }
+        public Guid AppointmentId { get; set; }
         public virtual Appointment Appointment { get; set; }
     }
 }

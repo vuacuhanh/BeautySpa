@@ -11,7 +11,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public string? ProviderResponse { get; set; }
 
         // Khóa ngoại
-        public string AppointmentId { get; set; }
+        public Guid AppointmentId { get; set; }
         public virtual Appointment Appointment { get; set; }
 
         public Guid CustomerId { get; set; }
