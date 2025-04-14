@@ -10,6 +10,7 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [SwaggerTag("Danh mục dịch vụ")]
     public class ServiceCategoryController : ControllerBase
     {
         private readonly IServiceCategory _categoryService;

@@ -3,6 +3,7 @@ using BeautySpa.Services.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 using System;
 using System.Threading.Tasks;
 
@@ -10,6 +11,7 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [SwaggerTag("Người dùng")]
     public class UserController : ControllerBase
     {
         private readonly IUsers _userService;
