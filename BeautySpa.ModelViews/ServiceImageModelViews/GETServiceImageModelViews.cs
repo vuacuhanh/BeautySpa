@@ -12,5 +12,8 @@ namespace BeautySpa.ModelViews.ServiceImageModelViews
         public string ImageUrl { get; set; } = string.Empty;
         public bool IsPrimary { get; set; }
         public Guid ServiceId { get; set; }
+        public DateTimeOffset CreatedTime { get; set; }
+        public DateTimeOffset LastUpdatedTime { get; set; }
+        public DateTimeOffset? DeletedTime { get; set; }
     }
 }
