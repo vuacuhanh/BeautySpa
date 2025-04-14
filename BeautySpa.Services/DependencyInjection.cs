@@ -32,6 +32,8 @@ namespace BeautySpa.Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IRoles, RoleService>();
             services.AddScoped<IUsers, UserService>();
+            services.AddScoped<IServices, SerService>();
+            services.AddScoped<IServiceCategory,ServiceCategoryService>();
         }
     }
 }
