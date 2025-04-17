@@ -17,7 +17,10 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.AverageRating, opt => opt.Ignore())
                 .ForMember(dest => dest.TotalReviews, opt => opt.Ignore())
                 .ForMember(dest => dest.IsApproved, opt => opt.Ignore())
-                .ForMember(dest => dest.Status, opt => opt.Ignore());
+                .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.PhoneNumber))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+                .ForMember(dest => dest.ProviderId, opt => opt.MapFrom(src => src.UserId));
             CreateMap<PUTServiceProviderModelViews, ServiceProvider>()
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())

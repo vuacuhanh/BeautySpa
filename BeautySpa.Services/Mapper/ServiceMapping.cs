@@ -30,6 +30,7 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.ServicePromotions, opt => opt.Ignore());
 
             CreateMap<ServiceImage, GETServiceImageModelViews>();
+
             CreateMap<POSTServiceImageModelViews, ServiceImage>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.ServiceId, opt => opt.Ignore())

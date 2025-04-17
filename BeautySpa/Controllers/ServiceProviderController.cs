@@ -26,11 +26,10 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> Create([FromBody] POSTServiceProviderModelViews model)
         {
             var providerId = await _providerService.CreateAsync(model);
-            return Ok(new BaseResponseModel<Guid>(
+            return Ok(new BaseResponseModel<string>(
                statusCode: StatusCodes.Status200OK,
                code: ResponseCodeConstants.SUCCESS,
-               data: providerId,
-               message: "Service provider created successfully."
+               data: "Service provider created successfully."
             ));
         }
 

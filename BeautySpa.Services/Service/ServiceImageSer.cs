@@ -31,7 +31,7 @@ namespace BeautySpa.Services.Service
                 throw new ArgumentException("Image URL cannot be empty.");
             }
 
-            var serviceExists = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().GetByIdAsync(model.ServiceId);
+            var serviceExists = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().GetByIdAsync(model);
             if (serviceExists == null)
             {
                 throw new Exception("Service not found.");

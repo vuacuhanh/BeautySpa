@@ -21,6 +21,8 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public int TotalReviews { get; set; }
         public bool IsApproved { get; set; }
         public string Status { get; set; } = "pending";
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string? Email { get; set; }
         public Guid ProviderId { get; set; }
     }
 }
