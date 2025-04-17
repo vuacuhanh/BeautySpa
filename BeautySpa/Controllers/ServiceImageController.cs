@@ -1,4 +1,5 @@
-﻿using BeautySpa.Contract.Services.Interface;
+﻿using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.ServiceImageModelViews;
 using Microsoft.AspNetCore.Authorization;
@@ -25,11 +26,10 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> Create([FromBody] POSTServiceImageModelViews model)
         {
             var imageId = await _imageService.CreateAsync(model);
-            return Ok(new BaseResponseModel<Guid>(
+            return Ok(new BaseResponseModel<string>(
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: imageId,
-                message: "Service image created successfully."
+                data: "Service image created successfully."
             ));
         }
 

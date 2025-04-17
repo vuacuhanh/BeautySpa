@@ -26,19 +26,74 @@ namespace BeautySpa.Services.Service
 
         public async Task<Guid> CreateAsync(POSTServiceProviderModelViews model)
         {
+            // Kiểm tra BusinessName
             if (string.IsNullOrWhiteSpace(model.BusinessName))
             {
                 throw new ArgumentException("Business name cannot be empty.");
             }
 
-            var providerExists = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.ProviderId);
-            if (providerExists == null)
+            // Kiểm tra PhoneNumber
+            if (string.IsNullOrWhiteSpace(model.PhoneNumber))
             {
-                throw new Exception("Provider not found.");
+                throw new ArgumentException("Phone number is required.");
             }
 
+            // Kiểm tra tính duy nhất của PhoneNumber trong ServiceProviders
+            var phoneExistsInProviders = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.AnyAsync(sp => sp.PhoneNumber == model.PhoneNumber && sp.DeletedTime == null);
+            if (phoneExistsInProviders)
+            {
+                throw new ArgumentException("Phone number is already in use by another service provider.");
+            }
+
+            // Kiểm tra sự tồn tại của ApplicationUsers
+            var userExists = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.UserId);
+            if (userExists == null)
+            {
+                throw new Exception("User not found.");
+            }
+
+            // Kiểm tra và đồng bộ PhoneNumber với ApplicationUsers
+            if (string.IsNullOrEmpty(userExists.PhoneNumber))
+            {
+                userExists.PhoneNumber = model.PhoneNumber;
+            }
+            else if (userExists.PhoneNumber != model.PhoneNumber)
+            {
+                // Kiểm tra tính duy nhất trong ApplicationUsers
+                var userPhoneExists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                    .Entities.AnyAsync(u => u.PhoneNumber == model.PhoneNumber && u.Id != model.UserId);
+                if (userPhoneExists)
+                {
+                    throw new ArgumentException("Phone number is already in use by another user.");
+                }
+                userExists.PhoneNumber = model.PhoneNumber;
+            }
+
+            // Đồng bộ Email với ApplicationUsers
+            if (!string.IsNullOrEmpty(model.Email) && userExists.Email != model.Email)
+            {
+                var userEmailExists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                    .Entities.AnyAsync(u => u.Email == model.Email && u.Id != model.UserId);
+                if (userEmailExists)
+                {
+                    throw new ArgumentException("Email is already in use by another user.");
+                }
+                userExists.Email = model.Email;
+            }
+
+            // Cập nhật ApplicationUsers nếu có thay đổi
+            if (userExists.PhoneNumber != model.PhoneNumber || userExists.Email != model.Email)
+            {
+                await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(userExists);
+            }
+
+            // Tạo ServiceProvider
             var serviceProvider = _mapper.Map<ServiceProvider>(model);
             serviceProvider.Id = Guid.NewGuid();
+            serviceProvider.ProviderId = model.UserId; // Sử dụng ProviderId thay vì UserId trong entity
+            serviceProvider.PhoneNumber = model.PhoneNumber;
+            serviceProvider.Email = model.Email;
             serviceProvider.CreatedTime = DateTimeOffset.UtcNow;
             serviceProvider.LastUpdatedTime = serviceProvider.CreatedTime;
 
@@ -95,10 +150,46 @@ namespace BeautySpa.Services.Service
                 throw new ArgumentException("Business name cannot be empty.");
             }
 
-            var providerExists = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.ProviderId);
-            if (providerExists == null)
+            if (string.IsNullOrWhiteSpace(model.PhoneNumber))
             {
-                throw new Exception("Provider not found.");
+                throw new ArgumentException("Phone number is required.");
+            }
+
+            var phoneExists = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.AnyAsync(sp => sp.PhoneNumber == model.PhoneNumber && sp.Id != model.Id && sp.DeletedTime == null);
+            if (phoneExists)
+            {
+                throw new ArgumentException("Phone number is already in use.");
+            }
+
+            var userExists = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.ProviderId);
+            if (userExists == null)
+            {
+                throw new Exception("User not found.");
+            }
+
+            if (userExists.PhoneNumber != model.PhoneNumber)
+            {
+                var userPhoneExists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                    .Entities.AnyAsync(u => u.PhoneNumber == model.PhoneNumber && u.Id != model.ProviderId);
+                if (userPhoneExists)
+                {
+                    throw new ArgumentException("Phone number is already in use by another user.");
+                }
+                userExists.PhoneNumber = model.PhoneNumber;
+                await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(userExists);
+            }
+
+            if (!string.IsNullOrEmpty(model.Email) && userExists.Email != model.Email)
+            {
+                var userEmailExists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                    .Entities.AnyAsync(u => u.Email == model.Email && u.Id != model.ProviderId);
+                if (userEmailExists)
+                {
+                    throw new ArgumentException("Email is already in use by another user.");
+                }
+                userExists.Email = model.Email;
+                await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(userExists);
             }
 
             _mapper.Map(model, serviceProvider);

@@ -11,9 +11,9 @@ namespace BeautySpa.Contract.Repositories.Entity
         public string? AvatarUrl { get; set; }
         public string? Gender { get; set; }
         public decimal? Salary { get; set; }
-        public string? BankAccount { get; set; }
-        public string? BankAccountName { get; set; }
-        public string? Bank { get; set; }
+        //public string? BankAccount { get; set; }
+        //public string? BankAccountName { get; set; }
+        //public string? Bank { get; set; }
 
         // Khóa ngoại
         public Guid UserId { get; set; }

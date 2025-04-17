@@ -26,10 +26,10 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> Create([FromBody] POSTRoleModelViews model)
         {
             var roleId = await _roleService.CreateAsync(model);
-            return Ok(new BaseResponseModel<Guid>(
+            return Ok(new BaseResponseModel<string>(
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: roleId
+                data: "Add role successful"
             ));
         }
 
