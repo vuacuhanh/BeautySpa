@@ -36,6 +36,16 @@ namespace BeautySpa.Services
             services.AddScoped<IServiceCategory,ServiceCategoryService>();
             services.AddScoped<IServiceProviders, ServiceProviderSer>();
             services.AddScoped<IServiceImages,ServiceImageSer>();
+            services.AddScoped<IFavoriteService, FavoriteService>();
+            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<IPromotionService, PromotionService>();
+            services.AddScoped<IReviewService, ReviewService>();
+            services.AddScoped<IWorkingHourService, WorkingHourService>();
+            services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<IMessageService, MessageService>();
+            services.AddScoped<IPaymentService, PaymentService>();
+
+
         }
     }
 }
