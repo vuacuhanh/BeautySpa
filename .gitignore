@@ -58,3 +58,7 @@ packages/
 *.cache
 *.DS_Store
 Thumbs.db
+
+
+appsettings.json
+Migrations
