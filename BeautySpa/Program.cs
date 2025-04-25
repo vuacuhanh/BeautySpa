@@ -1,4 +1,4 @@
-using BeautySpa.Contract.Repositories.Entity;
+ï»¿using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Repositories.Context;
 using BeautySpa.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddDbContext<DatabaseContext>(x => x.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
-// C?u hình Identity
+// Cáº¥u hÃ¬nh Identity
 builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 {
     options.Password.RequireDigit = true;
@@ -26,10 +26,10 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 .AddEntityFrameworkStores<DatabaseContext>()
 .AddDefaultTokenProviders();
 
-// ??ng ký các d?ch v? t? DependencyInjection
+// ÄÄƒnh kÃ½ dá»‹ch vá»¥ táº¡i DependencyInjection
 builder.Services.AddInfrastructure();
 
-// Kích ho?t Session
+// KÃ­ch hoáº¡t Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -39,13 +39,13 @@ builder.Services.AddSession(options =>
     options.Cookie.Name = ".BeautySpa.Session";
 });
 
-// C?u hình JWT
+// Cáº¥u hÃ¬nh JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings.GetValue<string>("Secret");
 
 if (string.IsNullOrEmpty(secretKey))
 {
-    throw new InvalidOperationException("JWT Secret ch?a ???c c?u hình.");
+    throw new InvalidOperationException("JWT Secret ch?a ???c c?u hÃ¬nh.");
 }
 
 var key = Encoding.ASCII.GetBytes(secretKey);
@@ -72,7 +72,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Thêm chính sách CORS
+// ThÃªm chÃ­nh sÃ¡ch CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
@@ -85,7 +85,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 
-// Thêm d?ch v? Swagger
+// ThÃªm d?ch v? Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
