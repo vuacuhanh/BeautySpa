@@ -12,29 +12,38 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using BeautySpa.Core.Infrastructure;
+using BeautySpa.Contract.Services.Interface;
 
 namespace BeautySpa.Services.Service
 {
     public class AuthService : IAuthService
     {
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
+        private readonly IConfiguration _configuration;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly UserManager<ApplicationUsers> _userManager;
         private readonly RoleManager<ApplicationRoles> _roleManager;
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly IConfiguration _configuration;
-        private readonly IMapper _mapper;
+        private readonly IEmailService _emailService;
+        private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_httpContextAccessor);
 
         public AuthService(
             UserManager<ApplicationUsers> userManager,
             RoleManager<ApplicationRoles> roleManager,
             IUnitOfWork unitOfWork,
             IConfiguration configuration,
-            IMapper mapper)
+            IMapper mapper,
+            IEmailService emailService,
+            IHttpContextAccessor httpContextAccessor)
         {
-            _userManager = userManager;
-            _roleManager = roleManager;
             _unitOfWork = unitOfWork;
-            _configuration = configuration;
             _mapper = mapper;
+            _configuration = configuration;
+            _httpContextAccessor = httpContextAccessor;
+            _userManager = userManager;
+            _emailService = emailService;
+            _roleManager = roleManager;
         }
 
         public async Task<bool> ChangePasswordAsync(ChangePasswordAuthModelView changepass, Guid UserId)
@@ -62,6 +71,8 @@ namespace BeautySpa.Services.Service
             return true;
         }
 
+       
+
         public async Task<IList<string>> GetUserRolesAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
@@ -85,7 +96,6 @@ namespace BeautySpa.Services.Service
 
             if (user == null || !await _userManager.CheckPasswordAsync(user, signin.Password))
                 throw new BadRequestException(ErrorCode.InvalidInput, "Invalid email or password.");
-
             return await GenerateJwtToken(user);
         }
 
@@ -158,6 +168,68 @@ namespace BeautySpa.Services.Service
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
+        }
+
+
+        public async Task<bool> ConfirmEmailAsync(string userId, string token)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (!result.Succeeded)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Email confirmation failed.");
+
+            return true;
+        }
+
+        public async Task<bool> ForgotPasswordAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedToken = System.Web.HttpUtility.UrlEncode(token);
+            var resetLink = $"{_configuration["Frontend:ResetPasswordUrl"]}?email={user.Email}&token={encodedToken}";
+
+            await _emailService.SendEmailAsync(user.Email, "Reset Password",
+                $"Click <a href='{resetLink}'>here</a> to reset your password.");
+
+            return true;
+        }
+        public async Task<bool> ResendConfirmationEmailAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            if (user.EmailConfirmed)
+                throw new BadRequestException(ErrorCode.InvalidInput, "Email already confirmed.");
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = System.Web.HttpUtility.UrlEncode(token);
+            var confirmationLink = $"{_configuration["Frontend:ConfirmEmailUrl"]}?userId={user.Id}&token={encodedToken}";
+
+            await _emailService.SendEmailAsync(user.Email, "Confirm your email",
+                $"Please confirm your account by clicking <a href='{confirmationLink}'>here</a>.");
+
+            return true;
+        }
+
+        public async Task<bool> ResetPasswordAsync(ResetPasswordAuthModelView model)
+        {
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            var result = await _userManager.ResetPasswordAsync(user, model.Token, model.NewPassword);
+            if (!result.Succeeded)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput,
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
+
+            return true;
         }
     }
 }

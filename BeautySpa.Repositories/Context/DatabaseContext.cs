@@ -29,6 +29,10 @@ namespace BeautySpa.Repositories.Context
         public DbSet<ServicePromotion> ServicePromotions { get; set; }
         public DbSet<ServiceImage> ServiceImages { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<LocationSpa> LocationSpa { get; set; }
+        public DbSet<BranchLocationSpa> BranchLocationSpas { get; set; }
+        public DbSet<Rank> ranks { get; set; }
+        public DbSet<MemberShip> Memberships { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -182,6 +186,45 @@ namespace BeautySpa.Repositories.Context
                 .WithMany(u => u.ReceivedMessages)
                 .HasForeignKey(m => m.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Cấu hình BranchLocationSpa & LocationSpa
+            builder.Entity<LocationSpa>()
+                .HasOne(ls => ls.Branch)
+                .WithMany(bl => bl.LocationSpas)
+                .HasForeignKey(ls => ls.BranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<BranchLocationSpa>()
+                .HasMany(bl => bl.LocationSpas)
+                .WithOne(ls => ls.Branch)
+                .HasForeignKey(ls => ls.BranchId);
+
+            builder.Entity<Appointment>()
+            .HasOne(a => a.LocationSpa)
+            .WithMany(ls => ls.Appointments)
+            .HasForeignKey(a => a.LocationSpaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            //
+            builder.Entity<MemberShip>()
+            .HasOne(ms => ms.User)
+            .WithOne(u => u.MemberShip)
+            .HasForeignKey<MemberShip>(ms => ms.UserId);
+
+            builder.Entity<MemberShip>()
+                .HasOne(ms => ms.Rank)
+                .WithMany(r => r.MemberShips)
+                .HasForeignKey(ms => ms.RankId);
+
+            builder.Entity<Promotion>()
+                .HasOne(p => p.RequiredRank)
+                .WithMany(r => r.Promotions)
+                .HasForeignKey(p => p.RequiredRankId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+
+
 
             // Cấu hình độ chính xác cho các trường decimal
             builder.Entity<Payment>()
