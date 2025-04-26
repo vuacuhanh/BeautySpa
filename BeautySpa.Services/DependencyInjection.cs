@@ -33,9 +33,9 @@ namespace BeautySpa.Services
             services.AddScoped<IRoles, RoleService>();
             services.AddScoped<IUsers, UserService>();
             services.AddScoped<IServices, SerService>();
-            services.AddScoped<IServiceCategory,ServiceCategoryService>();
+            services.AddScoped<IServiceCategory, ServiceCategoryService>();
             services.AddScoped<IServiceProviders, ServiceProviderSer>();
-            services.AddScoped<IServiceImages,ServiceImageSer>();
+            services.AddScoped<IServiceImages, ServiceImageSer>();
             services.AddScoped<IFavoriteService, FavoriteService>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IPromotionService, PromotionService>();
@@ -45,7 +45,6 @@ namespace BeautySpa.Services
             services.AddScoped<IMessageService, MessageService>();
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IEmailService, EmailService>();
-
 
         }
     }

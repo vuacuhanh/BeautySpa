@@ -79,6 +79,7 @@ namespace BeautySpa.Core.Base
         public const string Validated = "Validated.";
         public const string Conflicted = "Conflicted.";
         public const string InvalidInput = "Invalid input!";
+
     }
     public class ResponseCodeConstants
     {

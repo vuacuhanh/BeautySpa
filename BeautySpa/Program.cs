@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using BeautySpa.API.Middleware;
+using StackExchange.Redis; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +16,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<DatabaseContext>(x =>
     x.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
-// ✅ Cấu hình Identity - BẮT BUỘC xác thực email
+// Thêm Redis
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")));
+
+// Cấu hình Identity
 builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 {
     options.Password.RequireDigit = true;
@@ -41,7 +46,7 @@ builder.Services.AddSession(options =>
     options.Cookie.Name = ".BeautySpa.Session";
 });
 
-// ✅ Cấu hình JWT
+// Cấu hình JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings.GetValue<string>("Secret");
 
@@ -74,12 +79,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ✅ Cấu hình CORS cho phép kết nối frontend (ReactJS, v.v.)
+// Cấu hình CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:3000") // địa chỉ frontend
+        policy.WithOrigins("http://localhost:3000")
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -87,7 +92,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 
-// ✅ Thêm Swagger
+// Thêm Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -129,7 +134,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// ExceptionMiddleware để bắt lỗi
 app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseHttpsRedirection();
