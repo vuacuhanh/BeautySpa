@@ -24,37 +24,37 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Create a new service category")]
         public async Task<IActionResult> Create([FromBody] POSTServiceCategoryModelViews model)
         {
-          var categoryId = await _categoryService.CreateAsync(model);
-          return Ok(new BaseResponseModel<string>(
-              statusCode: StatusCodes.Status200OK,
-              code: ResponseCodeConstants.SUCCESS,
-              data: "Service category created successfully."
-          ));
+            var categoryId = await _categoryService.CreateAsync(model);
+            return Ok(new BaseResponseModel<string>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: "Service category created successfully."
+            ));
 
         }
 
         [HttpGet]
         [SwaggerOperation(Summary = "Get a paginated list of service categories")]
-        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
         {
-           var categories = await _categoryService.GetAllAsync(pageNumber, pageSize);
-           return Ok(new BaseResponseModel<BasePaginatedList<GETServiceCategoryModelViews>>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: categories
-           ));
+            var categories = await _categoryService.GetAllAsync(pageNumber, pageSize);
+            return Ok(new BaseResponseModel<BasePaginatedList<GETServiceCategoryModelViews>>(
+                 statusCode: StatusCodes.Status200OK,
+                 code: ResponseCodeConstants.SUCCESS,
+                 data: categories
+            ));
         }
 
         [HttpGet("{id}")]
         [SwaggerOperation(Summary = "Get a service category by ID")]
         public async Task<IActionResult> GetById(Guid id)
         {
-           var category = await _categoryService.GetByIdAsync(id);
-           return Ok(new BaseResponseModel<GETServiceCategoryModelViews>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: category
-           ));
+            var category = await _categoryService.GetByIdAsync(id);
+            return Ok(new BaseResponseModel<GETServiceCategoryModelViews>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: category
+            ));
         }
 
         [HttpPut]
@@ -78,7 +78,7 @@ namespace BeautySpa.API.Controllers
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
                 data: "Service category deleted successfully."
-             ));   
+             ));
         }
     }
 }

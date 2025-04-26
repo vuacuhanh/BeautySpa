@@ -25,6 +25,6 @@ namespace BeautySpa.Contract.Repositories.Entity
         // Khóa ngoại
         public Guid ProviderId { get; set; }
         public virtual ApplicationUsers Provider { get; set; }
-
+        public virtual ICollection<ServiceImage> Images { get; set; } = new List<ServiceImage>();
     }
 }

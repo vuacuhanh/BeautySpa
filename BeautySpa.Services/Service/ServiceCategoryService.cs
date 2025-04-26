@@ -4,12 +4,10 @@ using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.ServiceCategoryModelViews;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using BeautySpa.Core.Infrastructure;
+using BeautySpa.Core.Utils;
 
 namespace BeautySpa.Services.Service
 {
@@ -17,25 +15,42 @@ namespace BeautySpa.Services.Service
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _contextAccessor;
+        private string currentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
-        public ServiceCategoryService(IUnitOfWork unitOfWork, IMapper mapper)
+        public ServiceCategoryService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _contextAccessor = contextAccessor;
         }
 
         public async Task<Guid> CreateAsync(POSTServiceCategoryModelViews model)
         {
+            // Kiểm tra CategoryName có hợp lệ không
             if (string.IsNullOrWhiteSpace(model.CategoryName))
             {
-                throw new ArgumentException("Category name cannot be empty.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Category name cannot be empty.");
             }
 
+            // Kiểm tra đã tồn tại chưa
+            var categoryExists = await _unitOfWork.GetRepository<ServiceCategory>()
+                .Entities.FirstOrDefaultAsync(s => s.CategoryName.ToLower() == model.CategoryName.ToLower());
+
+            if (categoryExists != null)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Category already exists.");
+            }
+
+            // Map từ model sang entity
             var category = _mapper.Map<ServiceCategory>(model);
             category.Id = Guid.NewGuid();
-            category.CreatedTime = DateTimeOffset.UtcNow;
-            category.LastUpdatedTime = category.CreatedTime;
+            category.CreatedBy = currentUserId;
+            category.CreatedTime = CoreHelper.SystemTimeNow;
+            category.LastUpdatedBy = currentUserId;
+            category.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
+            // Thêm vào DB
             await _unitOfWork.GetRepository<ServiceCategory>().InsertAsync(category);
             await _unitOfWork.SaveAsync();
 
@@ -44,69 +59,82 @@ namespace BeautySpa.Services.Service
 
         public async Task<BasePaginatedList<GETServiceCategoryModelViews>> GetAllAsync(int pageNumber, int pageSize)
         {
-            if (pageNumber < 1 || pageSize < 1)
+            if (pageNumber <= 0 || pageSize <= 0)
             {
-                throw new ArgumentException("Page number and page size must be greater than 0.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
             }
 
-            var query = _unitOfWork.GetRepository<ServiceCategory>().Entities
-                .Where(c => c.DeletedTime == null);
+            IQueryable<ServiceCategory> categories = _unitOfWork.GetRepository<ServiceCategory>()
+                .Entities.Where(c => !c.DeletedTime.HasValue)
+                .OrderByDescending(c => c.CreatedTime).AsQueryable();
 
-            var totalCount = await query.CountAsync();
-            var items = await query
+            var paginatedCategories = await categories
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            var mappedItems = _mapper.Map<IReadOnlyCollection<GETServiceCategoryModelViews>>(items);
-
-            return new BasePaginatedList<GETServiceCategoryModelViews>(mappedItems, totalCount, pageNumber, pageSize);
+            return new BasePaginatedList<GETServiceCategoryModelViews>(_mapper.Map<List<GETServiceCategoryModelViews>>(paginatedCategories),
+                await categories.CountAsync(), pageNumber, pageSize);
         }
 
         public async Task<GETServiceCategoryModelViews> GetByIdAsync(Guid id)
         {
-            var category = await _unitOfWork.GetRepository<ServiceCategory>().Entities
-                .FirstOrDefaultAsync(c => c.Id == id && c.DeletedTime == null);
-            if (category == null)
+            if (id == Guid.Empty)
             {
-                throw new Exception("Service category not found.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid category ID.");
             }
+
+            var category = await _unitOfWork.GetRepository<ServiceCategory>().Entities
+                .FirstOrDefaultAsync(c => c.Id == id && !c.DeletedTime.HasValue)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service category not found.");
 
             return _mapper.Map<GETServiceCategoryModelViews>(category);
         }
 
         public async Task UpdateAsync(PUTServiceCategoryModelViews model)
         {
-            var category = await _unitOfWork.GetRepository<ServiceCategory>().Entities
-                .FirstOrDefaultAsync(c => c.Id == model.Id && c.DeletedTime == null);
-            if (category == null)
+            if (model.Id == Guid.Empty)
             {
-                throw new Exception("Service category not found.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid category ID.");
             }
 
             if (string.IsNullOrWhiteSpace(model.CategoryName))
             {
-                throw new ArgumentException("Category name cannot be empty.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Category name cannot be empty.");
             }
 
-            _mapper.Map(model, category);
-            category.LastUpdatedTime = DateTimeOffset.UtcNow;
+            var genericRepository = _unitOfWork.GetRepository<ServiceCategory>();
 
-            await _unitOfWork.GetRepository<ServiceCategory>().UpdateAsync(category);
-            await _unitOfWork.SaveAsync();
+            var category = await genericRepository.Entities
+                .FirstOrDefaultAsync(c => c.Id == model.Id && !c.DeletedTime.HasValue)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Service category with id = {model.Id} not found.");
+
+            _mapper.Map(model, category);
+            category.LastUpdatedBy = currentUserId;
+            category.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+            await genericRepository.UpdateAsync(category);
+            await genericRepository.SaveAsync();
         }
 
         public async Task DeleteAsync(Guid id)
         {
-            var category = await _unitOfWork.GetRepository<ServiceCategory>().GetByIdAsync(id);
-            if (category == null || category.DeletedTime != null)
+            if (id == Guid.Empty)
             {
-                throw new Exception("Service category not found.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid category ID.");
             }
 
-            category.DeletedTime = DateTimeOffset.UtcNow;
-            await _unitOfWork.GetRepository<ServiceCategory>().UpdateAsync(category);
-            await _unitOfWork.SaveAsync();
+            var genericRepository = _unitOfWork.GetRepository<ServiceCategory>();
+
+            var category = await genericRepository.Entities
+                .FirstOrDefaultAsync(c => c.Id == id && !c.DeletedTime.HasValue)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Service category with id = {id} not found.");
+
+            category.DeletedTime = CoreHelper.SystemTimeNow;
+            category.DeletedBy = currentUserId;
+
+            await genericRepository.UpdateAsync(category);
+            await genericRepository.SaveAsync();
         }
     }
 }

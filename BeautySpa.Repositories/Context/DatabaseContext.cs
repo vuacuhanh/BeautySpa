@@ -167,12 +167,6 @@ namespace BeautySpa.Repositories.Context
                 .HasIndex(sp => new { sp.PromotionId, sp.ServiceId })
                 .IsUnique();
 
-            // Cấu hình ServiceImage
-            builder.Entity<ServiceImage>()
-                .HasOne(si => si.Service)
-                .WithMany(s => s.ServiceImages)
-                .HasForeignKey(si => si.ServiceId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình Message
             builder.Entity<Message>()

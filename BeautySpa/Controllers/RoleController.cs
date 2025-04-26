@@ -58,7 +58,7 @@ namespace BeautySpa.API.Controllers
             ));
         }
 
-        
+
 
         // PUT: api/role
         [HttpPut]
@@ -67,22 +67,22 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> Update([FromBody] PUTRoleModelViews rolemodel)
         {
 
-           await _roleService.UpdateAsync(rolemodel);
-           return Ok(new BaseResponseModel<string>(
-              statusCode: StatusCodes.Status200OK,
-              code: ResponseCodeConstants.SUCCESS,
-              data: "Update role successful"
-           ));
+            await _roleService.UpdateAsync(rolemodel);
+            return Ok(new BaseResponseModel<string>(
+               statusCode: StatusCodes.Status200OK,
+               code: ResponseCodeConstants.SUCCESS,
+               data: "Update role successful"
+            ));
         }
         [HttpDelete]
-        [SwaggerOperation(Summary ="Delete Role")]
+        [SwaggerOperation(Summary = "Delete Role")]
         public async Task<IActionResult> Delete(Guid roleid)
         {
             await _roleService.DeleteAsync(roleid);
             return Ok(new BaseResponseModel<string>(
-                statusCode:StatusCodes.Status200OK,
+                statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data:"Delete Role successful"
+                data: "Delete Role successful"
             ));
         }
     }
