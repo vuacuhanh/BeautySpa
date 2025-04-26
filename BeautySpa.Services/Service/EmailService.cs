@@ -1,4 +1,4 @@
-﻿using BeautySpa.Contract.Services.Interface;
+using BeautySpa.Contract.Services.Interface;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;

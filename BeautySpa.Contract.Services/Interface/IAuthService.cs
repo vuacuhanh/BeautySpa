@@ -1,4 +1,4 @@
-﻿using BeautySpa.ModelViews.AuthModelViews;
+using BeautySpa.ModelViews.AuthModelViews;
 
 public interface IAuthService
 {
