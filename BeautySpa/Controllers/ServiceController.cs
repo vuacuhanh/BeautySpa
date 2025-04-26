@@ -25,24 +25,24 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Create a new service")]
         public async Task<IActionResult> Create([FromBody] POSTServiceModelViews model)
         {
-                var serviceId = await _serviceService.CreateAsync(model);
-                return Ok(new BaseResponseModel<string>(
-                    statusCode: StatusCodes.Status200OK,
-                    code: ResponseCodeConstants.SUCCESS,
-                    data: "Service created successfully."
-                ));
+            var serviceId = await _serviceService.CreateAsync(model);
+            return Ok(new BaseResponseModel<string>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: "Service created successfully."
+            ));
         }
 
         [HttpGet]
         [SwaggerOperation(Summary = "Get a paginated list of services")]
         public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
         {
-           var services = await _serviceService.GetAllAsync(pageNumber, pageSize);
-           return Ok(new BaseResponseModel<BasePaginatedList<GETServiceModelViews>>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: services
-           ));
+            var services = await _serviceService.GetAllAsync(pageNumber, pageSize);
+            return Ok(new BaseResponseModel<BasePaginatedList<GETServiceModelViews>>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: services
+            ));
         }
 
         [HttpGet("{id}")]
@@ -62,12 +62,12 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Update an existing service")]
         public async Task<IActionResult> Update([FromBody] PUTServiceModelViews model)
         {
-           await _serviceService.UpdateAsync(model);
-           return Ok(new BaseResponseModel<string>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: "Service updated successfully."
-            ));
+            await _serviceService.UpdateAsync(model);
+            return Ok(new BaseResponseModel<string>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: "Service updated successfully."
+             ));
 
         }
 
@@ -76,12 +76,12 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Delete a service (soft delete)")]
         public async Task<IActionResult> Delete(Guid id)
         {
-           await _serviceService.DeleteAsync(id);
-           return Ok(new BaseResponseModel<string>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: "Service deleted successfully."
-           ));
+            await _serviceService.DeleteAsync(id);
+            return Ok(new BaseResponseModel<string>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: "Service deleted successfully."
+            ));
         }
     }
 }

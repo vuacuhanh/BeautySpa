@@ -368,6 +368,49 @@ namespace BeautySpa.Repositories.Migrations
                     b.ToTable("LocationSpa");
                 });
 
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.MemberShip", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AccumulatedPoints")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("DeletedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastUpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("LastUpdatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("RankId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RankId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Memberships");
+                });
+
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Message", b =>
                 {
                     b.Property<Guid>("Id")
@@ -572,6 +615,9 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("RequiredRankId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
@@ -583,7 +629,51 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.HasIndex("ProviderId");
 
+                    b.HasIndex("RequiredRankId");
+
                     b.ToTable("Promotions");
+                });
+
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Rank", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("DeletedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("DiscountPercent")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("LastUpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("LastUpdatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("MinPoints")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ranks");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Review", b =>
@@ -770,12 +860,17 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<DateTimeOffset?>("LastUpdatedTime")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<Guid>("ServiceId")
+                    b.Property<Guid?>("ServiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ServiceProviderId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ServiceId");
+
+                    b.HasIndex("ServiceProviderId");
 
                     b.ToTable("ServiceImages");
                 });
@@ -1277,6 +1372,25 @@ namespace BeautySpa.Repositories.Migrations
                     b.Navigation("Branch");
                 });
 
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.MemberShip", b =>
+                {
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.Rank", "Rank")
+                        .WithMany("MemberShips")
+                        .HasForeignKey("RankId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "User")
+                        .WithOne("MemberShip")
+                        .HasForeignKey("BeautySpa.Contract.Repositories.Entity.MemberShip", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rank");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Message", b =>
                 {
                     b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "Receiver")
@@ -1326,7 +1440,14 @@ namespace BeautySpa.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.Rank", "RequiredRank")
+                        .WithMany("Promotions")
+                        .HasForeignKey("RequiredRankId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Provider");
+
+                    b.Navigation("RequiredRank");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Review", b =>
@@ -1377,13 +1498,17 @@ namespace BeautySpa.Repositories.Migrations
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceImage", b =>
                 {
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.Service", "Service")
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.Service", null)
                         .WithMany("ServiceImages")
-                        .HasForeignKey("ServiceId")
+                        .HasForeignKey("ServiceId");
+
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceProvider", "ServiceProvider")
+                        .WithMany("Images")
+                        .HasForeignKey("ServiceProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Service");
+                    b.Navigation("ServiceProvider");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServicePromotion", b =>
@@ -1497,6 +1622,9 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.Navigation("CustomerReviews");
 
+                    b.Navigation("MemberShip")
+                        .IsRequired();
+
                     b.Navigation("Notifications");
 
                     b.Navigation("Promotions");
@@ -1544,6 +1672,13 @@ namespace BeautySpa.Repositories.Migrations
                     b.Navigation("ServicePromotions");
                 });
 
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Rank", b =>
+                {
+                    b.Navigation("MemberShips");
+
+                    b.Navigation("Promotions");
+                });
+
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Service", b =>
                 {
                     b.Navigation("Appointments");
@@ -1556,6 +1691,11 @@ namespace BeautySpa.Repositories.Migrations
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceCategory", b =>
                 {
                     b.Navigation("Services");
+                });
+
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceProvider", b =>
+                {
+                    b.Navigation("Images");
                 });
 #pragma warning restore 612, 618
         }

@@ -7,10 +7,10 @@ namespace BeautySpa.Contract.Repositories.Entity
     public class ServiceImage : BaseEntity
     {
         public string ImageUrl { get; set; } = string.Empty;
-        public bool IsPrimary { get; set; } = false;
+        public bool IsPrimary { get; set; } = false; // true = ảnh chính, false = ảnh phụ
 
         // Khóa ngoại
-        public Guid ServiceId { get; set; }
-        public virtual Service Service { get; set; }
+        public Guid ServiceProviderId { get; set; }
+        public virtual ServiceProvider ServiceProvider { get; set; }
     }
 }
