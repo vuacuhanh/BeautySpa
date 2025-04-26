@@ -14,6 +14,5 @@ namespace BeautySpa.ModelViews.AuthModelViews
 
         public required string Password { get; set; }
 
-        public Guid RoleId { get; set; }
     }
 }

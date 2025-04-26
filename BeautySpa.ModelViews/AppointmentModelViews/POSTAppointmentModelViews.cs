@@ -5,9 +5,8 @@ namespace BeautySpa.ModelViews.AppointmentModelViews
     public class POSTAppointmentModelViews
     {
 
-        public required DateTime AppointmentDate { get; set; }
-        public required TimeSpan StartTime { get; set; }
-
+        public DateTime AppointmentDate { get; set; }
+        public TimeSpan StartTime { get; set; }
         public string Status { get; set; } = "Pending";
         public string? Notes { get; set; }
 

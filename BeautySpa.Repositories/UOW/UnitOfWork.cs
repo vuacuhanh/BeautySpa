@@ -1,15 +1,30 @@
 ﻿using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Repositories.Context;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using System.Data;
+using System.Threading;
 
 namespace BeautySpa.Repositories.UOW
 {
-    public class UnitOfWork(DatabaseContext dbContext) : IUnitOfWork
+    public class UnitOfWork : IUnitOfWork
     {
         private bool disposed = false;
-        private readonly DatabaseContext _dbContext = dbContext;
+        private readonly DatabaseContext _dbContext;
+
+        public UnitOfWork(DatabaseContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+
         public void BeginTransaction()
         {
             _dbContext.Database.BeginTransaction();
+        }
+
+        public async Task<IDbContextTransaction> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted, CancellationToken cancellationToken = default)
+        {
+            return await _dbContext.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
         }
 
         public void CommitTransaction()
@@ -22,6 +37,7 @@ namespace BeautySpa.Repositories.UOW
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposed)

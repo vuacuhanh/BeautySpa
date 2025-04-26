@@ -19,14 +19,25 @@ namespace BeautySpa.API.Controllers
             _httpContextAccessor = httpContextAccessor;
         }
 
-        [HttpPost("sign-up")]
-        public async Task<IActionResult> SignUp([FromBody] SignUpAuthModelView model)
+        [HttpPost("request-otp")]
+        public async Task<IActionResult> RequestOtp([FromBody] RequestOtpModelView model)
         {
-            await _authService.SignUpAsync(model, model.RoleId);
+            await _authService.RequestOtpAsync(model.Email);
             return Ok(new BaseResponseModel<string>(
-                 statusCode: StatusCodes.Status200OK,
-                  code: ResponseCodeConstants.SUCCESS,
-                  data: "User registered successfully."
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: "OTP sent to your email."
+            ));
+        }
+
+        [HttpPost("sign-up")]
+        public async Task<IActionResult> SignUp([FromBody] SignUpWithOtpModelView model)
+        {
+            var token = await _authService.SignUpWithOtpAsync(model.SignUp, model.Otp);
+            return Ok(new BaseResponseModel<string>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: token
             ));
         }
 
@@ -48,9 +59,9 @@ namespace BeautySpa.API.Controllers
             var userId = Guid.Parse(Authentication.GetUserIdFromHttpContextAccessor(_httpContextAccessor));
             await _authService.ChangePasswordAsync(model, userId);
             return Ok(new BaseResponseModel<string>(
-                  statusCode: StatusCodes.Status200OK,
-                  code: ResponseCodeConstants.SUCCESS,
-                  data: "Password changed successfully."
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: "Password changed successfully."
             ));
         }
 
@@ -60,8 +71,9 @@ namespace BeautySpa.API.Controllers
             await _authService.ConfirmEmailAsync(userId, token);
             return Ok(new BaseResponseModel<string>(
                 statusCode: StatusCodes.Status200OK,
-                 code: ResponseCodeConstants.SUCCESS,
-                data: "Email confirmed successfully."));
+                code: ResponseCodeConstants.SUCCESS,
+                data: "Email confirmed successfully."
+            ));
         }
 
         [HttpPost("resend-confirmation-email")]
@@ -71,7 +83,8 @@ namespace BeautySpa.API.Controllers
             return Ok(new BaseResponseModel<string>(
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: "Confirmation email sent."));
+                data: "Confirmation email sent."
+            ));
         }
 
         [HttpPost("forgot-password")]
@@ -79,9 +92,10 @@ namespace BeautySpa.API.Controllers
         {
             await _authService.ForgotPasswordAsync(email);
             return Ok(new BaseResponseModel<string>(
-               statusCode: StatusCodes.Status200OK,
+                statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: "Reset password email sent."));
+                data: "Reset password email sent."
+            ));
         }
 
         [HttpPost("reset-password")]
@@ -91,7 +105,8 @@ namespace BeautySpa.API.Controllers
             return Ok(new BaseResponseModel<string>(
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: "Password reset successful."));
+                data: "Password reset successful."
+            ));
         }
     }
 }
