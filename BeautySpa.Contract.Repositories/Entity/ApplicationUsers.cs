@@ -16,6 +16,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public DateTimeOffset? DeletedTime { get; set; }
 
         // Mối quan hệ
+        public virtual MemberShip MemberShip { get; set; } = default!;
         public virtual UserInfor? UserInfor { get; set; }
         public virtual ServiceProvider? ServiceProvider { get; set; }
         public virtual ICollection<Service> Services { get; set; } = new List<Service>();

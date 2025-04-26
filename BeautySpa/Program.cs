@@ -12,9 +12,10 @@ using BeautySpa.API.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddDbContext<DatabaseContext>(x => x.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
+builder.Services.AddDbContext<DatabaseContext>(x =>
+    x.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
-// Cấu hình Identity
+// ✅ Cấu hình Identity - BẮT BUỘC xác thực email
 builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 {
     options.Password.RequireDigit = true;
@@ -22,11 +23,12 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
     options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
+    options.SignIn.RequireConfirmedEmail = true; // 👈 thêm dòng này
 })
 .AddEntityFrameworkStores<DatabaseContext>()
 .AddDefaultTokenProviders();
 
-// Đănh ký dịch vụ tại DependencyInjection
+// Đăng ký các dịch vụ tại DependencyInjection
 builder.Services.AddInfrastructure();
 
 // Kích hoạt Session
@@ -39,13 +41,13 @@ builder.Services.AddSession(options =>
     options.Cookie.Name = ".BeautySpa.Session";
 });
 
-// Cấu hình JWT
+// ✅ Cấu hình JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings.GetValue<string>("Secret");
 
 if (string.IsNullOrEmpty(secretKey))
 {
-    throw new InvalidOperationException("JWT Secret ch?a ???c c?u hình.");
+    throw new InvalidOperationException("JWT Secret chưa được cấu hình.");
 }
 
 var key = Encoding.ASCII.GetBytes(secretKey);
@@ -72,12 +74,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Thêm chính sách CORS
+// ✅ Cấu hình CORS cho phép kết nối frontend (ReactJS, v.v.)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("http://localhost:3000") // địa chỉ frontend
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -85,7 +87,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 
-// Thêm d?ch v? Swagger
+// ✅ Thêm Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -127,10 +129,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// ExceptionMiddleware để bắt lỗi
 app.UseMiddleware<ExceptionMiddleware>();
+
 app.UseHttpsRedirection();
 app.UseSession();
 app.UseCors("AllowSpecificOrigins");
+
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -18,32 +18,17 @@ namespace BeautySpa.API.Controllers
         {
             _roleService = roleService;
         }
-
-        // POST: api/role
-        [HttpPost]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Tạo role mới")]
-        public async Task<IActionResult> Create([FromBody] POSTRoleModelViews model)
-        {
-            var roleId = await _roleService.CreateAsync(model);
-            return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: "Add role successful"
-            ));
-        }
-
         [HttpGet("all")]
         //[Authorize(Roles = "Admin")]
         [SwaggerOperation(Summary = "Get All Role")]
         public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
         {
-           var roles = await _roleService.GetAllAsync(pageNumber, pageSize);
-           return Ok(new BaseResponseModel<BasePaginatedList<GETRoleModelViews>>(
-              statusCode: StatusCodes.Status200OK,
-              code: ResponseCodeConstants.SUCCESS,
-              data: roles
-           ));
+            var roles = await _roleService.GetAllAsync(pageNumber, pageSize);
+            return Ok(new BaseResponseModel<BasePaginatedList<GETRoleModelViews>>(
+               statusCode: StatusCodes.Status200OK,
+               code: ResponseCodeConstants.SUCCESS,
+               data: roles
+            ));
         }
 
         [HttpGet("{id}")]
@@ -51,27 +36,54 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Get Role By ID")]
         public async Task<IActionResult> GetById(Guid id)
         {
-           var role = await _roleService.GetByIdAsync(id);
-           return Ok(new BaseResponseModel<GETRoleModelViews>(
+            var role = await _roleService.GetByIdAsync(id);
+            return Ok(new BaseResponseModel<GETRoleModelViews>(
+                 statusCode: StatusCodes.Status200OK,
+                 code: ResponseCodeConstants.SUCCESS,
+                 data: role
+            ));
+        }
+
+        // POST: api/role
+        [HttpPost]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Add new Role")]
+        public async Task<IActionResult> Create([FromBody] POSTRoleModelViews rolemodel)
+        {
+            var roleId = await _roleService.CreateAsync(rolemodel);
+            return Ok(new BaseResponseModel<string>(
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: role
-           ));
+                data: "Add role successful"
+            ));
         }
+
+        
 
         // PUT: api/role
         [HttpPut]
         //[Authorize(Roles = "Admin")]
         [SwaggerOperation(Summary = "Update Role")]
-        public async Task<IActionResult> Update([FromBody] PUTRoleModelViews model)
+        public async Task<IActionResult> Update([FromBody] PUTRoleModelViews rolemodel)
         {
 
-           await _roleService.UpdateAsync(model);
+           await _roleService.UpdateAsync(rolemodel);
            return Ok(new BaseResponseModel<string>(
               statusCode: StatusCodes.Status200OK,
               code: ResponseCodeConstants.SUCCESS,
               data: "Update role successful"
            ));
+        }
+        [HttpDelete]
+        [SwaggerOperation(Summary ="Delete Role")]
+        public async Task<IActionResult> Delete(Guid roleid)
+        {
+            await _roleService.DeleteAsync(roleid);
+            return Ok(new BaseResponseModel<string>(
+                statusCode:StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data:"Delete Role successful"
+            ));
         }
     }
 }

@@ -21,6 +21,9 @@ namespace BeautySpa.Contract.Repositories.Entity
         public Guid ServiceId { get; set; }
         public virtual Service Service { get; set; }
 
+        public Guid LocationSpaId { get; set; } 
+        public virtual LocationSpa LocationSpa { get; set; } 
+
         // Mối quan hệ
         public virtual Payment? Payment { get; set; }
         public virtual Review? Review { get; set; }
