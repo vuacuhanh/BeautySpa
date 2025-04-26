@@ -22,7 +22,7 @@ namespace BeautySpa.API.Controllers
         [HttpPost("sign-up")]
         public async Task<IActionResult> SignUp([FromBody] SignUpAuthModelView model)
         {
-            await _authService.SignUpAsync(model, model.RoleId);
+            await _authService.SignUpAsync(model);
             return Ok(new BaseResponseModel<string>(
                  statusCode: StatusCodes.Status200OK,
                   code: ResponseCodeConstants.SUCCESS,
@@ -59,7 +59,7 @@ namespace BeautySpa.API.Controllers
         {
             await _authService.ConfirmEmailAsync(userId, token);
             return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
+                statusCode:StatusCodes.Status200OK,
                  code: ResponseCodeConstants.SUCCESS,
                 data: "Email confirmed successfully."));
         }
@@ -71,7 +71,7 @@ namespace BeautySpa.API.Controllers
             return Ok(new BaseResponseModel<string>(
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: "Confirmation email sent."));
+                data:"Confirmation email sent."));
         }
 
         [HttpPost("forgot-password")]
@@ -81,7 +81,7 @@ namespace BeautySpa.API.Controllers
             return Ok(new BaseResponseModel<string>(
                statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: "Reset password email sent."));
+                data:"Reset password email sent."));
         }
 
         [HttpPost("reset-password")]
@@ -91,7 +91,7 @@ namespace BeautySpa.API.Controllers
             return Ok(new BaseResponseModel<string>(
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
-                data: "Password reset successful."));
+                data:"Password reset successful."));
         }
     }
 }

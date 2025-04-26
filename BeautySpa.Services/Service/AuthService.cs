@@ -99,7 +99,7 @@ namespace BeautySpa.Services.Service
             return await GenerateJwtToken(user);
         }
 
-        public async Task<string?> SignUpAsync(SignUpAuthModelView signup, Guid roleId)
+        public async Task<string?> SignUpAsync(SignUpAuthModelView signup)
         {
             if (string.IsNullOrWhiteSpace(signup.FullName))
                 throw new BadRequestException(ErrorCode.BadRequest, "Full name is required.");
@@ -110,11 +110,10 @@ namespace BeautySpa.Services.Service
             if (string.IsNullOrWhiteSpace(signup.Password) || signup.Password.Length < 6)
                 throw new BadRequestException(ErrorCode.InvalidInput, "Password must be at least 6 characters long.");
 
-            // Kiểm tra vai trò tồn tại
-            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            var role = await _roleManager.FindByNameAsync("User");
             if (role == null)
             {
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Role not found.");
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Role 'User' not found. Please seed role 'User' first.");
             }
 
             var user = _mapper.Map<ApplicationUsers>(signup);
@@ -122,16 +121,30 @@ namespace BeautySpa.Services.Service
 
             var result = await _userManager.CreateAsync(user, signup.Password);
 
-            if (result.Succeeded)
+            if (!result.Succeeded)
             {
-                result = await _userManager.AddToRoleAsync(user, role.Name);
-                if (!result.Succeeded)
-                    throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error adding role: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-                return await GenerateJwtToken(user);
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput,
+                    "Error occurred during signup: " + string.Join(", ", result.Errors.Select(e => e.Description)));
             }
 
-            throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error occurred during signup: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+            var addRoleResult = await _userManager.AddToRoleAsync(user, role.Name);
+            if (!addRoleResult.Succeeded)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput,
+                    "Error adding role: " + string.Join(", ", addRoleResult.Errors.Select(e => e.Description)));
+            }
+
+            // Gửi Email xác nhận
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = System.Web.HttpUtility.UrlEncode(token);
+            var confirmationLink = $"{_configuration["Frontend:ConfirmEmailUrl"]}?userId={user.Id}&token={encodedToken}";
+
+            await _emailService.SendEmailAsync(user.Email, "Confirm your email",
+                $"Please confirm your account by clicking <a href='{confirmationLink}'>here</a>.");
+
+            return null;
         }
+
 
         private async Task<string?> GenerateJwtToken(ApplicationUsers user)
         {

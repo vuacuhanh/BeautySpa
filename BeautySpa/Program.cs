@@ -23,7 +23,7 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
     options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
-    options.SignIn.RequireConfirmedEmail = true; // 👈 thêm dòng này
+    options.SignIn.RequireConfirmedEmail = true;
 })
 .AddEntityFrameworkStores<DatabaseContext>()
 .AddDefaultTokenProviders();
