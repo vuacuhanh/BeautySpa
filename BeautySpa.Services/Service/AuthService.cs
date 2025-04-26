@@ -5,15 +5,14 @@ using Microsoft.AspNetCore.Identity;
 using BeautySpa.Contract.Repositories.IUOW;
 using Microsoft.Extensions.Configuration;
 using BeautySpa.Core.Base;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using BeautySpa.Core.Infrastructure;
 using BeautySpa.Contract.Services.Interface;
+using StackExchange.Redis;
 
 namespace BeautySpa.Services.Service
 {
@@ -26,6 +25,7 @@ namespace BeautySpa.Services.Service
         private readonly UserManager<ApplicationUsers> _userManager;
         private readonly RoleManager<ApplicationRoles> _roleManager;
         private readonly IEmailService _emailService;
+        private readonly IConnectionMultiplexer _redis;
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_httpContextAccessor);
 
         public AuthService(
@@ -35,7 +35,8 @@ namespace BeautySpa.Services.Service
             IConfiguration configuration,
             IMapper mapper,
             IEmailService emailService,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IConnectionMultiplexer redis)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
@@ -44,6 +45,7 @@ namespace BeautySpa.Services.Service
             _userManager = userManager;
             _emailService = emailService;
             _roleManager = roleManager;
+            _redis = redis;
         }
 
         public async Task<bool> ChangePasswordAsync(ChangePasswordAuthModelView changepass, Guid UserId)
@@ -71,8 +73,6 @@ namespace BeautySpa.Services.Service
             return true;
         }
 
-       
-
         public async Task<IList<string>> GetUserRolesAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
@@ -90,12 +90,13 @@ namespace BeautySpa.Services.Service
             if (string.IsNullOrWhiteSpace(signin.Password))
                 throw new BadRequestException(ErrorCode.InvalidInput, "Password cannot be empty.");
 
-            var user = await _userManager.Users
-                         .Include(u => u.UserInfor)
-                         .FirstOrDefaultAsync(u => u.Email == signin.Email);
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+            var user = await userRepo.FindAsync(u => u.Email == signin.Email && u.UserInfor != null)
+                .ContinueWith(task => task.Result.FirstOrDefault());
 
             if (user == null || !await _userManager.CheckPasswordAsync(user, signin.Password))
                 throw new BadRequestException(ErrorCode.InvalidInput, "Invalid email or password.");
+
             return await GenerateJwtToken(user);
         }
 
@@ -110,27 +111,36 @@ namespace BeautySpa.Services.Service
             if (string.IsNullOrWhiteSpace(signup.Password) || signup.Password.Length < 6)
                 throw new BadRequestException(ErrorCode.InvalidInput, "Password must be at least 6 characters long.");
 
-            // Kiểm tra vai trò tồn tại
-            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            var roleRepo = _unitOfWork.GetRepository<ApplicationRoles>();
+            var role = await roleRepo.GetByIdAsync(roleId);
             if (role == null)
-            {
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Role not found.");
-            }
 
             var user = _mapper.Map<ApplicationUsers>(signup);
             user.UserName = signup.Email;
 
-            var result = await _userManager.CreateAsync(user, signup.Password);
-
-            if (result.Succeeded)
+            using (var transaction = await _unitOfWork.BeginTransactionAsync())
             {
-                result = await _userManager.AddToRoleAsync(user, role.Name);
-                if (!result.Succeeded)
-                    throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error adding role: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-                return await GenerateJwtToken(user);
+                try
+                {
+                    var result = await _userManager.CreateAsync(user, signup.Password);
+                    if (!result.Succeeded)
+                        throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error occurred during signup: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                    result = await _userManager.AddToRoleAsync(user, role.Name);
+                    if (!result.Succeeded)
+                        throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error adding role: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
 
-            throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error occurred during signup: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+            return await GenerateJwtToken(user);
         }
 
         private async Task<string?> GenerateJwtToken(ApplicationUsers user)
@@ -143,7 +153,6 @@ namespace BeautySpa.Services.Service
 
             var key = Encoding.ASCII.GetBytes(secret);
 
-            // Lấy danh sách vai trò của người dùng
             var roles = await _userManager.GetRolesAsync(user);
             var roleClaims = roles.Select(role => new Claim(ClaimTypes.Role, role)).ToList();
 
@@ -170,7 +179,6 @@ namespace BeautySpa.Services.Service
             return tokenHandler.WriteToken(token);
         }
 
-
         public async Task<bool> ConfirmEmailAsync(string userId, string token)
         {
             var user = await _userManager.FindByIdAsync(userId);
@@ -186,7 +194,10 @@ namespace BeautySpa.Services.Service
 
         public async Task<bool> ForgotPasswordAsync(string email)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+            var user = await userRepo.FindAsync(u => u.Email == email)
+                .ContinueWith(task => task.Result.FirstOrDefault());
+
             if (user == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
@@ -199,9 +210,13 @@ namespace BeautySpa.Services.Service
 
             return true;
         }
+
         public async Task<bool> ResendConfirmationEmailAsync(string email)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+            var user = await userRepo.FindAsync(u => u.Email == email)
+                .ContinueWith(task => task.Result.FirstOrDefault());
+
             if (user == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
@@ -220,7 +235,10 @@ namespace BeautySpa.Services.Service
 
         public async Task<bool> ResetPasswordAsync(ResetPasswordAuthModelView model)
         {
-            var user = await _userManager.FindByEmailAsync(model.Email);
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+            var user = await userRepo.FindAsync(u => u.Email == model.Email)
+                .ContinueWith(task => task.Result.FirstOrDefault());
+
             if (user == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
@@ -230,6 +248,105 @@ namespace BeautySpa.Services.Service
                     string.Join(", ", result.Errors.Select(e => e.Description)));
 
             return true;
+        }
+
+        public async Task<bool> RequestOtpAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
+                throw new BadRequestException(ErrorCode.InvalidInput, "Email is required and must be valid.");
+
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+            var existingUser = await userRepo.FindAsync(u => u.Email == email)
+                .ContinueWith(task => task.Result.FirstOrDefault());
+
+            if (existingUser != null)
+                throw new BadRequestException(ErrorCode.InvalidInput, "Email already registered.");
+
+            var db = _redis.GetDatabase();
+            var rateKey = $"otp:rate:{email}";
+            var count = await db.StringIncrementAsync(rateKey);
+            await db.KeyExpireAsync(rateKey, TimeSpan.FromMinutes(1));
+            if (count > 5)
+                throw new BadRequestException(ErrorCode.InvalidInput, "Too many requests. Please try again later.");
+
+            var otp = new Random().Next(100000, 999999).ToString();
+            await db.StringSetAsync($"otp:{email}", otp, TimeSpan.FromMinutes(10));
+
+            var emailBody = $"Your OTP for registration is <b>{otp}</b>. It expires in 10 minutes.";
+            await _emailService.SendEmailAsync(email, "BeautySpa Registration OTP", emailBody);
+
+            return true;
+        }
+
+        public async Task<string?> SignUpWithOtpAsync(SignUpAuthModelView signup, string otp)
+        {
+            if (string.IsNullOrWhiteSpace(signup.FullName))
+                throw new BadRequestException(ErrorCode.BadRequest, "Full name is required.");
+
+            if (string.IsNullOrWhiteSpace(signup.Email) || !signup.Email.Contains("@"))
+                throw new BadRequestException(ErrorCode.InvalidInput, "Email is required and must be valid.");
+
+            if (string.IsNullOrWhiteSpace(signup.Password) || signup.Password.Length < 6)
+                throw new BadRequestException(ErrorCode.InvalidInput, "Password must be at least 6 characters long.");
+
+            if (string.IsNullOrWhiteSpace(otp))
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP is required.");
+
+            var db = _redis.GetDatabase();
+            var storedOtp = await db.StringGetAsync($"otp:{signup.Email}");
+
+            if (storedOtp.IsNull)
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP is invalid or expired.");
+
+            if (storedOtp != otp)
+                throw new BadRequestException(ErrorCode.InvalidInput, "Invalid OTP.");
+
+            await db.KeyDeleteAsync($"otp:{signup.Email}");
+            await db.KeyDeleteAsync($"otp:rate:{signup.Email}");
+
+            var customerRoleName = _configuration["DefaultRoles:Customer"];
+            var roleRepo = _unitOfWork.GetRepository<ApplicationRoles>();
+            var role = await roleRepo.FindAsync(r => r.Name == customerRoleName)
+                .ContinueWith(task => task.Result.FirstOrDefault());
+
+            if (role == null)
+            {
+                role = new ApplicationRoles { Name = customerRoleName, NormalizedName = customerRoleName.ToUpper() };
+                await roleRepo.InsertAsync(role);
+                await roleRepo.SaveAsync();
+            }
+
+            var user = _mapper.Map<ApplicationUsers>(signup);
+            user.UserName = signup.Email;
+
+            using (var transaction = await _unitOfWork.BeginTransactionAsync())
+            {
+                try
+                {
+                    var result = await _userManager.CreateAsync(user, signup.Password);
+                    if (!result.Succeeded)
+                        throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error occurred during signup: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                    result = await _userManager.AddToRoleAsync(user, role.Name);
+                    if (!result.Succeeded)
+                        throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Error adding role: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = System.Web.HttpUtility.UrlEncode(token);
+            var confirmationLink = $"{_configuration["Frontend:ConfirmEmailUrl"]}?userId={user.Id}&token={encodedToken}";
+            await _emailService.SendEmailAsync(user.Email, "Confirm your email",
+                $"Please confirm your account by clicking <a href='{confirmationLink}'>here</a>.");
+
+            return await GenerateJwtToken(user);
         }
     }
 }
