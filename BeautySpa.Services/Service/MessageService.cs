@@ -1,80 +1,135 @@
 ﻿using AutoMapper;
-using BeautySpa.Contract.Repositories.Entity;
-using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.MessageModelViews;
-using BeautySpa.Repositories.Context;
+using BeautySpa.Contract.Services.Interface;
+using BeautySpa.Contract.Repositories.IUOW;
+using BeautySpa.Contract.Repositories.Entity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using BeautySpa.Core.Utils;
+using BeautySpa.Core.Infrastructure;
 
 namespace BeautySpa.Services.Service
 {
     public class MessageService : IMessageService
     {
-        private readonly DatabaseContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _contextAccessor;
 
-        public MessageService(DatabaseContext context, IMapper mapper)
+        private string currentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+
+        public MessageService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _contextAccessor = contextAccessor;
         }
 
         public async Task<BasePaginatedList<GETMessageModelViews>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _context.Messages
-                .AsNoTracking()
-                .Where(m => m.DeletedTime == null)
-                .OrderByDescending(m => m.CreatedTime);
+            if (pageNumber <= 0 || pageSize <= 0)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
+            }
 
-            var totalCount = await query.CountAsync();
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-            var result = _mapper.Map<IReadOnlyCollection<GETMessageModelViews>>(items);
+            IQueryable<Message> messages = _unitOfWork.GetRepository<Message>()
+                .Entities.Where(m => !m.DeletedTime.HasValue)
+                .OrderByDescending(m => m.CreatedTime)
+                .AsQueryable();
 
-            return new BasePaginatedList<GETMessageModelViews>(result, totalCount, pageNumber, pageSize);
+            var paginatedMessages = await messages
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new BasePaginatedList<GETMessageModelViews>(
+                _mapper.Map<List<GETMessageModelViews>>(paginatedMessages),
+                await messages.CountAsync(),
+                pageNumber,
+                pageSize
+            );
         }
 
         public async Task<GETMessageModelViews> GetByIdAsync(Guid id)
         {
-            var entity = await _context.Messages
-                .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Id == id && m.DeletedTime == null);
+            if (id == Guid.Empty)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid message ID.");
+            }
 
-            if (entity == null) throw new Exception("Message not found");
-            return _mapper.Map<GETMessageModelViews>(entity);
+            var message = await _unitOfWork.GetRepository<Message>()
+                .Entities.FirstOrDefaultAsync(m => m.Id == id && !m.DeletedTime.HasValue)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Message not found.");
+
+            return _mapper.Map<GETMessageModelViews>(message);
         }
 
         public async Task<Guid> CreateAsync(POSTMessageModelViews model)
         {
-            var entity = _mapper.Map<Message>(model);
-            entity.Id = Guid.NewGuid();
-            entity.CreatedTime = DateTimeOffset.UtcNow;
+            if (string.IsNullOrWhiteSpace(model.Content))
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Message content cannot be empty.");
+            }
 
-            _context.Messages.Add(entity);
-            await _context.SaveChangesAsync();
+            var message = _mapper.Map<Message>(model);
+            message.Id = Guid.NewGuid();
+            message.CreatedBy = currentUserId;
+            message.CreatedTime = CoreHelper.SystemTimeNow;
 
-            return entity.Id;
+            await _unitOfWork.GetRepository<Message>().InsertAsync(message);
+            await _unitOfWork.SaveAsync();
+
+            return message.Id;
         }
 
         public async Task UpdateAsync(PUTMessageModelViews model)
         {
-            var entity = await _context.Messages.FirstOrDefaultAsync(m => m.Id == model.Id && m.DeletedTime == null);
-            if (entity == null) throw new Exception("Message not found");
+            if (string.IsNullOrWhiteSpace(model.Content))
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Message content cannot be empty.");
+            }
 
-            _mapper.Map(model, entity);
-            entity.LastUpdatedTime = DateTimeOffset.UtcNow;
+            var genericRepository = _unitOfWork.GetRepository<Message>();
 
-            _context.Messages.Update(entity);
-            await _context.SaveChangesAsync();
+            var message = await genericRepository.Entities
+                .FirstOrDefaultAsync(m => m.Id == model.Id && !m.DeletedTime.HasValue);
+
+            if (message == null)
+            {
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Not found Message with id = {model.Id}");
+            }
+
+            _mapper.Map(model, message);
+            message.LastUpdatedBy = currentUserId;
+            message.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+            await genericRepository.UpdateAsync(message);
+            await genericRepository.SaveAsync();
         }
 
         public async Task DeleteAsync(Guid id)
         {
-            var entity = await _context.Messages.FirstOrDefaultAsync(m => m.Id == id && m.DeletedTime == null);
-            if (entity == null) throw new Exception("Message not found");
+            if (id == Guid.Empty)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid message ID.");
+            }
 
-            entity.DeletedTime = DateTimeOffset.UtcNow;
-            _context.Messages.Update(entity);
-            await _context.SaveChangesAsync();
+            var genericRepository = _unitOfWork.GetRepository<Message>();
+
+            var message = await genericRepository.Entities
+                .FirstOrDefaultAsync(m => m.Id == id && !m.DeletedTime.HasValue);
+
+            if (message == null)
+            {
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Not found Message with id = {id}");
+            }
+
+            message.DeletedTime = CoreHelper.SystemTimeNow;
+            message.DeletedBy = currentUserId;
+
+            await genericRepository.UpdateAsync(message);
+            await genericRepository.SaveAsync();
         }
     }
 }

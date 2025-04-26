@@ -1,80 +1,135 @@
 ﻿using AutoMapper;
-using BeautySpa.Contract.Repositories.Entity;
-using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.NotificationModelViews;
-using BeautySpa.Repositories.Context;
+using BeautySpa.Contract.Services.Interface;
+using BeautySpa.Contract.Repositories.IUOW;
+using BeautySpa.Contract.Repositories.Entity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using BeautySpa.Core.Utils;
+using BeautySpa.Core.Infrastructure;
 
 namespace BeautySpa.Services.Service
 {
     public class NotificationService : INotificationService
     {
-        private readonly DatabaseContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _contextAccessor;
 
-        public NotificationService(DatabaseContext context, IMapper mapper)
+        private string currentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+
+        public NotificationService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _contextAccessor = contextAccessor;
         }
 
         public async Task<BasePaginatedList<GETNotificationModelViews>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _context.Notifications
-                .AsNoTracking()
-                .Where(n => n.DeletedTime == null)
-                .OrderByDescending(n => n.CreatedTime);
+            if (pageNumber <= 0 || pageSize <= 0)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
+            }
 
-            var totalCount = await query.CountAsync();
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-            var result = _mapper.Map<IReadOnlyCollection<GETNotificationModelViews>>(items);
+            IQueryable<Notification> notifications = _unitOfWork.GetRepository<Notification>()
+                .Entities.Where(n => !n.DeletedTime.HasValue)
+                .OrderByDescending(n => n.CreatedTime)
+                .AsQueryable();
 
-            return new BasePaginatedList<GETNotificationModelViews>(result, totalCount, pageNumber, pageSize);
+            var paginatedNotifications = await notifications
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new BasePaginatedList<GETNotificationModelViews>(
+                _mapper.Map<List<GETNotificationModelViews>>(paginatedNotifications),
+                await notifications.CountAsync(),
+                pageNumber,
+                pageSize
+            );
         }
 
         public async Task<GETNotificationModelViews> GetByIdAsync(Guid id)
         {
-            var entity = await _context.Notifications
-                .AsNoTracking()
-                .FirstOrDefaultAsync(n => n.Id == id && n.DeletedTime == null);
+            if (id == Guid.Empty)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid notification ID.");
+            }
 
-            if (entity == null) throw new Exception("Notification not found");
-            return _mapper.Map<GETNotificationModelViews>(entity);
+            var notification = await _unitOfWork.GetRepository<Notification>()
+                .Entities.FirstOrDefaultAsync(n => n.Id == id && !n.DeletedTime.HasValue)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Notification not found.");
+
+            return _mapper.Map<GETNotificationModelViews>(notification);
         }
 
         public async Task<Guid> CreateAsync(POSTNotificationModelViews model)
         {
-            var entity = _mapper.Map<Notification>(model);
-            entity.Id = Guid.NewGuid();
-            entity.CreatedTime = DateTimeOffset.UtcNow;
+            if (string.IsNullOrWhiteSpace(model.Title))
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Notification title cannot be empty.");
+            }
 
-            _context.Notifications.Add(entity);
-            await _context.SaveChangesAsync();
+            var notification = _mapper.Map<Notification>(model);
+            notification.Id = Guid.NewGuid();
+            notification.CreatedBy = currentUserId;
+            notification.CreatedTime = CoreHelper.SystemTimeNow;
 
-            return entity.Id;
+            await _unitOfWork.GetRepository<Notification>().InsertAsync(notification);
+            await _unitOfWork.SaveAsync();
+
+            return notification.Id;
         }
 
         public async Task UpdateAsync(PUTNotificationModelViews model)
         {
-            var entity = await _context.Notifications.FirstOrDefaultAsync(n => n.Id == model.Id && n.DeletedTime == null);
-            if (entity == null) throw new Exception("Notification not found");
+            if (string.IsNullOrWhiteSpace(model.Title))
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Notification title cannot be empty.");
+            }
 
-            _mapper.Map(model, entity);
-            entity.LastUpdatedTime = DateTimeOffset.UtcNow;
+            var genericRepository = _unitOfWork.GetRepository<Notification>();
 
-            _context.Notifications.Update(entity);
-            await _context.SaveChangesAsync();
+            var notification = await genericRepository.Entities
+                .FirstOrDefaultAsync(n => n.Id == model.Id && !n.DeletedTime.HasValue);
+
+            if (notification == null)
+            {
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Not found Notification with id = {model.Id}");
+            }
+
+            _mapper.Map(model, notification);
+            notification.LastUpdatedBy = currentUserId;
+            notification.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+            await genericRepository.UpdateAsync(notification);
+            await genericRepository.SaveAsync();
         }
 
         public async Task DeleteAsync(Guid id)
         {
-            var entity = await _context.Notifications.FirstOrDefaultAsync(n => n.Id == id && n.DeletedTime == null);
-            if (entity == null) throw new Exception("Notification not found");
+            if (id == Guid.Empty)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid notification ID.");
+            }
 
-            entity.DeletedTime = DateTimeOffset.UtcNow;
-            _context.Notifications.Update(entity);
-            await _context.SaveChangesAsync();
+            var genericRepository = _unitOfWork.GetRepository<Notification>();
+
+            var notification = await genericRepository.Entities
+                .FirstOrDefaultAsync(n => n.Id == id && !n.DeletedTime.HasValue);
+
+            if (notification == null)
+            {
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Not found Notification with id = {id}");
+            }
+
+            notification.DeletedTime = CoreHelper.SystemTimeNow;
+            notification.DeletedBy = currentUserId;
+
+            await genericRepository.UpdateAsync(notification);
+            await genericRepository.SaveAsync();
         }
     }
 }
