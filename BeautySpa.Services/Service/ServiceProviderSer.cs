@@ -31,7 +31,6 @@ namespace BeautySpa.Services.Service
             {
                 throw new ArgumentException("Business name cannot be empty.");
             }
-
             // Kiểm tra PhoneNumber
             if (string.IsNullOrWhiteSpace(model.PhoneNumber))
             {

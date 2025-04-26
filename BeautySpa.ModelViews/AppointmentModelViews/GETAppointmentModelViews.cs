@@ -11,7 +11,6 @@ namespace BeautySpa.ModelViews.AppointmentModelViews
         public Guid Id { get; set; }
         public DateTime AppointmentDate { get; set; }
         public TimeSpan StartTime { get; set; }
-        public TimeSpan EndTime { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? Notes { get; set; }
 
@@ -22,6 +21,7 @@ namespace BeautySpa.ModelViews.AppointmentModelViews
         public DateTimeOffset CreatedTime { get; set; }
         public DateTimeOffset? LastUpdatedTime { get; set; }
         public DateTimeOffset? DeletedTime { get; set; }
+        public Guid LocationSpaId { get; set; }
     }
 }
 

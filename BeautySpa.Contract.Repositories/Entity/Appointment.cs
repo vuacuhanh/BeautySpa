@@ -6,9 +6,8 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class Appointment : BaseEntity
     {
-        public DateTime AppointmentDate { get; set; }
-        public TimeSpan StartTime { get; set; }
-        public TimeSpan EndTime { get; set; }
+        public required DateTime AppointmentDate { get; set; }
+        public required TimeSpan StartTime { get; set; }
         public string Status { get; set; } = "pending";
         public string? Notes { get; set; }
 
@@ -21,6 +20,9 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         public Guid ServiceId { get; set; }
         public virtual Service Service { get; set; }
+
+        public Guid LocationSpaId { get; set; } 
+        public virtual LocationSpa LocationSpa { get; set; } 
 
         // Mối quan hệ
         public virtual Payment? Payment { get; set; }

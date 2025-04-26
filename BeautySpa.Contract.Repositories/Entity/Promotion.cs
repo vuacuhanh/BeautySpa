@@ -14,11 +14,12 @@ namespace BeautySpa.Contract.Repositories.Entity
         public DateTime EndDate { get; set; }
         public bool IsActive { get; set; } = true;
 
-        // Khóa ngoại
         public Guid ProviderId { get; set; }
         public virtual ApplicationUsers Provider { get; set; }
 
-        // Mối quan hệ
+        public Guid? RequiredRankId { get; set; } 
+        public virtual Rank? RequiredRank { get; set; }
+
         public virtual ICollection<ServicePromotion> ServicePromotions { get; set; } = new List<ServicePromotion>();
     }
 }

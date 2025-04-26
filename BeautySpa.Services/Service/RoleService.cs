@@ -3,99 +3,141 @@ using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.RoleModelViews;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Services.Interface;
-
+using BeautySpa.Contract.Repositories.IUOW;
+using Microsoft.AspNetCore.Http;
+using BeautySpa.Core.Infrastructure;
+using BeautySpa.Core.Utils;
 namespace BeautySpa.Services.Service
 {
     public class RoleService : IRoles
     {
+        private readonly IUnitOfWork _unitOfWork;
         private readonly RoleManager<ApplicationRoles> _roleManager;
         private readonly IMapper _mapper;
+        private string currentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+        private readonly IHttpContextAccessor _contextAccessor;
 
-        public RoleService(RoleManager<ApplicationRoles> roleManager, IMapper mapper)
+
+        public RoleService(RoleManager<ApplicationRoles> roleManager, IMapper mapper, IUnitOfWork unitOfWork, IHttpContextAccessor contextAccessor )
         {
+            _unitOfWork = unitOfWork;
             _roleManager = roleManager;
             _mapper = mapper;
+            _contextAccessor = contextAccessor;
         }
 
         public async Task<BasePaginatedList<GETRoleModelViews>> GetAllAsync(int pageNumber, int pageSize)
         {
-            if (pageNumber < 1 || pageSize < 1)
+            if (pageNumber <= 0 || pageSize <= 0)
             {
-                throw new ArgumentException("Page number and page size must be greater than 0.");
+               throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
             }
 
-            var query = _roleManager.Roles.AsQueryable();
+            IQueryable<ApplicationRoles> roles = _unitOfWork.GetRepository<ApplicationRoles>()
+                .Entities.Where(i => !i.DeletedTime.HasValue)
+                .OrderByDescending(c => c.CreatedTime).AsQueryable();
 
-            var totalCount = await query.CountAsync();
-            var items = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var paginatedMemberShips = await roles
+             .Skip((pageNumber - 1) * pageSize)
+             .Take(pageSize)
+             .ToListAsync();
 
-            var mappedItems = _mapper.Map<IReadOnlyCollection<GETRoleModelViews>>(items);
-
-            return new BasePaginatedList<GETRoleModelViews>(mappedItems, totalCount, pageNumber, pageSize);
+            return new BasePaginatedList<GETRoleModelViews>(_mapper.Map<List<GETRoleModelViews>>(paginatedMemberShips),
+                await roles.CountAsync(), pageNumber, pageSize);
         }
 
-        public async Task<GETRoleModelViews> GetByIdAsync(Guid id)
+        public async Task<GETRoleModelViews> GetByIdAsync(Guid roleid)
         {
-            var role = await _roleManager.FindByIdAsync(id.ToString());
-            if (role == null)
+            if (roleid == Guid.Empty)
             {
-                throw new Exception("Role not found.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid membership ID.");
             }
-
-            return _mapper.Map<GETRoleModelViews>(role);
+            var existedMemberShips = await _unitOfWork.GetRepository<ApplicationUserRoles>().Entities.FirstOrDefaultAsync(p => p.RoleId == roleid) ??
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Not found membership");
+            return _mapper.Map<GETRoleModelViews>(existedMemberShips);
         }
 
-        public async Task<Guid> CreateAsync(POSTRoleModelViews model)
+        public async Task<Guid> CreateAsync(POSTRoleModelViews rolemodel)
         {
-            if (string.IsNullOrWhiteSpace(model.RoleName))
+            // Kiểm tra RoleName có hợp lệ không
+            if (string.IsNullOrWhiteSpace(rolemodel.RoleName))
             {
-                throw new ArgumentException("Role name cannot be empty.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Role name cannot be empty.");
             }
 
-            var roleExists = await _roleManager.RoleExistsAsync(model.RoleName);
-            if (roleExists)
+            // Kiểm tra đã tồn tại chưa
+            var roleExists = await _unitOfWork.GetRepository<ApplicationRoles>()
+                .Entities.FirstOrDefaultAsync(s => s.Name.ToLower() == rolemodel.RoleName.ToLower());
+
+            if (roleExists != null)
             {
-                throw new Exception("Role already exists.");
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Role already exists.");
             }
 
-            var role = _mapper.Map<ApplicationRoles>(model);
+            // Map từ model sang entity
+            var role = _mapper.Map<ApplicationRoles>(rolemodel);
             role.Id = Guid.NewGuid();
-            role.CreatedTime = DateTimeOffset.UtcNow;
-            role.LastUpdatedTime = role.CreatedTime;
+            role.CreatedBy = currentUserId;
+            role.CreatedTime = CoreHelper.SystemTimeNow;
 
-            var result = await _roleManager.CreateAsync(role);
-            if (!result.Succeeded)
-            {
-                throw new Exception("Failed to create role: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
+            // Thêm vào DB
+            await _unitOfWork.GetRepository<ApplicationRoles>().InsertAsync(role);
+            await _unitOfWork.SaveAsync();
 
             return role.Id;
         }
 
-        public async Task UpdateAsync(PUTRoleModelViews model)
+
+        public async Task UpdateAsync(PUTRoleModelViews rolemodel)
         {
-            var role = await _roleManager.FindByIdAsync(model.Id.ToString());
+            if (string.IsNullOrWhiteSpace(rolemodel.RoleName))
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Role name cannot be null or empty.");
+            }
+
+            var genericRepository = _unitOfWork.GetRepository<ApplicationRoles>();
+
+            var role = await genericRepository.Entities
+                .FirstOrDefaultAsync(r => r.Id == rolemodel.Id && !r.DeletedTime.HasValue);
+
             if (role == null)
             {
-                throw new Exception("Role not found.");
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Not found Role with id = {rolemodel.Id}");
             }
 
-            _mapper.Map(model, role);
-            role.LastUpdatedTime = DateTimeOffset.UtcNow;
+            _mapper.Map(rolemodel, role);
+            role.LastUpdatedBy = currentUserId;
+            role.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-            var result = await _roleManager.UpdateAsync(role);
-            if (!result.Succeeded)
-            {
-                throw new Exception("Failed to update role: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
+            await genericRepository.UpdateAsync(role);
+            await genericRepository.SaveAsync();
         }
+
+        public async Task DeleteAsync(Guid roleid)
+        {
+            if (roleid == Guid.Empty)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Role ID.");
+            }
+
+            var genericRepository = _unitOfWork.GetRepository<ApplicationRoles>();
+
+            var role = await genericRepository.Entities
+                .FirstOrDefaultAsync(r => r.Id == roleid && !r.DeletedTime.HasValue);
+
+            if (role == null)
+            {
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Not found Role with id = {roleid}");
+            }
+
+            role.DeletedTime = CoreHelper.SystemTimeNow;
+            role.DeletedBy = currentUserId;
+
+            await genericRepository.UpdateAsync(role);
+            await genericRepository.SaveAsync();
+        }
+
     }
 }
