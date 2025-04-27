@@ -65,12 +65,74 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(sp => sp.PromotionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+<<<<<<< HEAD
             // Cấu hình PromotionAdmin
             builder.Entity<PromotionAdmin>()
                 .HasOne(pa => pa.Rank)
                 .WithMany()
                 .HasForeignKey(pa => pa.RankId)
                 .OnDelete(DeleteBehavior.SetNull);
+=======
+            // Cấu hình ServicePromotion
+            builder.Entity<ServicePromotion>()
+                .HasOne(sp => sp.Service)
+                .WithMany(s => s.ServicePromotions)
+                .HasForeignKey(sp => sp.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ServicePromotion>()
+                .HasIndex(sp => new { sp.PromotionId, sp.ServiceId })
+                .IsUnique();
+
+
+            // Cấu hình Message
+            builder.Entity<Message>()
+                .HasOne(m => m.Sender)
+                .WithMany(u => u.SentMessages)
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Message>()
+                .HasOne(m => m.Receiver)
+                .WithMany(u => u.ReceivedMessages)
+                .HasForeignKey(m => m.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Cấu hình BranchLocationSpa & LocationSpa
+            builder.Entity<LocationSpa>()
+                .HasOne(ls => ls.Branch)
+                .WithMany(bl => bl.LocationSpas)
+                .HasForeignKey(ls => ls.BranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<BranchLocationSpa>()
+                .HasMany(bl => bl.LocationSpas)
+                .WithOne(ls => ls.Branch)
+                .HasForeignKey(ls => ls.BranchId);
+
+            builder.Entity<Appointment>()
+            .HasOne(a => a.LocationSpa)
+            .WithMany(ls => ls.Appointments)
+            .HasForeignKey(a => a.LocationSpaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            //
+            builder.Entity<MemberShip>()
+            .HasOne(ms => ms.User)
+            .WithOne(u => u.MemberShip)
+            .HasForeignKey<MemberShip>(ms => ms.UserId);
+
+            builder.Entity<MemberShip>()
+                .HasOne(ms => ms.Rank)
+                .WithMany(r => r.MemberShips)
+                .HasForeignKey(ms => ms.RankId);
+
+            builder.Entity<Promotion>()
+                .HasOne(p => p.RequiredRank)
+                .WithMany(r => r.Promotions)
+                .HasForeignKey(p => p.RequiredRankId)
+                .OnDelete(DeleteBehavior.Restrict);
+>>>>>>> 73ac29296ce57368183dd2037897957d584a79d1
 
 
             // ==== Precision các trường decimal ====

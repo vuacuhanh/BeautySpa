@@ -3,8 +3,11 @@ using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
+using BeautySpa.Core.Infrastructure;
 using BeautySpa.ModelViews.ServiceProviderModelViews;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using BeautySpa.Core.Utils;
 
 namespace BeautySpa.Services.Service
 {
@@ -12,197 +15,172 @@ namespace BeautySpa.Services.Service
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _contextAccessor;
+        private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
-        public ServiceProviderSer(IUnitOfWork unitOfWork, IMapper mapper)
+        public ServiceProviderSer(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _contextAccessor = contextAccessor;
         }
 
         public async Task<Guid> CreateAsync(POSTServiceProviderModelViews model)
         {
-            // Kiểm tra BusinessName
             if (string.IsNullOrWhiteSpace(model.BusinessName))
-            {
-                throw new ArgumentException("Business name cannot be empty.");
-            }
-            // Kiểm tra PhoneNumber
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Business name cannot be empty.");
+
             if (string.IsNullOrWhiteSpace(model.PhoneNumber))
-            {
-                throw new ArgumentException("Phone number is required.");
-            }
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Phone number is required.");
 
-            // Kiểm tra tính duy nhất của PhoneNumber trong ServiceProviders
-            var phoneExistsInProviders = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.AnyAsync(sp => sp.PhoneNumber == model.PhoneNumber && sp.DeletedTime == null);
-            if (phoneExistsInProviders)
-            {
-                throw new ArgumentException("Phone number is already in use by another service provider.");
-            }
+            // Kiểm tra số điện thoại đã tồn tại trong ServiceProvider
+            var phoneExists = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.AnyAsync(x => x.PhoneNumber == model.PhoneNumber && x.DeletedTime == null);
 
-            // Kiểm tra sự tồn tại của ApplicationUsers
-            var userExists = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.UserId);
-            if (userExists == null)
-            {
-                throw new Exception("User not found.");
-            }
+            if (phoneExists)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Phone number is already in use.");
 
-            // Kiểm tra và đồng bộ PhoneNumber với ApplicationUsers
-            if (string.IsNullOrEmpty(userExists.PhoneNumber))
+            // Kiểm tra User có tồn tại
+            var user = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.UserId)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            // Cập nhật PhoneNumber và Email cho ApplicationUsers nếu cần
+            if (user.PhoneNumber != model.PhoneNumber)
             {
-                userExists.PhoneNumber = model.PhoneNumber;
-            }
-            else if (userExists.PhoneNumber != model.PhoneNumber)
-            {
-                // Kiểm tra tính duy nhất trong ApplicationUsers
-                var userPhoneExists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                bool phoneInUse = await _unitOfWork.GetRepository<ApplicationUsers>()
                     .Entities.AnyAsync(u => u.PhoneNumber == model.PhoneNumber && u.Id != model.UserId);
-                if (userPhoneExists)
-                {
-                    throw new ArgumentException("Phone number is already in use by another user.");
-                }
-                userExists.PhoneNumber = model.PhoneNumber;
+
+                if (phoneInUse)
+                    throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Phone number is already used by another user.");
+
+                user.PhoneNumber = model.PhoneNumber;
             }
 
-            // Đồng bộ Email với ApplicationUsers
-            if (!string.IsNullOrEmpty(model.Email) && userExists.Email != model.Email)
+            if (!string.IsNullOrEmpty(model.Email) && user.Email != model.Email)
             {
-                var userEmailExists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                bool emailInUse = await _unitOfWork.GetRepository<ApplicationUsers>()
                     .Entities.AnyAsync(u => u.Email == model.Email && u.Id != model.UserId);
-                if (userEmailExists)
-                {
-                    throw new ArgumentException("Email is already in use by another user.");
-                }
-                userExists.Email = model.Email;
+
+                if (emailInUse)
+                    throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Email is already used by another user.");
+
+                user.Email = model.Email;
             }
 
-            // Cập nhật ApplicationUsers nếu có thay đổi
-            if (userExists.PhoneNumber != model.PhoneNumber || userExists.Email != model.Email)
-            {
-                await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(userExists);
-            }
+            await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(user);
 
-            // Tạo ServiceProvider
-            var serviceProvider = _mapper.Map<ServiceProvider>(model);
-            serviceProvider.Id = Guid.NewGuid();
-            serviceProvider.ProviderId = model.UserId; // Sử dụng ProviderId thay vì UserId trong entity
-            serviceProvider.PhoneNumber = model.PhoneNumber;
-            serviceProvider.Email = model.Email;
-            serviceProvider.CreatedTime = DateTimeOffset.UtcNow;
-            serviceProvider.LastUpdatedTime = serviceProvider.CreatedTime;
+            var entity = _mapper.Map<ServiceProvider>(model);
+            entity.Id = Guid.NewGuid();
+            entity.ProviderId = model.UserId;
+            entity.CreatedTime = CoreHelper.SystemTimeNow;
+            entity.LastUpdatedTime = entity.CreatedTime;
+            entity.CreatedBy = CurrentUserId;
+            entity.LastUpdatedBy = CurrentUserId;
 
-            await _unitOfWork.GetRepository<ServiceProvider>().InsertAsync(serviceProvider);
+            await _unitOfWork.GetRepository<ServiceProvider>().InsertAsync(entity);
             await _unitOfWork.SaveAsync();
 
-            return serviceProvider.Id;
+            return entity.Id;
         }
 
         public async Task<BasePaginatedList<GETServiceProviderModelViews>> GetAllAsync(int pageNumber, int pageSize)
         {
-            if (pageNumber < 1 || pageSize < 1)
-            {
-                throw new ArgumentException("Page number and page size must be greater than 0.");
-            }
+            if (pageNumber <= 0 || pageSize <= 0)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
 
-            var query = _unitOfWork.GetRepository<ServiceProvider>().Entities
-                .Where(sp => sp.DeletedTime == null);
+            IQueryable<ServiceProvider> provider = _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.Where(x => x.DeletedTime == null)
+                .OrderByDescending(x => x.CreatedTime);
 
-            var totalCount = await query.CountAsync();
-            var items = await query
+            var paginatedProvider = await provider
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-
-            var mappedItems = _mapper.Map<IReadOnlyCollection<GETServiceProviderModelViews>>(items);
-
-            return new BasePaginatedList<GETServiceProviderModelViews>(mappedItems, totalCount, pageNumber, pageSize);
+            return new BasePaginatedList<GETServiceProviderModelViews>(_mapper.Map<List<GETServiceProviderModelViews>>(paginatedProvider),
+                await provider.CountAsync(), pageNumber, pageSize);
         }
 
         public async Task<GETServiceProviderModelViews> GetByIdAsync(Guid id)
         {
-            var serviceProvider = await _unitOfWork.GetRepository<ServiceProvider>().Entities
-                .FirstOrDefaultAsync(sp => sp.Id == id && sp.DeletedTime == null);
-            if (serviceProvider == null)
-            {
-                throw new Exception("Service provider not found.");
-            }
+            if (id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid ServiceProvider ID.");
 
-            return _mapper.Map<GETServiceProviderModelViews>(serviceProvider);
+            var entity = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
+
+            return _mapper.Map<GETServiceProviderModelViews>(entity);
         }
 
         public async Task UpdateAsync(PUTServiceProviderModelViews model)
         {
-            var serviceProvider = await _unitOfWork.GetRepository<ServiceProvider>().Entities
-                .FirstOrDefaultAsync(sp => sp.Id == model.Id && sp.DeletedTime == null);
-            if (serviceProvider == null)
-            {
-                throw new Exception("Service provider not found.");
-            }
+            var entity = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
 
             if (string.IsNullOrWhiteSpace(model.BusinessName))
-            {
-                throw new ArgumentException("Business name cannot be empty.");
-            }
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Business name cannot be empty.");
 
             if (string.IsNullOrWhiteSpace(model.PhoneNumber))
-            {
-                throw new ArgumentException("Phone number is required.");
-            }
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Phone number is required.");
 
-            var phoneExists = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.AnyAsync(sp => sp.PhoneNumber == model.PhoneNumber && sp.Id != model.Id && sp.DeletedTime == null);
+            // Kiểm tra số điện thoại trùng
+            bool phoneExists = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.AnyAsync(x => x.PhoneNumber == model.PhoneNumber && x.Id != model.Id && x.DeletedTime == null);
+
             if (phoneExists)
-            {
-                throw new ArgumentException("Phone number is already in use.");
-            }
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Phone number already in use.");
 
-            var userExists = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.ProviderId);
-            if (userExists == null)
-            {
-                throw new Exception("User not found.");
-            }
+            var user = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.ProviderId)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
-            if (userExists.PhoneNumber != model.PhoneNumber)
+            if (user.PhoneNumber != model.PhoneNumber)
             {
-                var userPhoneExists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                bool userPhoneExists = await _unitOfWork.GetRepository<ApplicationUsers>()
                     .Entities.AnyAsync(u => u.PhoneNumber == model.PhoneNumber && u.Id != model.ProviderId);
+
                 if (userPhoneExists)
-                {
-                    throw new ArgumentException("Phone number is already in use by another user.");
-                }
-                userExists.PhoneNumber = model.PhoneNumber;
-                await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(userExists);
+                    throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Phone number already used by another user.");
+
+                user.PhoneNumber = model.PhoneNumber;
             }
 
-            if (!string.IsNullOrEmpty(model.Email) && userExists.Email != model.Email)
+            if (!string.IsNullOrEmpty(model.Email) && user.Email != model.Email)
             {
-                var userEmailExists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                bool userEmailExists = await _unitOfWork.GetRepository<ApplicationUsers>()
                     .Entities.AnyAsync(u => u.Email == model.Email && u.Id != model.ProviderId);
+
                 if (userEmailExists)
-                {
-                    throw new ArgumentException("Email is already in use by another user.");
-                }
-                userExists.Email = model.Email;
-                await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(userExists);
+                    throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Email already used by another user.");
+
+                user.Email = model.Email;
             }
 
-            _mapper.Map(model, serviceProvider);
-            serviceProvider.LastUpdatedTime = DateTimeOffset.UtcNow;
+            await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(user);
 
-            await _unitOfWork.GetRepository<ServiceProvider>().UpdateAsync(serviceProvider);
+            _mapper.Map(model, entity);
+            entity.LastUpdatedTime = DateTimeOffset.UtcNow;
+            entity.LastUpdatedBy = CurrentUserId;
+
+            await _unitOfWork.GetRepository<ServiceProvider>().UpdateAsync(entity);
             await _unitOfWork.SaveAsync();
         }
 
         public async Task DeleteAsync(Guid id)
         {
-            var serviceProvider = await _unitOfWork.GetRepository<ServiceProvider>().GetByIdAsync(id);
-            if (serviceProvider == null || serviceProvider.DeletedTime != null)
-            {
-                throw new Exception("Service provider not found.");
-            }
+            if (id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid ServiceProvider ID.");
 
-            serviceProvider.DeletedTime = DateTimeOffset.UtcNow;
-            await _unitOfWork.GetRepository<ServiceProvider>().UpdateAsync(serviceProvider);
+            var entity = await _unitOfWork.GetRepository<ServiceProvider>().GetByIdAsync(id)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
+
+            if (entity.DeletedTime != null)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service Provider already deleted.");
+
+            entity.DeletedTime = CoreHelper.SystemTimeNow;
+            entity.DeletedBy = CurrentUserId;
+
+            await _unitOfWork.GetRepository<ServiceProvider>().UpdateAsync(entity);
             await _unitOfWork.SaveAsync();
         }
     }

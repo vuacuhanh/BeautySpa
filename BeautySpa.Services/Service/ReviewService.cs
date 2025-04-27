@@ -1,80 +1,152 @@
 ﻿using AutoMapper;
-using BeautySpa.Contract.Repositories.Entity;
-using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.ReviewModelViews;
-using BeautySpa.Repositories.Context;
+using BeautySpa.Contract.Services.Interface;
+using BeautySpa.Contract.Repositories.IUOW;
+using BeautySpa.Contract.Repositories.Entity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using BeautySpa.Core.Utils;
+using BeautySpa.Core.Infrastructure;
 
 namespace BeautySpa.Services.Service
 {
     public class ReviewService : IReviewService
     {
-        private readonly DatabaseContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _contextAccessor;
 
-        public ReviewService(DatabaseContext context, IMapper mapper)
+        // Lấy userId hiện tại từ HttpContext (thường dùng để lưu CreatedBy, UpdatedBy, DeletedBy)
+        private string currentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+
+        // Constructor tiêm các dependency cần thiết: UnitOfWork, AutoMapper, HttpContextAccessor
+        public ReviewService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _contextAccessor = contextAccessor;
         }
 
+        // Lấy danh sách review phân trang
         public async Task<BasePaginatedList<GETReviewModelViews>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _context.Reviews
-                .AsNoTracking()
-                .Where(r => r.DeletedTime == null)
-                .OrderByDescending(r => r.CreatedTime);
+            // Validate tham số phân trang
+            if (pageNumber <= 0 || pageSize <= 0)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
+            }
 
-            var totalCount = await query.CountAsync();
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-            var result = _mapper.Map<IReadOnlyCollection<GETReviewModelViews>>(items);
+            // Query lấy các review chưa bị xóa (DeletedTime == null) và sắp xếp mới nhất trước
+            IQueryable<Review> reviews = _unitOfWork.GetRepository<Review>()
+                .Entities.Where(r => !r.DeletedTime.HasValue)
+                .OrderByDescending(r => r.CreatedTime)
+                .AsQueryable();
 
-            return new BasePaginatedList<GETReviewModelViews>(result, totalCount, pageNumber, pageSize);
+            // Thực hiện phân trang
+            var paginatedReviews = await reviews
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // Trả về danh sách phân trang, đã map sang model view
+            return new BasePaginatedList<GETReviewModelViews>(
+                _mapper.Map<List<GETReviewModelViews>>(paginatedReviews),
+                await reviews.CountAsync(),
+                pageNumber,
+                pageSize
+            );
         }
 
+        // Lấy chi tiết 1 review theo id
         public async Task<GETReviewModelViews> GetByIdAsync(Guid id)
         {
-            var entity = await _context.Reviews
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.Id == id && r.DeletedTime == null);
+            if (id == Guid.Empty)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid review ID.");
+            }
 
-            if (entity == null) throw new Exception("Review not found");
-            return _mapper.Map<GETReviewModelViews>(entity);
+            var review = await _unitOfWork.GetRepository<Review>()
+                .Entities.FirstOrDefaultAsync(r => r.Id == id && !r.DeletedTime.HasValue)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Review not found.");
+
+            return _mapper.Map<GETReviewModelViews>(review);
         }
 
+        // Tạo mới review
         public async Task<Guid> CreateAsync(POSTReviewModelViews model)
         {
-            var entity = _mapper.Map<Review>(model);
-            entity.Id = Guid.NewGuid();
-            entity.CreatedTime = DateTimeOffset.UtcNow;
+            // Validate nội dung review
+            if (string.IsNullOrWhiteSpace(model.Comment))
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Review content cannot be empty.");
+            }
 
-            _context.Reviews.Add(entity);
-            await _context.SaveChangesAsync();
+            // Map từ model view sang entity
+            var review = _mapper.Map<Review>(model);
+            review.Id = Guid.NewGuid();
+            review.CreatedBy = currentUserId;
+            review.CreatedTime = CoreHelper.SystemTimeNow;
 
-            return entity.Id;
+            // Insert vào database
+            await _unitOfWork.GetRepository<Review>().InsertAsync(review);
+            await _unitOfWork.SaveAsync();
+
+            return review.Id;
         }
 
+        // Cập nhật review
         public async Task UpdateAsync(PUTReviewModelViews model)
         {
-            var entity = await _context.Reviews.FirstOrDefaultAsync(r => r.Id == model.Id && r.DeletedTime == null);
-            if (entity == null) throw new Exception("Review not found");
+            // Validate nội dung
+            if (string.IsNullOrWhiteSpace(model.Comment))
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Review content cannot be empty.");
+            }
 
-            _mapper.Map(model, entity);
-            entity.LastUpdatedTime = DateTimeOffset.UtcNow;
+            var genericRepository = _unitOfWork.GetRepository<Review>();
 
-            _context.Reviews.Update(entity);
-            await _context.SaveChangesAsync();
+            // Tìm review chưa bị xóa
+            var review = await genericRepository.Entities
+                .FirstOrDefaultAsync(r => r.Id == model.Id && !r.DeletedTime.HasValue);
+
+            if (review == null)
+            {
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Not found Review with id = {model.Id}");
+            }
+
+            // Map các giá trị mới từ model vào entity
+            _mapper.Map(model, review);
+            review.LastUpdatedBy = currentUserId;
+            review.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+            await genericRepository.UpdateAsync(review);
+            await genericRepository.SaveAsync();
         }
 
+        // Xóa mềm review (set DeletedTime, DeletedBy)
         public async Task DeleteAsync(Guid id)
         {
-            var entity = await _context.Reviews.FirstOrDefaultAsync(r => r.Id == id && r.DeletedTime == null);
-            if (entity == null) throw new Exception("Review not found");
+            if (id == Guid.Empty)
+            {
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid review ID.");
+            }
 
-            entity.DeletedTime = DateTimeOffset.UtcNow;
-            _context.Reviews.Update(entity);
-            await _context.SaveChangesAsync();
+            var genericRepository = _unitOfWork.GetRepository<Review>();
+
+            var review = await genericRepository.Entities
+                .FirstOrDefaultAsync(r => r.Id == id && !r.DeletedTime.HasValue);
+
+            if (review == null)
+            {
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Not found Review with id = {id}");
+            }
+
+            review.DeletedTime = CoreHelper.SystemTimeNow;
+            review.DeletedBy = currentUserId;
+
+            await genericRepository.UpdateAsync(review);
+            await genericRepository.SaveAsync();
         }
     }
 }

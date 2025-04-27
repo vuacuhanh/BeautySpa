@@ -35,7 +35,7 @@ namespace BeautySpa.API.Controllers
 
         [HttpGet]
         [SwaggerOperation(Summary = "Get a paginated list of service providers")]
-        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
         {
             var providers = await _providerService.GetAllAsync(pageNumber, pageSize);
             return Ok(new BaseResponseModel<BasePaginatedList<GETServiceProviderModelViews>>(
