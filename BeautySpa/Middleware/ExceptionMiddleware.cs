@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using BeautySpa.Core.Base;
-using System;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -25,6 +23,11 @@ namespace BeautySpa.API.Middleware
             {
                 await _next(context);
             }
+            catch (TaskCanceledException)
+            {
+                // Nếu request bị hủy (ví dụ client đóng kết nối), không cần log lỗi
+                _logger.LogWarning("Request was cancelled by the client.");
+            }
             catch (Exception ex)
             {
                 await HandleExceptionAsync(context, ex);
@@ -33,57 +36,58 @@ namespace BeautySpa.API.Middleware
 
         private async Task HandleExceptionAsync(HttpContext context, Exception ex)
         {
-            _logger.LogError($"Error occurred: {ex}");
+            _logger.LogError(ex, "Unhandled exception occurred.");
 
             if (!context.Response.HasStarted)
             {
-                BaseResponseModel<object> response;
-
-                // Kiểm tra nếu là ErrorException
-                if (ex is ErrorException errorException)
-                {
-                    response = new BaseResponseModel<object>(
-                        errorException.StatusCode,
-                        errorException.ErrorDetail.ErrorCode,
-                        null,
-                        errorException.ErrorDetail.ErrorMessage ?? "An error occurred."
-                    );
-                }
-                else if (ex is CoreException coreException)
-                {
-                    // Trả về mã trạng thái và thông tin từ CoreException
-                    response = new BaseResponseModel<object>(
-                        coreException.StatusCode,
-                        coreException.Code,
-                        null,
-                        coreException.Message
-                    );
-
-                    // Ghi thêm dữ liệu bổ sung nếu có
-                    if (coreException.AdditionalData.Any())
-                    {
-                        response.AdditionalData = JsonSerializer.Serialize(coreException.AdditionalData);
-                    }
-                }
-                else
-                {
-                    // Mặc định là lỗi 500
-                    response = new BaseResponseModel<object>(
-                        StatusCodes.Status500InternalServerError,
-                        ResponseCodeConstants.INTERNAL_SERVER_ERROR,
-                        null,
-                        "An unexpected error occurred."
-                    );
-                }
+                var response = CreateErrorResponse(ex);
 
                 context.Response.ContentType = "application/json";
                 context.Response.StatusCode = response.StatusCode;
 
-                var jsonResponse = JsonSerializer.Serialize(response);
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = true
+                };
+
+                var jsonResponse = JsonSerializer.Serialize(response, options);
                 await context.Response.WriteAsync(jsonResponse);
             }
         }
 
-
+        private BaseResponseModel<object> CreateErrorResponse(Exception ex)
+        {
+            if (ex is ErrorException errorEx)
+            {
+                return new BaseResponseModel<object>(
+                    errorEx.StatusCode,
+                    errorEx.ErrorDetail.ErrorCode,
+                    null,
+                    null,
+                    errorEx.ErrorDetail.ErrorMessage?.ToString()
+                );
+            }
+            else if (ex is CoreException coreEx)
+            {
+                return new BaseResponseModel<object>(
+                    coreEx.StatusCode,
+                    coreEx.Code,
+                    null,
+                    coreEx.AdditionalData,
+                    coreEx.Message
+                );
+            }
+            else
+            {
+                return new BaseResponseModel<object>(
+                    StatusCodes.Status500InternalServerError,
+                    ResponseCodeConstants.INTERNAL_SERVER_ERROR,
+                    null,
+                    null,
+                    "An unexpected error occurred."
+                );
+            }
+        }
     }
 }

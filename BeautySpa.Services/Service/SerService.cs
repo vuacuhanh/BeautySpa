@@ -53,7 +53,6 @@ namespace BeautySpa.Services.Service
                     Id = Guid.NewGuid(),
                     ImageUrl = image.ImageUrl,
                     IsPrimary = image.IsPrimary,
-                    ServiceId = service.Id,
                     CreatedTime = DateTimeOffset.UtcNow,
                     LastUpdatedTime = DateTimeOffset.UtcNow
                 };
@@ -134,7 +133,6 @@ namespace BeautySpa.Services.Service
                     Id = Guid.NewGuid(),
                     ImageUrl = image.ImageUrl,
                     IsPrimary = image.IsPrimary,
-                    ServiceId = service.Id,
                     CreatedTime = DateTimeOffset.UtcNow,
                     LastUpdatedTime = DateTimeOffset.UtcNow
                 };
