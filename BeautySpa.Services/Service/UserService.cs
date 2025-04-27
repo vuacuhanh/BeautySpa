@@ -2,12 +2,11 @@
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Core.Base;
+using BeautySpa.Core.Infrastructure;
 using BeautySpa.ModelViews.UserModelViews;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace BeautySpa.Services.Service
 {
@@ -16,182 +15,199 @@ namespace BeautySpa.Services.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly UserManager<ApplicationUsers> _userManager;
         private readonly IMapper _mapper;
-        private readonly IGenericRepository<UserInfor> _userInforRepository;
+        private readonly IHttpContextAccessor _contextAccessor;
 
-        // Constructor tiêm IUnitOfWork, UserManager và IMapper
-        public UserService(IUnitOfWork unitOfWork, UserManager<ApplicationUsers> userManager, IMapper mapper)
+        private string currentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+        private IGenericRepository<UserInfor> UserInforRepository => _unitOfWork.GetRepository<UserInfor>();
+        private IGenericRepository<ApplicationUsers> UserRepository => _unitOfWork.GetRepository<ApplicationUsers>();
+
+        public UserService(IUnitOfWork unitOfWork, UserManager<ApplicationUsers> userManager, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
             _unitOfWork = unitOfWork;
             _userManager = userManager;
             _mapper = mapper;
-            _userInforRepository = _unitOfWork.GetRepository<UserInfor>();
+            _contextAccessor = contextAccessor;
         }
 
-        // Lấy thông tin người dùng theo ID
         public async Task<GETUserInfoModelView> GetByIdAsync(Guid id)
         {
-            var userInfor = await _userInforRepository.Entities
-                .Include(ui => ui.User)
-                .FirstOrDefaultAsync(ui => ui.UserId == id);
+            if (id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id");
+
+            var userInfor = await UserInforRepository.Entities
+                .Include(u => u.User)
+                .FirstOrDefaultAsync(u => u.UserId == id);
 
             if (userInfor == null)
-            {
-                throw new Exception("User information not found.");
-            }
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User information not found");
 
             return _mapper.Map<GETUserInfoModelView>(userInfor);
         }
 
-        // Lấy danh sách người dùng phân trang
+        public async Task<GETUserModelViews> GetCustomerInfoAsync(Guid id)
+        {
+            if (id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id");
+
+            var user = await UserRepository.Entities
+                .Include(u => u.UserInfor)
+                .FirstOrDefaultAsync(u => u.Id == id && u.DeletedTime == null);
+
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Customer not found");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            if (!roles.Contains("Customer"))
+                throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "User is not a customer");
+
+            var result = _mapper.Map<GETUserModelViews>(user);
+            result.RoleName = roles.FirstOrDefault() ?? string.Empty;
+            return result;
+        }
+
         public async Task<BasePaginatedList<GETUserModelViews>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _userManager.Users
+            if (pageNumber <= 0 || pageSize <= 0)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0");
+
+            var query = UserRepository.Entities
                 .Include(u => u.UserInfor)
-                .AsQueryable();
+                .Where(u => u.DeletedTime == null)
+                .OrderByDescending(u => u.CreatedTime);
 
-            var totalCount = await query.CountAsync();
-            var items = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var paginatedUsers = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+            var results = new List<GETUserModelViews>();
 
-            var mappedItems = _mapper.Map<IReadOnlyCollection<GETUserModelViews>>(items);
-
-            foreach (var item in mappedItems)
+            foreach (var user in paginatedUsers)
             {
-                var user = items.FirstOrDefault(u => u.Id == item.Id);
-                if (user != null)
+                var roles = await _userManager.GetRolesAsync(user);
+                var userModel = _mapper.Map<GETUserModelViews>(user);
+                userModel.RoleName = roles.FirstOrDefault() ?? string.Empty;
+                results.Add(userModel);
+            }
+
+            return new BasePaginatedList<GETUserModelViews>(results, await query.CountAsync(), pageNumber, pageSize);
+        }
+
+        public async Task<BasePaginatedList<GETUserModelViews>> GetCustomerAsync(int pageNumber, int pageSize)
+        {
+            if (pageNumber <= 0 || pageSize <= 0)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0");
+
+            var query = UserRepository.Entities
+                .Include(u => u.UserInfor)
+                .Where(u => u.DeletedTime == null)
+                .OrderByDescending(u => u.CreatedTime);
+
+            var paginatedUsers = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+            var customers = new List<GETUserModelViews>();
+
+            foreach (var user in paginatedUsers)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                if (roles.Contains("Customer"))
                 {
-                    item.Roles = (await _userManager.GetRolesAsync(user)).ToList();
-                    item.RoleName = item.Roles.FirstOrDefault() ?? string.Empty;
+                    var userModel = _mapper.Map<GETUserModelViews>(user);
+                    userModel.RoleName = roles.FirstOrDefault() ?? string.Empty;
+                    customers.Add(userModel);
                 }
             }
 
-            return new BasePaginatedList<GETUserModelViews>(mappedItems, totalCount, pageNumber, pageSize);
+            return new BasePaginatedList<GETUserModelViews>(customers, await query.CountAsync(), pageNumber, pageSize);
         }
 
-        // Lấy thông tin khách hàng
-        public async Task<GETUserInfoforcustomerModelView> GetCustomerInfoAsync(Guid id)
-        {
-            var user = await _userManager.Users
-                .Include(u => u.UserInfor)
-                .FirstOrDefaultAsync(u => u.Id == id);
-
-            if (user == null)
-            {
-                throw new Exception("Customer not found.");
-            }
-
-            var roles = await _userManager.GetRolesAsync(user);
-            if (!roles.Contains("Customer"))
-            {
-                throw new Exception("User is not a customer.");
-            }
-
-            return _mapper.Map<GETUserInfoforcustomerModelView>(user);
-        }
-
-        // Cập nhật thông tin người dùng
         public async Task UpdateAsync(PUTUserModelViews model)
         {
+            if (model == null || model.Id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid update information");
+
             var user = await _userManager.FindByIdAsync(model.Id.ToString());
             if (user == null)
-            {
-                throw new Exception("User not found.");
-            }
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found");
 
-            // Cập nhật thông tin UserInfor
-            var userInfor = await _userInforRepository.GetByIdAsync(user.Id);
-            if (userInfor == null)
-            {
-                userInfor = new UserInfor { UserId = user.Id };
-                await _userInforRepository.InsertAsync(userInfor);
-            }
-
+            var userInfor = await UserInforRepository.GetByIdAsync(user.Id) ?? new UserInfor { UserId = user.Id, CreatedBy = currentUserId };
             _mapper.Map(model, userInfor);
             userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
+            userInfor.LastUpdatedBy = currentUserId;
 
-            // Cập nhật thông tin ApplicationUsers
             user.PhoneNumber = model.PhoneNumber;
             user.LastUpdatedTime = DateTimeOffset.UtcNow;
+            user.LastUpdatedBy = currentUserId;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
-            {
-                throw new Exception("Failed to update user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to update user");
 
-            await _userInforRepository.UpdateAsync(userInfor);
+            if (userInfor.Id == Guid.Empty)
+                await UserInforRepository.InsertAsync(userInfor);
+            else
+                await UserInforRepository.UpdateAsync(userInfor);
+
             await _unitOfWork.SaveAsync();
         }
 
-        // Cập nhật thông tin khách hàng
         public async Task UpdateCustomerAsync(PUTuserforcustomer model)
         {
+            if (model == null || model.Id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid update information");
+
             var user = await _userManager.FindByIdAsync(model.Id.ToString());
             if (user == null)
-            {
-                throw new Exception("Customer not found.");
-            }
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Customer not found");
 
             var roles = await _userManager.GetRolesAsync(user);
             if (!roles.Contains("Customer"))
-            {
-                throw new Exception("User is not a customer.");
-            }
+                throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "User is not a customer");
 
-            // Cập nhật thông tin UserInfor
-            var userInfor = await _userInforRepository.GetByIdAsync(user.Id);
-            if (userInfor == null)
-            {
-                userInfor = new UserInfor { UserId = user.Id };
-                await _userInforRepository.InsertAsync(userInfor);
-            }
+            var userInfor = await UserInforRepository.GetByIdAsync(user.Id) ?? new UserInfor { UserId = user.Id, CreatedBy = currentUserId };
 
             if (model.UserInfor != null)
             {
                 _mapper.Map(model.UserInfor, userInfor);
                 userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
+                userInfor.LastUpdatedBy = currentUserId;
             }
 
-            // Cập nhật thông tin ApplicationUsers
             user.Email = model.Email;
             user.LastUpdatedTime = DateTimeOffset.UtcNow;
+            user.LastUpdatedBy = currentUserId;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
-            {
-                throw new Exception("Failed to update customer: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to update customer");
 
-            await _userInforRepository.UpdateAsync(userInfor);
+            if (userInfor.Id == Guid.Empty)
+                await UserInforRepository.InsertAsync(userInfor);
+            else
+                await UserInforRepository.UpdateAsync(userInfor);
+
             await _unitOfWork.SaveAsync();
         }
 
-        // Xóa người dùng (đánh dấu là inactive)
         public async Task DeleteAsync(Guid id)
         {
+            if (id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id");
+
             var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null)
-            {
-                throw new Exception("User not found.");
-            }
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found");
 
             user.DeletedTime = DateTimeOffset.UtcNow;
             user.Status = "inactive";
+            user.DeletedBy = currentUserId;
 
-            var userInfor = await _userInforRepository.GetByIdAsync(id);
+            var userInfor = await UserInforRepository.GetByIdAsync(id);
             if (userInfor != null)
             {
                 userInfor.DeletedTime = DateTimeOffset.UtcNow;
-                await _userInforRepository.UpdateAsync(userInfor);
+                userInfor.DeletedBy = currentUserId;
+                await UserInforRepository.UpdateAsync(userInfor);
             }
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
-            {
-                throw new Exception("Failed to delete user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.BadRequest, "Failed to delete user");
 
             await _unitOfWork.SaveAsync();
         }
