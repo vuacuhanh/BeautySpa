@@ -1,9 +1,4 @@
 ﻿using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BeautySpa.Core.Base
 {
@@ -54,6 +49,11 @@ namespace BeautySpa.Core.Base
         public static object? BadRequestResponseModel(object value, string message)
         {
             throw new NotImplementedException();
+        }
+
+        public static BaseResponseModel<T> Success(T? data, object? additionalData = null, string code = ResponseCodeConstants.SUCCESS)
+        {
+            return new BaseResponseModel<T>(StatusCodes.Status200OK, code, data, additionalData);
         }
     }
 

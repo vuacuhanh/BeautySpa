@@ -13,9 +13,9 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         // Khóa ngoại
         public Guid SenderId { get; set; }
-        public virtual ApplicationUsers Sender { get; set; }
+        public virtual ApplicationUsers? Sender { get; set; }
 
         public Guid ReceiverId { get; set; }
-        public virtual ApplicationUsers Receiver { get; set; }
+        public virtual ApplicationUsers? Receiver { get; set; }
     }
 }

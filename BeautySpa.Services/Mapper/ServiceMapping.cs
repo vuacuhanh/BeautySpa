@@ -33,7 +33,6 @@ namespace BeautySpa.Services.Mapper
 
             CreateMap<POSTServiceImageModelViews, ServiceImage>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.ServiceProviderId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore());
         }

@@ -15,10 +15,10 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         // Khóa ngoại
         public Guid ProviderId { get; set; }
-        public virtual ApplicationUsers Provider { get; set; }
+        public virtual ApplicationUsers? Provider { get; set; }
 
         public Guid CategoryId { get; set; }
-        public virtual ServiceCategory Category { get; set; }
+        public virtual ServiceCategory? Category { get; set; }
 
         // Mối quan hệ
         public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
