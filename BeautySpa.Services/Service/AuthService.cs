@@ -20,9 +20,9 @@ namespace BeautySpa.Services.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
         private readonly IMapper _mapper;
-        private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IConnectionMultiplexer _redis;
+        private readonly IEmailService _emailService;
 
         public AuthService(
             UserManager<ApplicationUsers> userManager,
@@ -30,18 +30,18 @@ namespace BeautySpa.Services.Service
             IUnitOfWork unitOfWork,
             ITokenService tokenService,
             IMapper mapper,
-            IConfiguration configuration,
             IHttpContextAccessor httpContextAccessor,
-            IConnectionMultiplexer redis)
+            IConnectionMultiplexer redis,
+            IEmailService emailService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
             _mapper = mapper;
-            _configuration = configuration;
             _httpContextAccessor = httpContextAccessor;
             _redis = redis;
+            _emailService = emailService;
         }
 
         private string CurrentIp => _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "UnknownIP";
@@ -49,14 +49,25 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<string>> SignUpAsync(SignUpAuthModelView model)
         {
+            if (string.IsNullOrWhiteSpace(model.ConfirmOtp))
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP is required.");
+
+            var db = _redis.GetDatabase();
+            var cache = await db.StringGetAsync($"otp:{model.Email}");
+            if (cache.IsNullOrEmpty)
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP expired or not found.");
+
+            var payload = JsonConvert.DeserializeObject<OtpVerifyModelView>(cache!);
+            if (payload == null || payload.OtpCode != model.ConfirmOtp || payload.IpAddress != CurrentIp || payload.DeviceInfo != CurrentDevice)
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP validation failed.");
+
             var user = _mapper.Map<ApplicationUsers>(model);
             user.UserName = model.Email;
             user.Status = "active";
 
             var result = await _userManager.CreateAsync(user, model.Password);
             if (!result.Succeeded)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest,
-                    string.Join(", ", result.Errors.Select(x => x.Description)));
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join(", ", result.Errors.Select(x => x.Description)));
 
             await _userManager.AddToRoleAsync(user, "Customer");
 
@@ -64,23 +75,9 @@ namespace BeautySpa.Services.Service
             await _unitOfWork.GetRepository<UserInfor>().InsertAsync(userInfor);
             await _unitOfWork.SaveAsync();
 
-            return BaseResponseModel<string>.Success("Sign up successfully.");
-        }
-
-        public async Task<BaseResponseModel<string>> SignUpWithOtpAsync(SignUpAuthModelView model, string otp)
-        {
-            var db = _redis.GetDatabase();
-            var cache = await db.StringGetAsync($"otp:{model.Email}");
-            if (cache.IsNullOrEmpty)
-                throw new BadRequestException(ErrorCode.InvalidInput, "OTP expired or not found.");
-
-            var payload = JsonConvert.DeserializeObject<OtpVerifyModelView>(cache!);
-            if (payload == null || payload.OtpCode != otp || payload.IpAddress != CurrentIp || payload.DeviceInfo != CurrentDevice)
-                throw new BadRequestException(ErrorCode.InvalidInput, "OTP validation failed.");
-
             await db.KeyDeleteAsync($"otp:{model.Email}");
 
-            return await SignUpAsync(model);
+            return BaseResponseModel<string>.Success("Sign up successfully.");
         }
 
         public async Task<BaseResponseModel<TokenResponseModelView>> SignInAsync(SignInAuthModelView model)
@@ -109,6 +106,27 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<TokenResponseModelView>.Success(token);
         }
 
+        public async Task<BaseResponseModel<string>> RequestOtpAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                throw new BadRequestException(ErrorCode.InvalidInput, "Email cannot be empty.");
+
+            var otp = new Random().Next(100000, 999999).ToString();
+            var payload = new OtpVerifyModelView
+            {
+                OtpCode = otp,
+                IpAddress = CurrentIp,
+                DeviceInfo = CurrentDevice
+            };
+
+            var db = _redis.GetDatabase();
+            await db.StringSetAsync($"otp:{email}", JsonConvert.SerializeObject(payload), TimeSpan.FromMinutes(5));
+
+            await _emailService.SendEmailAsync(email, "Your OTP Code", $"Your verification OTP is: <b>{otp}</b>");
+
+            return BaseResponseModel<string>.Success("OTP sent successfully.");
+        }
+
         public async Task<BaseResponseModel<string>> ForgotPasswordAsync(ForgotPasswordAuthModelView model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -126,7 +144,9 @@ namespace BeautySpa.Services.Service
             var db = _redis.GetDatabase();
             await db.StringSetAsync($"otp:reset-password:{model.Email}", JsonConvert.SerializeObject(payload), TimeSpan.FromMinutes(5));
 
-            return BaseResponseModel<string>.Success("OTP sent successfully.");
+            await _emailService.SendEmailAsync(model.Email, "Reset Password OTP", $"Your password reset OTP is: <b>{otp}</b>");
+
+            return BaseResponseModel<string>.Success("OTP sent for password reset.");
         }
 
         public async Task<BaseResponseModel<string>> ResetPasswordAsync(ResetPasswordAuthModelView model)
@@ -147,8 +167,7 @@ namespace BeautySpa.Services.Service
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var result = await _userManager.ResetPasswordAsync(user, token, model.NewPassword);
             if (!result.Succeeded)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest,
-                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join(", ", result.Errors.Select(x => x.Description)));
 
             await db.KeyDeleteAsync($"otp:reset-password:{model.Email}");
 
@@ -159,40 +178,19 @@ namespace BeautySpa.Services.Service
         {
             var userId = Authentication.GetUserIdFromHttpContextAccessor(_httpContextAccessor);
             var user = await _userManager.FindByIdAsync(userId);
-
             if (user == null)
                 throw new BadRequestException(ErrorCode.NotFound, "User not found.");
 
             var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
             if (!result.Succeeded)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest,
-                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join(", ", result.Errors.Select(x => x.Description)));
 
             return BaseResponseModel<string>.Success("Password changed successfully.");
         }
 
-        public async Task<BaseResponseModel<string>> RequestOtpAsync(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-                throw new BadRequestException(ErrorCode.InvalidInput, "Email cannot be empty.");
-
-            var otp = new Random().Next(100000, 999999).ToString();
-            var payload = new OtpVerifyModelView
-            {
-                OtpCode = otp,
-                IpAddress = CurrentIp,
-                DeviceInfo = CurrentDevice
-            };
-
-            var db = _redis.GetDatabase();
-            await db.StringSetAsync($"otp:{email}", JsonConvert.SerializeObject(payload), TimeSpan.FromMinutes(5));
-
-            return BaseResponseModel<string>.Success("OTP sent successfully.");
-        }
-
         public async Task<BaseResponseModel<string>> ResendConfirmEmailAsync(string email)
         {
-            // Giả lập gửi lại email xác nhận
+            // Optional implementation later
             return BaseResponseModel<string>.Success("Confirmation email resent successfully.");
         }
 
