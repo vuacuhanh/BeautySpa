@@ -1,14 +1,13 @@
-﻿using BeautySpa.Core.Base;
+﻿using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Core.Base;
 
-namespace BeautySpa.Contract.Repositories.Entity
+public class ServicePromotion : BaseEntity
 {
-    public class ServicePromotion : BaseEntity
-    {
-        // Khóa ngoại
-        public Guid PromotionId { get; set; }
-        public virtual Promotion Promotion { get; set; }
+    public decimal DiscountPrice { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
 
-        public Guid ServiceId { get; set; }
-        public virtual Service Service { get; set; }
-    }
+    // Khóa ngoại
+    public Guid ServiceId { get; set; }
+    public virtual Service? Service { get; set; }
 }

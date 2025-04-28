@@ -10,26 +10,19 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class LocationSpa: BaseEntity
     {
-        [Required(ErrorMessage = "Street is required")]
-        [StringLength(200, ErrorMessage = "Street must not exceed 200 characters")]
-        public string Street { get; set; } // Đường: "123 Đường Láng"
+        public string Street { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "City is required")]
-        [StringLength(100, ErrorMessage = "City must not exceed 100 characters")]
-        public string City { get; set; } // Thành phố: "Hà Nội"
+        public string City { get; set; } = string.Empty;
 
-        [StringLength(20, ErrorMessage = "Postal code must not exceed 20 characters")]
-        public string? PostalCode { get; set; } // Mã bưu điện: "100000"
+        public string PostalCode { get; set; } = string.Empty;
 
-        [StringLength(100, ErrorMessage = "Country must not exceed 100 characters")]
-        public string? Country { get; set; } // Quốc gia: "Vietnam"
+        public string Country { get; set; } = string.Empty;
 
-        [StringLength(500, ErrorMessage = "Description must not exceed 500 characters")]
-        public string? Description { get; set; } // Mô tả: "Gần ngã tư Đường Láng"
+        public string? Description { get; set; }
 
         // Khóa ngoại
-        public Guid BranchId { get; set; } // Liên kết với chi nhánh
-        public virtual BranchLocationSpa Branch { get; set; } // Chi nhánh sở hữu địa chỉ này
+        public Guid BranchId { get; set; }
+        public virtual BranchLocationSpa? Branch { get; set; }
 
         // Mối quan hệ
         public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>(); 

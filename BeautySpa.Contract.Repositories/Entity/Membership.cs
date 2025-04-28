@@ -10,11 +10,11 @@ namespace BeautySpa.Contract.Repositories.Entity
     public class MemberShip : BaseEntity
     {
         public Guid UserId { get; set; }
-        public virtual ApplicationUsers User { get; set; }
+        public virtual ApplicationUsers? User { get; set; }
 
         public int AccumulatedPoints { get; set; }
 
         public Guid RankId { get; set; }
-        public virtual Rank Rank { get; set; }
+        public virtual Rank? Rank { get; set; }
     }
 }

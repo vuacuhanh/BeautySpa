@@ -7,12 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BeautySpa.Contract.Repositories\BeautySpa.Contract.Repositories.csproj" />
-    <ProjectReference Include="..\BeautySpa.ModelViews\BeautySpa.ModelViews.csproj" />
+    <Compile Remove="Validations\**" />
+    <EmbeddedResource Remove="Validations\**" />
+    <None Remove="Validations\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Validations\" />
+    <ProjectReference Include="..\BeautySpa.Contract.Repositories\BeautySpa.Contract.Repositories.csproj" />
+    <ProjectReference Include="..\BeautySpa.ModelViews\BeautySpa.ModelViews.csproj" />
   </ItemGroup>
 
 </Project>

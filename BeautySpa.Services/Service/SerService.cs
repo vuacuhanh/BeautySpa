@@ -64,16 +64,12 @@ namespace BeautySpa.Services.Service
                     Id = Guid.NewGuid(),
                     ImageUrl = image.ImageUrl,
                     IsPrimary = image.IsPrimary,
-<<<<<<< HEAD
-                    CreatedTime = DateTimeOffset.UtcNow,
-                    LastUpdatedTime = DateTimeOffset.UtcNow
-=======
-                    ServiceProviderId = servicePromotion.ProviderId, 
+
+                    //ServiceProviderId = servicePromotion.ProviderId, 
                     CreatedBy = currentUserId,
                     CreatedTime = CoreHelper.SystemTimeNow,
                     LastUpdatedBy = currentUserId,
                     LastUpdatedTime = CoreHelper.SystemTimeNow
->>>>>>> 73ac29296ce57368183dd2037897957d584a79d1
                 };
                 servicePromotion.ServiceImages.Add(serviceImage);
             }
@@ -166,16 +162,11 @@ namespace BeautySpa.Services.Service
                     Id = Guid.NewGuid(),
                     ImageUrl = image.ImageUrl,
                     IsPrimary = image.IsPrimary,
-<<<<<<< HEAD
-                    CreatedTime = DateTimeOffset.UtcNow,
-                    LastUpdatedTime = DateTimeOffset.UtcNow
-=======
-                    ServiceProviderId = servicePromotion.ProviderId,
+                    //ServiceProviderId = servicePromotion.ProviderId,
                     CreatedBy = currentUserId,
                     CreatedTime = CoreHelper.SystemTimeNow,
                     LastUpdatedBy = currentUserId,
                     LastUpdatedTime = CoreHelper.SystemTimeNow
->>>>>>> 73ac29296ce57368183dd2037897957d584a79d1
                 };
                 servicePromotion.ServiceImages.Add(serviceImage);
             }

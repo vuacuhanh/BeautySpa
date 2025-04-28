@@ -1,15 +1,21 @@
+using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.AuthModelViews;
 
-public interface IAuthService
+namespace BeautySpa.Contract.Services.Interface
 {
-    Task<string?> SignUpAsync(SignUpAuthModelView signup, Guid roleId);
-    Task<string?> SignInAsync(SignInAuthModelView signin);
-    Task<bool> ChangePasswordAsync(ChangePasswordAuthModelView changepass, Guid UserId);
-    Task<IList<string>> GetUserRolesAsync(string email);
-    Task<bool> ConfirmEmailAsync(string userId, string token);
-    Task<bool> ResendConfirmationEmailAsync(string email);
-    Task<bool> ForgotPasswordAsync(string email);
-    Task<bool> ResetPasswordAsync(ResetPasswordAuthModelView model);
-    Task<bool> RequestOtpAsync(string email);
-    Task<string> SignUpWithOtpAsync(SignUpAuthModelView signup, string otp);
+    public interface IAuthService
+    {
+        Task<BaseResponseModel<string>> SignUpAsync(SignUpAuthModelView model);
+        Task<BaseResponseModel<string>> SignUpWithOtpAsync(SignUpAuthModelView model, string otp);
+        Task<BaseResponseModel<TokenResponseModelView>> SignInAsync(SignInAuthModelView model);
+        Task<BaseResponseModel<TokenResponseModelView>> SignInWithGoogleAsync(SignInWithGoogleModelView model);
+        Task<BaseResponseModel<TokenResponseModelView>> SignInWithFacebookAsync(SignInWithFacebookModelView model);
+        Task<BaseResponseModel<string>> ForgotPasswordAsync(ForgotPasswordAuthModelView model);
+        Task<BaseResponseModel<string>> ResetPasswordAsync(ResetPasswordAuthModelView model);
+        Task<BaseResponseModel<string>> ChangePasswordAsync(ChangePasswordAuthModelView model);
+        Task<BaseResponseModel<string>> RequestOtpAsync(string email);
+        Task<BaseResponseModel<string>> ResendConfirmEmailAsync(string email);
+        Task<BaseResponseModel<string>> ConfirmEmailAsync(string userId, string token);
+        Task<BaseResponseModel<TokenResponseModelView>> RefreshTokenAsync(RefreshTokenRequestModelView model);
+    }
 }
