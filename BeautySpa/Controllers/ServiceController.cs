@@ -19,20 +19,6 @@ namespace BeautySpa.API.Controllers
         {
             _serviceService = serviceService;
         }
-
-        [HttpPost]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Create a new service")]
-        public async Task<IActionResult> Create([FromBody] POSTServiceModelViews model)
-        {
-            var serviceId = await _serviceService.CreateAsync(model);
-            return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: "Service created successfully."
-            ));
-        }
-
         [HttpGet]
         [SwaggerOperation(Summary = "Get a paginated list of services")]
         public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
@@ -54,6 +40,19 @@ namespace BeautySpa.API.Controllers
                 statusCode: StatusCodes.Status200OK,
                 code: ResponseCodeConstants.SUCCESS,
                 data: service
+            ));
+        } 
+
+        [HttpPost]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Create a new service")]
+        public async Task<IActionResult> Create([FromBody] POSTServiceModelViews model)
+        {
+            var serviceId = await _serviceService.CreateAsync(model);
+            return Ok(new BaseResponseModel<string>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: "Service created successfully."
             ));
         }
 
