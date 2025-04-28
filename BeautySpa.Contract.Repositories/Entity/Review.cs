@@ -12,12 +12,12 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         // Khóa ngoại
         public Guid AppointmentId { get; set; }
-        public virtual Appointment Appointment { get; set; }
+        public virtual Appointment? Appointment { get; set; }
 
         public Guid CustomerId { get; set; }
-        public virtual ApplicationUsers Customer { get; set; }
+        public virtual ApplicationUsers? Customer { get; set; }
 
         public Guid ProviderId { get; set; }
-        public virtual ApplicationUsers Provider { get; set; }
+        public virtual ApplicationUsers? Provider { get; set; }
     }
 }

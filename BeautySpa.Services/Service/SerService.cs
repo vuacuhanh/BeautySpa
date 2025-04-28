@@ -64,7 +64,8 @@ namespace BeautySpa.Services.Service
                     Id = Guid.NewGuid(),
                     ImageUrl = image.ImageUrl,
                     IsPrimary = image.IsPrimary,
-                    ServiceProviderId = servicePromotion.ProviderId, 
+
+                    //ServiceProviderId = servicePromotion.ProviderId, 
                     CreatedBy = currentUserId,
                     CreatedTime = CoreHelper.SystemTimeNow,
                     LastUpdatedBy = currentUserId,
@@ -161,7 +162,7 @@ namespace BeautySpa.Services.Service
                     Id = Guid.NewGuid(),
                     ImageUrl = image.ImageUrl,
                     IsPrimary = image.IsPrimary,
-                    ServiceProviderId = servicePromotion.ProviderId,
+                    //ServiceProviderId = servicePromotion.ProviderId,
                     CreatedBy = currentUserId,
                     CreatedTime = CoreHelper.SystemTimeNow,
                     LastUpdatedBy = currentUserId,

@@ -11,18 +11,12 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class BranchLocationSpa: BaseEntity
     {
-        [Required(ErrorMessage = "Branch name is required")]
-        [StringLength(100, ErrorMessage = "Branch name must not exceed 100 characters")]
-        public string Name { get; set; } 
+        public string Name { get; set; } = string.Empty;
 
-        [StringLength(20, ErrorMessage = "Phone number must not exceed 20 characters")]
-        public string? PhoneNumber { get; set; }
+        public string PhoneNumber { get; set; } = string.Empty;
 
-        [StringLength(100, ErrorMessage = "Email must not exceed 100 characters")]
-        [EmailAddress(ErrorMessage = "Invalid email format")]
-        public string? Email { get; set; } 
+        public string Email { get; set; } = string.Empty;
 
-        [StringLength(500, ErrorMessage = "Description must not exceed 500 characters")]
         public string? Description { get; set; } 
 
         // Mối quan hệ

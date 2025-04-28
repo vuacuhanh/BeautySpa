@@ -8,7 +8,6 @@ using BeautySpa.ModelViews.ServiceProviderModelViews;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using BeautySpa.Core.Utils;
-using BeautySpa.ModelViews.RoleModelViews;
 
 namespace BeautySpa.Services.Service
 {

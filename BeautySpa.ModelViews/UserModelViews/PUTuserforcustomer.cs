@@ -10,6 +10,6 @@ namespace BeautySpa.ModelViews.UserModelViews
     {
         public Guid Id { get; set; }
         public string Email { get; set; } = string.Empty;
-        public GETUserInfoforcustomerModelView? UserInfor { get; set; }
+        public GETUserModelViews UserInfor { get; set; } = new GETUserModelViews();
     }
 }

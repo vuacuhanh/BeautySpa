@@ -45,7 +45,7 @@ namespace BeautySpa.Services
             services.AddScoped<IMessageService, MessageService>();
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IEmailService, EmailService>();
-
+            services.AddScoped<ITokenService, TokenService>();
         }
     }
 }
