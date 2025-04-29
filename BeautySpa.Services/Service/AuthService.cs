@@ -48,7 +48,7 @@ namespace BeautySpa.Services.Service
 
         private string CurrentIp => _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "UnknownIP";
         private string CurrentDevice => _httpContextAccessor.HttpContext?.Request?.Headers["User-Agent"].ToString() ?? "UnknownDevice";
-
+        //================================================================================================================================
         public async Task<BaseResponseModel<string>> SignUpAsync(SignUpAuthModelView model)
         {
             if (string.IsNullOrWhiteSpace(model.ConfirmOtp))
@@ -69,19 +69,45 @@ namespace BeautySpa.Services.Service
 
             var result = await _userManager.CreateAsync(user, model.Password);
             if (!result.Succeeded)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join(", ", result.Errors.Select(x => x.Description)));
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join("; ", result.Errors.Select(x => x.Description)));
 
-            await _userManager.AddToRoleAsync(user, "Customer");
+            try
+            {
+                var customerRole = _configuration["DefaultRoles:Customer"];
+                if (string.IsNullOrEmpty(customerRole))
+                {
+                    await _userManager.DeleteAsync(user);
+                    throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Default Customer role is not configured.");
+                }
 
-            var userInfor = new UserInfor { UserId = user.Id, FullName = model.FullName };
-            await _unitOfWork.GetRepository<UserInfor>().InsertAsync(userInfor);
-            await _unitOfWork.SaveAsync();
+                var addToRoleResult = await _userManager.AddToRoleAsync(user, customerRole);
+                if (!addToRoleResult.Succeeded)
+                {
+                    await _userManager.DeleteAsync(user);
+                    throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join("; ", addToRoleResult.Errors.Select(x => x.Description)));
+                }
 
-            await db.KeyDeleteAsync($"otp:{model.Email}");
+                var userInfor = new UserInfor
+                {
+                    UserId = user.Id,
+                    FullName = model.FullName
+                };
+                await _unitOfWork.GetRepository<UserInfor>().InsertAsync(userInfor);
+                await _unitOfWork.SaveAsync();
 
-            return BaseResponseModel<string>.Success("Sign up successfully.");
+                await db.KeyDeleteAsync($"otp:{model.Email}");
+
+                return BaseResponseModel<string>.Success("Sign up successfully.");
+            }
+            catch (Exception ex)
+            {
+                // Nếu lỗi bất kỳ khác sau CreateUser -> rollback User
+                await _userManager.DeleteAsync(user);
+                throw;
+            }
         }
 
+        //==============================================================================================================================
         public async Task<BaseResponseModel<TokenResponseModelView>> SignInAsync(SignInAuthModelView model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -93,21 +119,21 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<TokenResponseModelView>.Success(token);
         }
-
+        //==============================================================================================================================
         public async Task<BaseResponseModel<TokenResponseModelView>> SignInWithGoogleAsync(SignInWithGoogleModelView model)
         {
             var mockUser = new ApplicationUsers { Id = Guid.NewGuid(), Email = "google@example.com" };
             var token = await _tokenService.GenerateTokenAsync(mockUser, new List<string> { "Customer" }, CurrentIp, CurrentDevice);
             return BaseResponseModel<TokenResponseModelView>.Success(token);
         }
-
+        //==============================================================================================================================
         public async Task<BaseResponseModel<TokenResponseModelView>> SignInWithFacebookAsync(SignInWithFacebookModelView model)
         {
             var mockUser = new ApplicationUsers { Id = Guid.NewGuid(), Email = "facebook@example.com" };
             var token = await _tokenService.GenerateTokenAsync(mockUser, new List<string> { "Customer" }, CurrentIp, CurrentDevice);
             return BaseResponseModel<TokenResponseModelView>.Success(token);
         }
-
+        //==============================================================================================================================
         public async Task<BaseResponseModel<string>> RequestOtpAsync(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -128,7 +154,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("OTP sent successfully.");
         }
-
+        //==============================================================================================================================
         public async Task<BaseResponseModel<string>> ForgotPasswordAsync(ForgotPasswordAuthModelView model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -150,7 +176,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("OTP sent for password reset.");
         }
-
+        //==============================================================================================================================
         public async Task<BaseResponseModel<string>> ResetPasswordAsync(ResetPasswordAuthModelView model)
         {
             var db = _redis.GetDatabase();
@@ -175,7 +201,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Password reset successfully.");
         }
-
+        //==============================================================================================================================
         public async Task<BaseResponseModel<string>> ChangePasswordAsync(ChangePasswordAuthModelView model)
         {
             var userId = Authentication.GetUserIdFromHttpContextAccessor(_httpContextAccessor);
@@ -189,7 +215,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Password changed successfully.");
         }
-
+        //=================================================================================================================================
         public async Task<BaseResponseModel<string>> ResendConfirmEmailAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
@@ -215,7 +241,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Confirmation OTP sent successfully.");
         }
-
+        //==================================================================================================================================
         public async Task<BaseResponseModel<string>> ConfirmEmailAsync(string userId, string token)
         {
             var user = await _userManager.FindByIdAsync(userId);
@@ -228,7 +254,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Email confirmed successfully.");
         }
-
+        //==============================================================================================================================
         public async Task<BaseResponseModel<TokenResponseModelView>> RefreshTokenAsync(RefreshTokenRequestModelView model)
         {
             var db = _redis.GetDatabase();
