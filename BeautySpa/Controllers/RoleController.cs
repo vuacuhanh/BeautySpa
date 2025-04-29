@@ -1,5 +1,4 @@
 ﻿using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.RoleModelViews;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +8,7 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Vai trò")]
+    //[Authorize(Roles = "Admin")] // Chỉ Admin mới quản lý role
     public class RoleController : ControllerBase
     {
         private readonly IRoles _roleService;
@@ -18,72 +17,45 @@ namespace BeautySpa.API.Controllers
         {
             _roleService = roleService;
         }
-        [HttpGet("all")]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Get All Role")]
-        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
+
+        [SwaggerOperation(Summary = "Lấy danh sách role (phân trang)")]
+        [HttpGet]
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
-            var roles = await _roleService.GetAllAsync(pageNumber, pageSize);
-            return Ok(new BaseResponseModel<BasePaginatedList<GETRoleModelViews>>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: roles
-            ));
+            var result = await _roleService.GetAllAsync(pageNumber, pageSize);
+            return Ok(result);
         }
 
-        [HttpGet("{id}")]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Get Role By ID")]
-        public async Task<IActionResult> GetById(Guid id)
+        [SwaggerOperation(Summary = "Lấy chi tiết role theo Id")]
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            var role = await _roleService.GetByIdAsync(id);
-            return Ok(new BaseResponseModel<GETRoleModelViews>(
-                 statusCode: StatusCodes.Status200OK,
-                 code: ResponseCodeConstants.SUCCESS,
-                 data: role
-            ));
+            var result = await _roleService.GetByIdAsync(id);
+            return Ok(result);
         }
 
-        // POST: api/role
+        [SwaggerOperation(Summary = "Tạo mới role")]
         [HttpPost]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Add new Role")]
-        public async Task<IActionResult> Create([FromBody] POSTRoleModelViews rolemodel)
+        public async Task<IActionResult> Create([FromBody] POSTRoleModelViews model)
         {
-            var roleId = await _roleService.CreateAsync(rolemodel);
-            return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: "Add role successful"
-            ));
+            var roleId = await _roleService.CreateAsync(model);
+            return Ok(new { id = roleId, message = "Role created successfully." });
         }
 
-
-
-        // PUT: api/role
+        [SwaggerOperation(Summary = "Cập nhật role")]
         [HttpPut]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Update Role")]
-        public async Task<IActionResult> Update([FromBody] PUTRoleModelViews rolemodel)
+        public async Task<IActionResult> Update([FromBody] PUTRoleModelViews model)
         {
-
-            await _roleService.UpdateAsync(rolemodel);
-            return Ok(new BaseResponseModel<string>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: "Update role successful"
-            ));
+            await _roleService.UpdateAsync(model);
+            return Ok(new { message = "Role updated successfully." });
         }
-        [HttpDelete]
-        [SwaggerOperation(Summary = "Delete Role")]
-        public async Task<IActionResult> Delete(Guid roleid)
+
+        [SwaggerOperation(Summary = "Xóa mềm role")]
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
-            await _roleService.DeleteAsync(roleid);
-            return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: "Delete Role successful"
-            ));
+            await _roleService.DeleteAsync(id);
+            return Ok(new { message = "Role deleted successfully." });
         }
     }
 }
