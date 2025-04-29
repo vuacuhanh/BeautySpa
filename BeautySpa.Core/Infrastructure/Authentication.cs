@@ -10,11 +10,13 @@ namespace BeautySpa.Core.Infrastructure
         public static string GetUserIdFromHttpContextAccessor(IHttpContextAccessor httpContextAccessor)
         {
             if (httpContextAccessor?.HttpContext == null)
-            {
-                throw new ArgumentNullException(nameof(httpContextAccessor), "HttpContextAccessor or HttpContext cannot be null");
-            }
+                throw new UnauthorizedException("HttpContext is null");
 
-            return ExtractClaimFromAuthorizationHeader(httpContextAccessor.HttpContext.Request.Headers["Authorization"].ToString(), "id");
+            var userId = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedException("User Id not found in the token.");
+
+            return userId;
         }
 
         public static string GetUserIdFromHttpContext(HttpContext httpContext)
