@@ -1,5 +1,6 @@
 ﻿// File: Controllers/AuthController.cs
 using BeautySpa.Contract.Services.Interface;
+using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.AuthModelViews;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +19,7 @@ namespace BeautySpa.Controllers
             _authService = authService;
         }
 
-        [SwaggerOperation(Summary = "Đăng ký tài khoản bằng email + mật khẩu + xác thực OTP")]
+        [SwaggerOperation(Summary = "Đăng ký tài khoản với OTP xác thực bắt buộc")]
         [HttpPost("sign-up")]
         public async Task<IActionResult> SignUp([FromBody] SignUpAuthModelView model)
         {
@@ -26,15 +27,7 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        [SwaggerOperation(Summary = "Đăng ký tài khoản với OTP xác minh")]
-        [HttpPost("sign-up-otp")]
-        public async Task<IActionResult> SignUpWithOtp([FromBody] SignUpAuthModelView model, [FromQuery] string otp)
-        {
-            var result = await _authService.SignUpWithOtpAsync(model, otp);
-            return Ok(result);
-        }
-
-        [SwaggerOperation(Summary = "Đăng nhập bằng email + mật khẩu")]
+        [SwaggerOperation(Summary = "Đăng nhập bằng email và mật khẩu")]
         [HttpPost("sign-in")]
         public async Task<IActionResult> SignIn([FromBody] SignInAuthModelView model)
         {
@@ -42,7 +35,7 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        [SwaggerOperation(Summary = "Đăng nhập bằng Google")] 
+        [SwaggerOperation(Summary = "Đăng nhập bằng Google")]
         [HttpPost("sign-in-google")]
         public async Task<IActionResult> SignInWithGoogle([FromBody] SignInWithGoogleModelView model)
         {
@@ -58,7 +51,7 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        [SwaggerOperation(Summary = "Yêu cầu gửi OTP về email")]
+        [SwaggerOperation(Summary = "Yêu cầu gửi OTP tới Email để xác thực hoặc đăng ký")]
         [HttpPost("request-otp")]
         public async Task<IActionResult> RequestOtp([FromBody] ResendOtpRequestModelView model)
         {
@@ -74,9 +67,7 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Xác thực email với token
-        /// </summary>
+        [SwaggerOperation(Summary = "Xác nhận email bằng token")]
         [HttpPost("confirm-email")]
         public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
         {
@@ -84,9 +75,7 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Quên mật khẩu - gửi OTP
-        /// </summary>
+        [SwaggerOperation(Summary = "Quên mật khẩu - gửi OTP reset")]
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordAuthModelView model)
         {
@@ -94,9 +83,7 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Đặt lại mật khẩu bằng OTP
-        /// </summary>
+        [SwaggerOperation(Summary = "Đặt lại mật khẩu bằng OTP")]
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordAuthModelView model)
         {
@@ -104,10 +91,8 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Đổi mật khẩu khi đã đăng nhập
-        /// </summary>
         [Authorize]
+        [SwaggerOperation(Summary = "Đổi mật khẩu sau khi đăng nhập")]
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordAuthModelView model)
         {
@@ -115,10 +100,8 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Làm mới AccessToken bằng RefreshToken
-        /// </summary>
         [Authorize]
+        [SwaggerOperation(Summary = "Làm mới AccessToken bằng RefreshToken")]
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestModelView model)
         {

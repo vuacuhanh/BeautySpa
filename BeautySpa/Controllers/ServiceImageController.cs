@@ -19,30 +19,16 @@ namespace BeautySpa.API.Controllers
         {
             _imageService = imageService;
         }
-
-        [HttpPost]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Create a new service image")]
-        public async Task<IActionResult> Create([FromBody] POSTServiceImageModelViews model)
-        {
-            var imageId = await _imageService.CreateAsync(model);
-            return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: "Service image created successfully."
-            ));
-        }
-
         [HttpGet]
         [SwaggerOperation(Summary = "Get a paginated list of service images")]
-        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
         {
-           var images = await _imageService.GetAllAsync(pageNumber, pageSize);
-           return Ok(new BaseResponseModel<BasePaginatedList<GETServiceImageModelViews>>(
-              statusCode: StatusCodes.Status200OK,
-              code: ResponseCodeConstants.SUCCESS,
-              data: images
-           ));
+            var images = await _imageService.GetAllAsync(pageNumber, pageSize);
+            return Ok(new BaseResponseModel<BasePaginatedList<GETServiceImageModelViews>>(
+               statusCode: StatusCodes.Status200OK,
+               code: ResponseCodeConstants.SUCCESS,
+               data: images
+            ));
         }
 
         [HttpGet("{id}")]
@@ -57,6 +43,20 @@ namespace BeautySpa.API.Controllers
             ));
         }
 
+        [HttpPost]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Create a new service image")]
+        public async Task<IActionResult> Create([FromBody] POSTServiceImageModelViews model)
+        {
+            var imageId = await _imageService.CreateAsync(model);
+            return Ok(new BaseResponseModel<string>(
+                statusCode: StatusCodes.Status200OK,
+                code: ResponseCodeConstants.SUCCESS,
+                data: "Service image created successfully."
+            ));
+        }
+
+     
         [HttpPut]
         //[Authorize(Roles = "Admin")]
         [SwaggerOperation(Summary = "Update an existing service image")]

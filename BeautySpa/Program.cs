@@ -127,6 +127,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+//Cấu hình của role seeder
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRoles>>();
+    await BeautySpa.Services.seeding.RoleSeeder.SeedRolesAsync(roleManager);
+}
+
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
