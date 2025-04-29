@@ -23,7 +23,7 @@ namespace BeautySpa.Services.Service
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IConnectionMultiplexer _redis;
         private readonly IEmailService _emailService;
-
+        private readonly IConfiguration _configuration;
         public AuthService(
             UserManager<ApplicationUsers> userManager,
             RoleManager<ApplicationRoles> roleManager,
@@ -32,7 +32,8 @@ namespace BeautySpa.Services.Service
             IMapper mapper,
             IHttpContextAccessor httpContextAccessor,
             IConnectionMultiplexer redis,
-            IEmailService emailService)
+            IEmailService emailService,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -42,6 +43,7 @@ namespace BeautySpa.Services.Service
             _httpContextAccessor = httpContextAccessor;
             _redis = redis;
             _emailService = emailService;
+            _configuration = configuration;
         }
 
         private string CurrentIp => _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "UnknownIP";
@@ -190,8 +192,28 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<string>> ResendConfirmEmailAsync(string email)
         {
-            // Optional implementation later
-            return BaseResponseModel<string>.Success("Confirmation email resent successfully.");
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+                throw new BadRequestException(ErrorCode.NotFound, "User not found.");
+
+            if (user.EmailConfirmed)
+                throw new BadRequestException(ErrorCode.BadRequest, "Email already confirmed.");
+
+            var otp = new Random().Next(100000, 999999).ToString();
+
+            var payload = new OtpVerifyModelView
+            {
+                OtpCode = otp,
+                IpAddress = CurrentIp,
+                DeviceInfo = CurrentDevice
+            };
+
+            var db = _redis.GetDatabase();
+            await db.StringSetAsync($"otp:confirm-email:{email}", JsonConvert.SerializeObject(payload), TimeSpan.FromMinutes(10));
+
+            await _emailService.SendEmailAsync(email, "Your Confirm Email OTP", $"Your email confirmation OTP is: <b>{otp}</b>");
+
+            return BaseResponseModel<string>.Success("Confirmation OTP sent successfully.");
         }
 
         public async Task<BaseResponseModel<string>> ConfirmEmailAsync(string userId, string token)
