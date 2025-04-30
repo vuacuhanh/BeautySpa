@@ -10,10 +10,11 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface IServiceImages
     {
-        Task<Guid> CreateAsync(POSTServiceImageModelViews model);
-        Task<BasePaginatedList<GETServiceImageModelViews>> GetAllAsync(int pageNumber, int pageSize);
-        Task<GETServiceImageModelViews> GetByIdAsync(Guid id);
-        Task UpdateAsync(PUTServiceImageModelViews model);
-        Task DeleteAsync(Guid id);
+        Task<BaseResponseModel<Guid>> CreateAsync(POSTServiceImageModelViews model);
+        Task<BaseResponseModel<BasePaginatedList<GETServiceImageModelViews>>> GetAllAsync(int pageNumber, int pageSize);
+        Task<BaseResponseModel<GETServiceImageModelViews>> GetByIdAsync(Guid id);
+        Task<BaseResponseModel<string>> UpdateAsync(PUTServiceImageModelViews model);
+        Task<BaseResponseModel<string>> DeleteAsync(Guid id);
+        Task<BaseResponseModel<string>> SetPrimaryImageAsync(Guid imageId);
     }
 }

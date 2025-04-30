@@ -19,6 +19,7 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
+
             CreateMap<PUTServiceImageModelViews, ServiceImage>()
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())

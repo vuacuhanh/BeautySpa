@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
+using BeautySpa.Services.Validations.ServiceImageValidator;
 
 namespace BeautySpa.Services.Service
 {
@@ -16,7 +17,7 @@ namespace BeautySpa.Services.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IHttpContextAccessor _contextAccessor;
-        private string currentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+        private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
         public ServiceImageSer(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
@@ -25,118 +26,125 @@ namespace BeautySpa.Services.Service
             _contextAccessor = contextAccessor;
         }
 
-        public async Task<Guid> CreateAsync(POSTServiceImageModelViews model)
+        public async Task<BaseResponseModel<Guid>> CreateAsync(POSTServiceImageModelViews model)
         {
-            // Kiểm tra ImageUrl có hợp lệ không
-            if (string.IsNullOrWhiteSpace(model.ImageUrl))
-            {
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Image URL cannot be empty.");
-            }
+            var validator = new POSTServiceImageModelViewsValidator();
+            var validationResult = await validator.ValidateAsync(model);
+            if (!validationResult.IsValid)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
 
-            // Kiểm tra ServiceId có tồn tại không
-            var serviceExists = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().Entities
-                .FirstOrDefaultAsync(s => s.Id == model.ServiceProviderId && !s.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service not found.");
+            var providerExists = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.AnyAsync(p => p.Id == model.ServiceProviderId && !p.DeletedTime.HasValue);
 
-            // Map từ model sang entity
-            var serviceImage = _mapper.Map<ServiceImage>(model);
-            serviceImage.Id = Guid.NewGuid();
-            serviceImage.CreatedBy = currentUserId;
-            serviceImage.CreatedTime = CoreHelper.SystemTimeNow;
-            serviceImage.LastUpdatedBy = currentUserId;
-            serviceImage.LastUpdatedTime = CoreHelper.SystemTimeNow;
+            if (!providerExists)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service provider not found.");
 
-            // Thêm vào DB
-            await _unitOfWork.GetRepository<ServiceImage>().InsertAsync(serviceImage);
+            var entity = _mapper.Map<ServiceImage>(model);
+            entity.Id = Guid.NewGuid();
+            entity.CreatedBy = CurrentUserId;
+            entity.CreatedTime = CoreHelper.SystemTimeNow;
+            entity.LastUpdatedBy = CurrentUserId;
+            entity.LastUpdatedTime = entity.CreatedTime;
+
+            await _unitOfWork.GetRepository<ServiceImage>().InsertAsync(entity);
             await _unitOfWork.SaveAsync();
 
-            return serviceImage.Id;
+            return BaseResponseModel<Guid>.Success(entity.Id);
         }
 
-        public async Task<BasePaginatedList<GETServiceImageModelViews>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<BaseResponseModel<BasePaginatedList<GETServiceImageModelViews>>> GetAllAsync(int pageNumber, int pageSize)
         {
             if (pageNumber <= 0 || pageSize <= 0)
-            {
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
-            }
 
-            IQueryable<ServiceImage> serviceImages = _unitOfWork.GetRepository<ServiceImage>()
-                .Entities.Where(img => !img.DeletedTime.HasValue)
-                .OrderByDescending(img => img.CreatedTime).AsQueryable();
+            IQueryable<ServiceImage> query = _unitOfWork.GetRepository<ServiceImage>()
+                .Entities.Where(img => img.DeletedTime == null)
+                .OrderByDescending(img => img.CreatedTime);
 
-            var paginatedServiceImages = await serviceImages
+            var pagedImages = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            return new BasePaginatedList<GETServiceImageModelViews>(_mapper.Map<List<GETServiceImageModelViews>>(paginatedServiceImages),
-                await serviceImages.CountAsync(), pageNumber, pageSize);
+            var result = new BasePaginatedList<GETServiceImageModelViews>(
+                _mapper.Map<List<GETServiceImageModelViews>>(pagedImages),
+                await query.CountAsync(),
+                pageNumber,
+                pageSize
+            );
+
+            return BaseResponseModel<BasePaginatedList<GETServiceImageModelViews>>.Success(result);
         }
 
-        public async Task<GETServiceImageModelViews> GetByIdAsync(Guid id)
+        public async Task<BaseResponseModel<GETServiceImageModelViews>> GetByIdAsync(Guid id)
         {
             if (id == Guid.Empty)
-            {
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid service image ID.");
-            }
 
-            var serviceImage = await _unitOfWork.GetRepository<ServiceImage>().Entities
-                .FirstOrDefaultAsync(img => img.Id == id && !img.DeletedTime.HasValue)
+            var entity = await _unitOfWork.GetRepository<ServiceImage>().Entities
+                .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service image not found.");
 
-            return _mapper.Map<GETServiceImageModelViews>(serviceImage);
+            return BaseResponseModel<GETServiceImageModelViews>.Success(_mapper.Map<GETServiceImageModelViews>(entity));
         }
 
-        public async Task UpdateAsync(PUTServiceImageModelViews model)
+        public async Task<BaseResponseModel<string>> UpdateAsync(PUTServiceImageModelViews model)
         {
-            if (model.Id == Guid.Empty)
-            {
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid service image ID.");
-            }
+            var validator = new PUTServiceImageModelViewsValidator();
+            var validationResult = await validator.ValidateAsync(model);
+            if (!validationResult.IsValid)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
 
-            if (string.IsNullOrWhiteSpace(model.ImageUrl))
-            {
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Image URL cannot be empty.");
-            }
+            var entity = await _unitOfWork.GetRepository<ServiceImage>()
+                .Entities.FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service image not found.");
 
-            // Kiểm tra ServiceId có tồn tại không
-            var serviceExists = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().Entities
-                .FirstOrDefaultAsync(s => s.Id == model.ServiceId && !s.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service not found.");
+            _mapper.Map(model, entity);
+            entity.LastUpdatedBy = CurrentUserId;
+            entity.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-            var genericRepository = _unitOfWork.GetRepository<ServiceImage>();
+            await _unitOfWork.GetRepository<ServiceImage>().UpdateAsync(entity);
+            await _unitOfWork.SaveAsync();
 
-            var serviceImage = await genericRepository.Entities
-                .FirstOrDefaultAsync(img => img.Id == model.Id && !img.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Service image with id = {model.Id} not found.");
-
-            // Map dữ liệu từ model sang entity
-            _mapper.Map(model, serviceImage);
-            serviceImage.LastUpdatedBy = currentUserId;
-            serviceImage.LastUpdatedTime = CoreHelper.SystemTimeNow;
-
-            await genericRepository.UpdateAsync(serviceImage);
-            await genericRepository.SaveAsync();
+            return BaseResponseModel<string>.Success("Service image updated successfully.");
         }
 
-        public async Task DeleteAsync(Guid id)
+        public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
             if (id == Guid.Empty)
-            {
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid service image ID.");
+
+            var entity = await _unitOfWork.GetRepository<ServiceImage>()
+                .Entities.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service image not found.");
+
+            entity.DeletedTime = CoreHelper.SystemTimeNow;
+            entity.DeletedBy = CurrentUserId;
+
+            await _unitOfWork.GetRepository<ServiceImage>().UpdateAsync(entity);
+            await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<string>.Success("Service image deleted successfully.");
+        }
+
+        public async Task<BaseResponseModel<string>> SetPrimaryImageAsync(Guid imageId)
+        {
+            var image = await _unitOfWork.GetRepository<ServiceImage>().Entities
+                .FirstOrDefaultAsync(x => x.Id == imageId && x.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Image not found.");
+
+            var allImages = _unitOfWork.GetRepository<ServiceImage>().Entities
+                .Where(x => x.ServiceProviderId == image.ServiceProviderId && x.DeletedTime == null);
+
+            foreach (var img in allImages)
+            {
+                img.IsPrimary = (img.Id == imageId);
+                img.LastUpdatedBy = CurrentUserId;
+                img.LastUpdatedTime = CoreHelper.SystemTimeNow;
             }
 
-            var genericRepository = _unitOfWork.GetRepository<ServiceImage>();
-
-            var serviceImage = await genericRepository.Entities
-                .FirstOrDefaultAsync(img => img.Id == id && !img.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Service image with id = {id} not found.");
-
-            serviceImage.DeletedTime = CoreHelper.SystemTimeNow;
-            serviceImage.DeletedBy = currentUserId;
-
-            await genericRepository.UpdateAsync(serviceImage);
-            await genericRepository.SaveAsync();
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("Primary image updated.");
         }
     }
 }
