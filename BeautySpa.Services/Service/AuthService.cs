@@ -71,41 +71,33 @@ namespace BeautySpa.Services.Service
             if (!result.Succeeded)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join("; ", result.Errors.Select(x => x.Description)));
 
-            try
+            var customerRole = _configuration["DefaultRoles:Customer"];
+            if (string.IsNullOrEmpty(customerRole))
             {
-                var customerRole = _configuration["DefaultRoles:Customer"];
-                if (string.IsNullOrEmpty(customerRole))
-                {
-                    await _userManager.DeleteAsync(user);
-                    throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Default Customer role is not configured.");
-                }
-
-                var addToRoleResult = await _userManager.AddToRoleAsync(user, customerRole);
-                if (!addToRoleResult.Succeeded)
-                {
-                    await _userManager.DeleteAsync(user);
-                    throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join("; ", addToRoleResult.Errors.Select(x => x.Description)));
-                }
-
-                var userInfor = new UserInfor
-                {
-                    UserId = user.Id,
-                    FullName = model.FullName
-                };
-                await _unitOfWork.GetRepository<UserInfor>().InsertAsync(userInfor);
-                await _unitOfWork.SaveAsync();
-
-                await db.KeyDeleteAsync($"otp:{model.Email}");
-
-                return BaseResponseModel<string>.Success("Sign up successfully.");
-            }
-            catch (Exception ex)
-            {
-                // Nếu lỗi bất kỳ khác sau CreateUser -> rollback User
                 await _userManager.DeleteAsync(user);
-                throw;
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Default Customer role is not configured.");
             }
+
+            var addToRoleResult = await _userManager.AddToRoleAsync(user, customerRole);
+            if (!addToRoleResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(user);
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join("; ", addToRoleResult.Errors.Select(x => x.Description)));
+            }
+
+            var userInfor = new UserInfor
+            {
+                UserId = user.Id,
+                FullName = model.FullName
+            };
+            await _unitOfWork.GetRepository<UserInfor>().InsertAsync(userInfor);
+            await _unitOfWork.SaveAsync();
+
+            await db.KeyDeleteAsync($"otp:{model.Email}");
+
+            return BaseResponseModel<string>.Success("Sign up successfully.");
         }
+
 
         //==============================================================================================================================
         public async Task<BaseResponseModel<TokenResponseModelView>> SignInAsync(SignInAuthModelView model)

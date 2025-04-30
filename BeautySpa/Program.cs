@@ -6,21 +6,20 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 using System.Text;
 using BeautySpa.API.Middleware;
-using StackExchange.Redis; 
+using BeautySpa.Services.seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddDbContext<DatabaseContext>(x =>
-    x.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
+// 1. Add services
+builder.Services.AddDbContext<DatabaseContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpadb")));
 
-// Thêm Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")));
 
-// Cấu hình Identity
 builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 {
     options.Password.RequireDigit = true;
@@ -33,10 +32,8 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 .AddEntityFrameworkStores<DatabaseContext>()
 .AddDefaultTokenProviders();
 
-// Đăng ký các dịch vụ tại DependencyInjection
 builder.Services.AddInfrastructure();
 
-// Kích hoạt Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -46,15 +43,9 @@ builder.Services.AddSession(options =>
     options.Cookie.Name = ".BeautySpa.Session";
 });
 
-// Cấu hình JWT
+// 2. Authentication - JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKey = jwtSettings.GetValue<string>("Secret");
-
-if (string.IsNullOrEmpty(secretKey))
-{
-    throw new InvalidOperationException("JWT Secret chưa được cấu hình.");
-}
-
+var secretKey = jwtSettings.GetValue<string>("Secret") ?? throw new InvalidOperationException("JWT Secret not configured.");
 var key = Encoding.ASCII.GetBytes(secretKey);
 
 builder.Services.AddAuthentication(options =>
@@ -79,7 +70,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Cấu hình CORS
+// 3. CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
@@ -92,13 +83,12 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 
-// Thêm Swagger
+// 4. Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "BeautySpa API", Version = "v1" });
     c.EnableAnnotations();
-
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
@@ -108,7 +98,6 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "bearer",
         BearerFormat = "JWT"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -127,19 +116,22 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-//Cấu hình của role seeder
+// 5. Seed Role
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRoles>>();
-    await BeautySpa.Services.seeding.RoleSeeder.SeedRolesAsync(roleManager);
+    await RoleSeeder.SeedRolesAsync(roleManager);
 }
 
-
-// Configure the HTTP request pipeline.
+// 6. Configure pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dispatch api v1");
+            c.RoutePrefix = string.Empty;
+    });
 }
 
 app.UseMiddleware<ExceptionMiddleware>();

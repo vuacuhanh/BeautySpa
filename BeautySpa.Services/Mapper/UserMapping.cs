@@ -8,43 +8,45 @@ namespace BeautySpa.Services.Mapper
     {
         public UserMapping()
         {
-            // ApplicationUsers => GETUserModelViews 
+            // ApplicationUsers => GETUserModelViews
             CreateMap<ApplicationUsers, GETUserModelViews>()
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.UserInfor != null ? src.UserInfor.FullName : string.Empty))
                 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.UserInfor != null ? src.UserInfor.Address : string.Empty))
                 .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.UserInfor != null ? src.UserInfor.DayofBirth : DateTime.MinValue))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.Status == "active"))
-                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null)); 
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
-            // UserInfor => GETUserInfoModelView 
+            // UserInfor => GETUserInfoModelView
             CreateMap<UserInfor, GETUserInfoModelView>()
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName))
                 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Address))
                 .ForMember(dest => dest.DayofBirth, opt => opt.MapFrom(src => src.DayofBirth))
                 .ForMember(dest => dest.AvatarUrl, opt => opt.MapFrom(src => src.AvatarUrl))
                 .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender))
-                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null)); 
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
             // PUTUserModelViews => UserInfor
             CreateMap<PUTUserModelViews, UserInfor>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore()) // Ignore Id tránh lỗi primary key
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName))
                 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Address))
                 .ForMember(dest => dest.DayofBirth, opt => opt.MapFrom(src => src.DateOfBirth))
-                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null)); 
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
-            // PUTuserforcustomer => UserInfor 
+            // PUTuserforcustomer => UserInfor
             CreateMap<PUTuserforcustomer, UserInfor>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore()) // Ignore Id tránh lỗi primary key
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.UserInfor.FullName))
                 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.UserInfor.Address))
                 .ForMember(dest => dest.DayofBirth, opt => opt.MapFrom(src => src.UserInfor.DateOfBirth))
                 .ForMember(dest => dest.AvatarUrl, opt => opt.MapFrom(src => src.UserInfor.AvatarUrl))
                 .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.UserInfor.Gender))
-                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null)); 
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
             // PUTuserforcustomer => ApplicationUsers
             CreateMap<PUTuserforcustomer, ApplicationUsers>()
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
-                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null)); 
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
         }
     }
 }
