@@ -24,5 +24,6 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public string PhoneNumber { get; set; } = string.Empty;
         public string? Email { get; set; }
         public Guid ProviderId { get; set; }
+        public string ImageUrl { get; set; } = string.Empty; 
     }
 }

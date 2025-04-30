@@ -170,10 +170,6 @@ namespace BeautySpa.Repositories.Context
                 .Property(si => si.ImageUrl)
                 .IsRequired()
                 .HasMaxLength(1000);
-
-            builder.Entity<ServiceImage>()
-                .Property(si => si.IsPrimary)
-                .HasDefaultValue(false);
         }
     }
 }

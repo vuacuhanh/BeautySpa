@@ -9,7 +9,6 @@ namespace BeautySpa.ModelViews.ServiceImageModelViews
     public class POSTServiceImageModelViews
     {
         public string ImageUrl { get; set; } = string.Empty;
-        public bool IsPrimary { get; set; } = false;
         public Guid ServiceProviderId { get; set; }
     }
 }

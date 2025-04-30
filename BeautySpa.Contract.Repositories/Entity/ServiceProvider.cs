@@ -5,6 +5,7 @@ public class ServiceProvider : BaseEntity
 {
     public string BusinessName { get; set; } = string.Empty;
     public string WebsiteOrSocialLink { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty; 
     public string BusinessType { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string ContactFullName { get; set; } = string.Empty;
@@ -17,8 +18,10 @@ public class ServiceProvider : BaseEntity
     public string PhoneNumber { get; set; } = string.Empty;
     public string? Email { get; set; }
 
-    public int MaxAppointmentsPerSlot { get; set; } = 5; 
+    public int MaxAppointmentsPerSlot { get; set; } = 5;
 
     public Guid ProviderId { get; set; }
     public virtual ApplicationUsers? Provider { get; set; }
+
+    public virtual ICollection<ServiceImage>? ServiceImages { get; set; } 
 }

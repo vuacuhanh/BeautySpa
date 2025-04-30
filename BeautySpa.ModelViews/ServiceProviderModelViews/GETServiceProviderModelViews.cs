@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BeautySpa.ModelViews.ServiceImageModelViews;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +13,7 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public string BusinessName { get; set; } = string.Empty;
         public string BusinessAddress { get; set; } = string.Empty;
         public string WebsiteOrSocialLink { get; set; } = string.Empty;
+        public string ImageUrl { get; set; } = string.Empty; 
         public string BusinessType { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string ContactFullName { get; set; } = string.Empty;
@@ -25,5 +27,6 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public DateTimeOffset CreatedTime { get; set; }
         public DateTimeOffset LastUpdatedTime { get; set; }
         public DateTimeOffset? DeletedTime { get; set; }
+        public List<GETServiceImageModelViews>? Images { get; set; } 
     }
 }

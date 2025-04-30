@@ -33,11 +33,8 @@ namespace BeautySpa.Services.Service
             if (!validationResult.IsValid)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
 
-            var providerExists = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.AnyAsync(p => p.Id == model.ServiceProviderId && !p.DeletedTime.HasValue);
-
-            if (!providerExists)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service provider not found.");
+            var provider = await _unitOfWork.GetRepository<ServiceProvider>().GetByIdAsync(model.ServiceProviderId)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service provider not found.");
 
             var entity = _mapper.Map<ServiceImage>(model);
             entity.Id = Guid.NewGuid();
@@ -61,10 +58,7 @@ namespace BeautySpa.Services.Service
                 .Entities.Where(img => img.DeletedTime == null)
                 .OrderByDescending(img => img.CreatedTime);
 
-            var pagedImages = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var pagedImages = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
 
             var result = new BasePaginatedList<GETServiceImageModelViews>(
                 _mapper.Map<List<GETServiceImageModelViews>>(pagedImages),
@@ -95,8 +89,8 @@ namespace BeautySpa.Services.Service
             if (!validationResult.IsValid)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
 
-            var entity = await _unitOfWork.GetRepository<ServiceImage>()
-                .Entities.FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null)
+            var entity = await _unitOfWork.GetRepository<ServiceImage>().Entities
+                .FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service image not found.");
 
             _mapper.Map(model, entity);
@@ -114,8 +108,8 @@ namespace BeautySpa.Services.Service
             if (id == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid service image ID.");
 
-            var entity = await _unitOfWork.GetRepository<ServiceImage>()
-                .Entities.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
+            var entity = await _unitOfWork.GetRepository<ServiceImage>().Entities
+                .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service image not found.");
 
             entity.DeletedTime = CoreHelper.SystemTimeNow;
@@ -129,22 +123,7 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<string>> SetPrimaryImageAsync(Guid imageId)
         {
-            var image = await _unitOfWork.GetRepository<ServiceImage>().Entities
-                .FirstOrDefaultAsync(x => x.Id == imageId && x.DeletedTime == null)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Image not found.");
-
-            var allImages = _unitOfWork.GetRepository<ServiceImage>().Entities
-                .Where(x => x.ServiceProviderId == image.ServiceProviderId && x.DeletedTime == null);
-
-            foreach (var img in allImages)
-            {
-                img.IsPrimary = (img.Id == imageId);
-                img.LastUpdatedBy = CurrentUserId;
-                img.LastUpdatedTime = CoreHelper.SystemTimeNow;
-            }
-
-            await _unitOfWork.SaveAsync();
-            return BaseResponseModel<string>.Success("Primary image updated.");
+            throw new NotImplementedException("Primary image is now handled by ImageUrl in ServiceProvider.");
         }
     }
 }

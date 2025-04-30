@@ -8,7 +8,9 @@ namespace BeautySpa.Services.Mapper
     {
         public ServiceProviderMapping()
         {
-            CreateMap<ServiceProvider, GETServiceProviderModelViews>();
+            CreateMap<ServiceProvider, GETServiceProviderModelViews>()
+                .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.ServiceImages));
+
             CreateMap<POSTServiceProviderModelViews, ServiceProvider>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
@@ -21,6 +23,7 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.PhoneNumber))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
                 .ForMember(dest => dest.ProviderId, opt => opt.MapFrom(src => src.UserId));
+
             CreateMap<PUTServiceProviderModelViews, ServiceProvider>()
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
