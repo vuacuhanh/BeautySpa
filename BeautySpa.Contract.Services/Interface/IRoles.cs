@@ -5,10 +5,10 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface IRoles
     {
-        Task<BasePaginatedList<GETRoleModelViews>> GetAllAsync(int pageNumber, int pageSize);
-        Task<GETRoleModelViews> GetByIdAsync(Guid roleid);
-        Task<Guid> CreateAsync(POSTRoleModelViews rolemodel);
-        Task UpdateAsync(PUTRoleModelViews rolemodel);
-        Task DeleteAsync(Guid roleid);
+        Task<BaseResponseModel<BasePaginatedList<GETRoleModelViews>>> GetAllAsync(int pageNumber, int pageSize);
+        Task<BaseResponseModel<GETRoleModelViews>> GetByIdAsync(Guid roleid);
+        Task<BaseResponseModel<Guid>> CreateAsync(POSTRoleModelViews rolemodel);
+        Task<BaseResponseModel<string>> UpdateAsync(PUTRoleModelViews rolemodel);
+        Task<BaseResponseModel<string>> DeleteAsync(Guid roleid);
     }
 }

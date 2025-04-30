@@ -1,5 +1,5 @@
-﻿using FluentValidation;
-using BeautySpa.ModelViews.RoleModelViews;
+﻿using BeautySpa.ModelViews.RoleModelViews;
+using FluentValidation;
 
 namespace BeautySpa.Services.Validations.RoleValidator
 {

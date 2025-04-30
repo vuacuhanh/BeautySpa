@@ -1,14 +1,12 @@
-﻿
-using BeautySpa.Core.Base;
+﻿using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.UserModelViews;
 
 public interface IUsers
 {
-    Task<GETUserInfoModelView> GetByIdAsync(Guid id);
-    Task<BasePaginatedList<GETUserModelViews>> GetAllAsync(int pageNumber, int pageSize);
-    Task<BasePaginatedList<GETUserModelViews>> GetCustomerAsync(int pageNumber, int pageSize); 
-    Task UpdateAsync(PUTUserModelViews model);
-    Task UpdateCustomerAsync(PUTuserforcustomer model);
-    Task DeleteAsync(Guid id);
-
+    Task<BaseResponseModel<GETUserInfoModelView>> GetByIdAsync(Guid id);
+    Task<BaseResponseModel<BasePaginatedList<GETUserModelViews>>> GetAllAsync(int pageNumber, int pageSize);
+    Task<BaseResponseModel<BasePaginatedList<GETUserModelViews>>> GetCustomerAsync(int pageNumber, int pageSize);
+    Task<BaseResponseModel<string>> UpdateAsync(PUTUserModelViews model);
+    Task<BaseResponseModel<string>> UpdateCustomerAsync(PUTuserforcustomer model);
+    Task<BaseResponseModel<string>> DeleteAsync(Guid id);
 }
