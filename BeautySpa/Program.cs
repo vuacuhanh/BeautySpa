@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 1. Add services
 builder.Services.AddDbContext<DatabaseContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpadb")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")));
@@ -127,11 +127,7 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dispatch api v1");
-            c.RoutePrefix = string.Empty;
-    });
+    app.UseSwaggerUI();
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
