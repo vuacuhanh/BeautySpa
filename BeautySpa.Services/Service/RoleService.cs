@@ -36,14 +36,19 @@ namespace BeautySpa.Services.Service
             if (pageNumber <= 0 || pageSize <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
 
-            var query = _unitOfWork.GetRepository<ApplicationRoles>()
-                .Entities.Where(r => !r.DeletedTime.HasValue)
-                .OrderByDescending(r => r.CreatedTime);
+            IQueryable<ApplicationRoles> query = _unitOfWork.GetRepository<ApplicationRoles>()
+            .Entities.Where(r => !r.DeletedTime.HasValue)
+            .OrderByDescending(r => r.CreatedTime);
 
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
             var totalCount = await query.CountAsync();
 
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
             var mapped = _mapper.Map<List<GETRoleModelViews>>(items);
+
             return new BasePaginatedList<GETRoleModelViews>(mapped, totalCount, pageNumber, pageSize);
         }
 
