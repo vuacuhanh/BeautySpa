@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
+using AutoMapper.QueryableExtensions;
 
 namespace BeautySpa.Services.Service
 {
@@ -52,22 +53,12 @@ namespace BeautySpa.Services.Service
             entity.LastUpdatedBy = CurrentUserId;
             entity.LastUpdatedTime = entity.CreatedTime;
 
-            entity.ServiceImages = model.Images.Select(img => new ServiceImage
-            {
-                Id = Guid.NewGuid(),
-                ImageUrl = img.ImageUrl,
-                IsPrimary = img.IsPrimary,
-                CreatedBy = CurrentUserId,
-                CreatedTime = CoreHelper.SystemTimeNow,
-                LastUpdatedBy = CurrentUserId,
-                LastUpdatedTime = CoreHelper.SystemTimeNow
-            }).ToList();
-
             await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().InsertAsync(entity);
             await _unitOfWork.SaveAsync();
 
             return BaseResponseModel<Guid>.Success(entity.Id);
         }
+
 
         public async Task<BaseResponseModel<BasePaginatedList<GETServiceModelViews>>> GetAllAsync(int pageNumber, int pageSize)
         {
@@ -77,17 +68,17 @@ namespace BeautySpa.Services.Service
             IQueryable<BeautySpa.Contract.Repositories.Entity.Service> query = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
                 .Entities
                 .Where(x => x.DeletedTime == null)
-                .Include(x => x.ServiceImages)
                 .OrderByDescending(x => x.CreatedTime);
 
-            var count = await query.CountAsync();
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-            var mapped = _mapper.Map<List<GETServiceModelViews>>(items);
+            var pagedQuery = query.Skip((pageNumber - 1) * pageSize).Take(pageSize);
 
-            var result = new BasePaginatedList<GETServiceModelViews>(mapped, count, pageNumber, pageSize);
+            var mappedItems = await pagedQuery.ProjectTo<GETServiceModelViews>(_mapper.ConfigurationProvider).ToListAsync();
+            var totalCount = await query.CountAsync();
+
+            var result = new BasePaginatedList<GETServiceModelViews>(mappedItems, totalCount, pageNumber, pageSize);
             return BaseResponseModel<BasePaginatedList<GETServiceModelViews>>.Success(result);
         }
-    
+
 
         public async Task<BaseResponseModel<GETServiceModelViews>> GetByIdAsync(Guid id)
         {
@@ -108,8 +99,7 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid input.");
 
             var repo = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>();
-            var entity = await repo.Entities.Include(x => x.ServiceImages)
-                .FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null)
+            var entity = await repo.Entities.FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service not found.");
 
             var nameExists = await repo.Entities.AnyAsync(x => x.ServiceName.ToLower() == model.ServiceName.ToLower() && x.Id != model.Id && x.DeletedTime == null);
@@ -119,18 +109,6 @@ namespace BeautySpa.Services.Service
             _mapper.Map(model, entity);
             entity.LastUpdatedBy = CurrentUserId;
             entity.LastUpdatedTime = CoreHelper.SystemTimeNow;
-
-            entity.ServiceImages.Clear();
-            entity.ServiceImages = model.Images.Select(img => new ServiceImage
-            {
-                Id = Guid.NewGuid(),
-                ImageUrl = img.ImageUrl,
-                IsPrimary = img.IsPrimary,
-                CreatedBy = CurrentUserId,
-                CreatedTime = CoreHelper.SystemTimeNow,
-                LastUpdatedBy = CurrentUserId,
-                LastUpdatedTime = CoreHelper.SystemTimeNow
-            }).ToList();
 
             await repo.UpdateAsync(entity);
             await _unitOfWork.SaveAsync();

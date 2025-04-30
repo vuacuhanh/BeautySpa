@@ -1241,11 +1241,6 @@ namespace BeautySpa.Repositories.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<bool>("IsPrimary")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.Property<string>("LastUpdatedBy")
                         .HasColumnType("nvarchar(max)");
 
@@ -1258,11 +1253,16 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<Guid>("ServiceProviderId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ServiceProviderId1")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ServiceId");
 
                     b.HasIndex("ServiceProviderId");
+
+                    b.HasIndex("ServiceProviderId1");
 
                     b.ToTable("ServiceImages");
                 });
@@ -1357,6 +1357,10 @@ namespace BeautySpa.Repositories.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsApproved")
@@ -1928,6 +1932,10 @@ namespace BeautySpa.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("ServiceProvider", null)
+                        .WithMany("ServiceImages")
+                        .HasForeignKey("ServiceProviderId1");
+
                     b.Navigation("ServiceProvider");
                 });
 
@@ -2064,6 +2072,11 @@ namespace BeautySpa.Repositories.Migrations
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceCategory", b =>
                 {
                     b.Navigation("Services");
+                });
+
+            modelBuilder.Entity("ServiceProvider", b =>
+                {
+                    b.Navigation("ServiceImages");
                 });
 #pragma warning restore 612, 618
         }

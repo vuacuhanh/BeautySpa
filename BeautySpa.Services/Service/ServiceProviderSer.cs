@@ -1,4 +1,8 @@
-﻿using AutoMapper;
+﻿// ============================
+// FULL UPDATED CLASS FOR ServiceProviderSer
+// ============================
+
+using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
@@ -31,19 +35,15 @@ namespace BeautySpa.Services.Service
             if (pageNumber <= 0 || pageSize <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
 
-           IQueryable<ServiceProvider> provider = _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.Where(r => !r.DeletedTime.HasValue)
-                .OrderByDescending(r => r.CreatedTime);
+            IQueryable<ServiceProvider> query = _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities
+                .Include(sp => sp.ServiceImages)
+                .Where(x => x.DeletedTime == null)
+                .OrderByDescending(x => x.CreatedTime);
 
-            var items = await provider
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var result = new BasePaginatedList<GETServiceProviderModelViews>(
-                _mapper.Map<List<GETServiceProviderModelViews>>(items),
-                await provider.CountAsync(),
-                pageNumber, pageSize);
+            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+            var mapped = _mapper.Map<List<GETServiceProviderModelViews>>(items);
+            var result = new BasePaginatedList<GETServiceProviderModelViews>(mapped, await query.CountAsync(), pageNumber, pageSize);
 
             return BaseResponseModel<BasePaginatedList<GETServiceProviderModelViews>>.Success(result);
         }
@@ -54,7 +54,8 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid ServiceProvider ID.");
 
             var entity = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
+                .Entities.Include(x => x.ServiceImages)
+                .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
 
             return BaseResponseModel<GETServiceProviderModelViews>.Success(_mapper.Map<GETServiceProviderModelViews>(entity));
@@ -84,6 +85,20 @@ namespace BeautySpa.Services.Service
             entity.ProviderId = model.UserId;
             entity.CreatedBy = CurrentUserId;
             entity.CreatedTime = CoreHelper.SystemTimeNow;
+
+            // ✅ Nếu chưa có avatar, chọn ảnh đầu tiên trong danh sách ServiceImages làm đại diện
+            if (string.IsNullOrWhiteSpace(entity.ImageUrl))
+            {
+                var firstImage = await _unitOfWork.GetRepository<ServiceImage>().Entities
+                    .Where(x => x.ServiceProviderId == entity.Id && x.DeletedTime == null)
+                    .OrderBy(x => x.CreatedTime)
+                    .FirstOrDefaultAsync();
+
+                if (firstImage != null)
+                {
+                    entity.ImageUrl = firstImage.ImageUrl;
+                }
+            }
 
             await _unitOfWork.GetRepository<ServiceProvider>().InsertAsync(entity);
             await _unitOfWork.SaveAsync();
