@@ -4,8 +4,8 @@ using BeautySpa.Core.Base;
 public class ServiceImage : BaseEntity
 {
     public string ImageUrl { get; set; } = string.Empty;
-    public bool IsPrimary { get; set; } = false; // ảnh chính hay phụ
+    public bool IsPrimary { get; set; } = false;
 
-    public Guid ServiceId { get; set; }
-    public virtual Service? Service { get; set; }
+    public Guid ServiceProviderId { get; set; }
+    public virtual ServiceProvider? ServiceProvider { get; set; }
 }

@@ -10,10 +10,10 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface IServiceCategory
     {
-        Task<Guid> CreateAsync(POSTServiceCategoryModelViews model);
-        Task<BasePaginatedList<GETServiceCategoryModelViews>> GetAllAsync(int pageNumber, int pageSize);
-        Task<GETServiceCategoryModelViews> GetByIdAsync(Guid id);
-        Task UpdateAsync(PUTServiceCategoryModelViews model);
-        Task DeleteAsync(Guid id);
+        Task<BaseResponseModel<Guid>> CreateAsync(POSTServiceCategoryModelViews model);
+        Task<BaseResponseModel<BasePaginatedList<GETServiceCategoryModelViews>>> GetAllAsync(int pageNumber, int pageSize);
+        Task<BaseResponseModel<GETServiceCategoryModelViews>> GetByIdAsync(Guid id);
+        Task<BaseResponseModel<string>> UpdateAsync(PUTServiceCategoryModelViews model);
+        Task<BaseResponseModel<string>> DeleteAsync(Guid id);
     }
 }

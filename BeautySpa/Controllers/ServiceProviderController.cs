@@ -1,16 +1,13 @@
 ﻿using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.ServiceProviderModelViews;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using System;
 
 namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Nhà cung cấp dịch vụ")]
+    [SwaggerTag("Quản lý nhà cung cấp dịch vụ")]
     public class ServiceProviderController : ControllerBase
     {
         private readonly IServiceProviders _providerService;
@@ -19,69 +16,40 @@ namespace BeautySpa.API.Controllers
         {
             _providerService = providerService;
         }
+
         [HttpGet]
-        [SwaggerOperation(Summary = "Get a paginated list of service providers")]
-        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
+        [SwaggerOperation(Summary = "Lấy danh sách nhà cung cấp (phân trang)")]
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
-            var providers = await _providerService.GetAllAsync(pageNumber, pageSize);
-            return Ok(new BaseResponseModel<BasePaginatedList<GETServiceProviderModelViews>>(
-                 statusCode: StatusCodes.Status200OK,
-                 code: ResponseCodeConstants.SUCCESS,
-                 data: providers
-             ));
+            return Ok(await _providerService.GetAllAsync(pageNumber, pageSize));
         }
 
-        [HttpGet("{id}")]
-        [SwaggerOperation(Summary = "Get a service provider by ID")]
-        public async Task<IActionResult> GetById(Guid id)
+        [HttpGet("{id:guid}")]
+        [SwaggerOperation(Summary = "Lấy thông tin nhà cung cấp theo ID")]
+        public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            var provider = await _providerService.GetByIdAsync(id);
-            return Ok(new BaseResponseModel<GETServiceProviderModelViews>(
-                 statusCode: StatusCodes.Status200OK,
-                 code: ResponseCodeConstants.SUCCESS,
-                 data: provider
-             ));
+            return Ok(await _providerService.GetByIdAsync(id));
         }
 
         [HttpPost]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Create a new service provider")]
+        [SwaggerOperation(Summary = "Tạo mới nhà cung cấp dịch vụ")]
         public async Task<IActionResult> Create([FromBody] POSTServiceProviderModelViews model)
         {
-            var providerId = await _providerService.CreateAsync(model);
-            return Ok(new BaseResponseModel<string>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: "Service provider created successfully."
-            ));
+            return Ok(await _providerService.CreateAsync(model));
         }
-
-        
 
         [HttpPut]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Update an existing service provider")]
+        [SwaggerOperation(Summary = "Cập nhật thông tin nhà cung cấp dịch vụ")]
         public async Task<IActionResult> Update([FromBody] PUTServiceProviderModelViews model)
         {
-            await _providerService.UpdateAsync(model);
-            return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: "Service provider updated successfully."
-            ));
+            return Ok(await _providerService.UpdateAsync(model));
         }
 
-        [HttpDelete("{id}")]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Delete a service provider (soft delete)")]
-        public async Task<IActionResult> Delete(Guid id)
+        [HttpDelete("{id:guid}")]
+        [SwaggerOperation(Summary = "Xóa mềm nhà cung cấp dịch vụ theo ID")]
+        public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
-            await _providerService.DeleteAsync(id);
-            return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: "Service provider deleted successfully."
-             ));
+            return Ok(await _providerService.DeleteAsync(id));
         }
     }
 }

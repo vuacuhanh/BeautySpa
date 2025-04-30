@@ -3,12 +3,15 @@ using BeautySpa.ModelViews.RoleModelViews;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
+using System;
+using System.Threading.Tasks;
 
 namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize(Roles = "Admin")] // Chỉ Admin mới quản lý role
+    [SwaggerTag("Quản lý vai trò người dùng")]
     public class RoleController : ControllerBase
     {
         private readonly IRoles _roleService;
@@ -18,44 +21,39 @@ namespace BeautySpa.API.Controllers
             _roleService = roleService;
         }
 
-        [SwaggerOperation(Summary = "Lấy danh sách role (phân trang)")]
+        [SwaggerOperation(Summary = "Lấy danh sách các role (phân trang)")]
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _roleService.GetAllAsync(pageNumber, pageSize);
-            return Ok(result);
+            return Ok(await _roleService.GetAllAsync(pageNumber, pageSize));
         }
 
-        [SwaggerOperation(Summary = "Lấy chi tiết role theo Id")]
+        [SwaggerOperation(Summary = "Lấy thông tin chi tiết role theo ID")]
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            var result = await _roleService.GetByIdAsync(id);
-            return Ok(result);
+            return Ok(await _roleService.GetByIdAsync(id));
         }
 
         [SwaggerOperation(Summary = "Tạo mới role")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] POSTRoleModelViews model)
         {
-            var roleId = await _roleService.CreateAsync(model);
-            return Ok(new { id = roleId, message = "Role created successfully." });
+            return Ok(await _roleService.CreateAsync(model));
         }
 
         [SwaggerOperation(Summary = "Cập nhật role")]
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] PUTRoleModelViews model)
         {
-            await _roleService.UpdateAsync(model);
-            return Ok(new { message = "Role updated successfully." });
+            return Ok(await _roleService.UpdateAsync(model));
         }
 
-        [SwaggerOperation(Summary = "Xóa mềm role")]
+        [SwaggerOperation(Summary = "Xóa mềm role theo ID")]
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
-            await _roleService.DeleteAsync(id);
-            return Ok(new { message = "Role deleted successfully." });
+            return Ok(await _roleService.DeleteAsync(id));
         }
     }
 }

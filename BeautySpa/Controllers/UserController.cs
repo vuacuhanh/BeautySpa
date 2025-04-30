@@ -1,7 +1,6 @@
-﻿/*using BeautySpa.ModelViews.UserModelViews;
-using BeautySpa.Services.Service;
+﻿using BeautySpa.ModelViews.UserModelViews;
+using BeautySpa.Contract.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System;
@@ -11,12 +10,11 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Người dùng")]
+    [SwaggerTag("Quản lý người dùng")]
     public class UserController : ControllerBase
     {
         private readonly IUsers _userService;
 
-        // Constructor để tiêm IUsers service
         public UserController(IUsers userService)
         {
             _userService = userService;
@@ -24,98 +22,56 @@ namespace BeautySpa.API.Controllers
 
         // GET: api/user/{id}
         [HttpGet("{id}")]
+        [SwaggerOperation(Summary = "Lấy thông tin chi tiết người dùng theo ID")]
         //[Authorize(Roles = "Admin, Customer")]
         public async Task<IActionResult> GetById(Guid id)
         {
-            try
-            {
-                var user = await _userService.GetByIdAsync(id);
-                return Ok(user);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return Ok(await _userService.GetByIdAsync(id));
         }
 
         // GET: api/user
         [HttpGet]
+        [SwaggerOperation(Summary = "Lấy danh sách tất cả người dùng (phân trang)")]
         //[Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            try
-            {
-                var users = await _userService.GetAllAsync(pageNumber, pageSize);
-                return Ok(users);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return Ok(await _userService.GetAllAsync(pageNumber, pageSize));
         }
 
-        // GET: api/user/customer/{id}
-        [HttpGet("customer/{id}")]
+        // GET: api/user/customer
+        [HttpGet("customer")]
+        [SwaggerOperation(Summary = "Lấy danh sách người dùng có vai trò Customer (phân trang)")]
         [Authorize(Roles = "Admin, Customer")]
-        public async Task<IActionResult> GetCustomerInfo(Guid id)
+        public async Task<IActionResult> GetCustomer([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            try
-            {
-                var customer = await _userService.GetCustomerInfoAsync(id);
-                return Ok(customer);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return Ok(await _userService.GetCustomerAsync(pageNumber, pageSize));
         }
 
         // PUT: api/user
         [HttpPut]
+        [SwaggerOperation(Summary = "Cập nhật thông tin người dùng")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update([FromBody] PUTUserModelViews model)
         {
-            try
-            {
-                await _userService.UpdateAsync(model);
-                return Ok("User updated successfully.");
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return Ok(await _userService.UpdateAsync(model));
         }
 
         // PUT: api/user/customer
         [HttpPut("customer")]
+        [SwaggerOperation(Summary = "Cập nhật thông tin khách hàng")]
         [Authorize(Roles = "Customer")]
         public async Task<IActionResult> UpdateCustomer([FromBody] PUTuserforcustomer model)
         {
-            try
-            {
-                await _userService.UpdateCustomerAsync(model);
-                return Ok("Customer updated successfully.");
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return Ok(await _userService.UpdateCustomerAsync(model));
         }
 
         // DELETE: api/user/{id}
         [HttpDelete("{id}")]
+        [SwaggerOperation(Summary = "Xóa mềm người dùng theo ID")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            try
-            {
-                await _userService.DeleteAsync(id);
-                return Ok("User deleted successfully.");
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return Ok(await _userService.DeleteAsync(id));
         }
     }
-}*/
+}

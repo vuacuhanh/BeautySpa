@@ -7,7 +7,6 @@ using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.RoleModelViews;
 using BeautySpa.Services.Validations.RoleValidator;
-using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -31,28 +30,31 @@ namespace BeautySpa.Services.Service
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
-        public async Task<BasePaginatedList<GETRoleModelViews>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<BaseResponseModel<BasePaginatedList<GETRoleModelViews>>> GetAllAsync(int pageNumber, int pageSize)
         {
             if (pageNumber <= 0 || pageSize <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
 
             IQueryable<ApplicationRoles> query = _unitOfWork.GetRepository<ApplicationRoles>()
-            .Entities.Where(r => !r.DeletedTime.HasValue)
-            .OrderByDescending(r => r.CreatedTime);
+                .Entities.Where(r => !r.DeletedTime.HasValue)
+                .OrderByDescending(r => r.CreatedTime);
 
-            var totalCount = await query.CountAsync();
-
-            var items = await query
+            var pagedRoles = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            var mapped = _mapper.Map<List<GETRoleModelViews>>(items);
+            var result = new BasePaginatedList<GETRoleModelViews>(
+                _mapper.Map<List<GETRoleModelViews>>(pagedRoles),
+                await query.CountAsync(),
+                pageNumber,
+                pageSize
+            );
 
-            return new BasePaginatedList<GETRoleModelViews>(mapped, totalCount, pageNumber, pageSize);
+            return BaseResponseModel<BasePaginatedList<GETRoleModelViews>>.Success(result);
         }
 
-        public async Task<GETRoleModelViews> GetByIdAsync(Guid id)
+        public async Task<BaseResponseModel<GETRoleModelViews>> GetByIdAsync(Guid id)
         {
             if (id == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid role ID.");
@@ -63,21 +65,20 @@ namespace BeautySpa.Services.Service
             if (role == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Role not found.");
 
-            return _mapper.Map<GETRoleModelViews>(role);
+            return BaseResponseModel<GETRoleModelViews>.Success(_mapper.Map<GETRoleModelViews>(role));
         }
 
-        public async Task<Guid> CreateAsync(POSTRoleModelViews model)
+        public async Task<BaseResponseModel<Guid>> CreateAsync(POSTRoleModelViews model)
         {
-            // Validate Model
             var validator = new POSTRoleModelViewsValidator();
-            var validateResult = await validator.ValidateAsync(model);
-            if (!validateResult.IsValid)
+            var validationResult = await validator.ValidateAsync(model);
+
+            if (!validationResult.IsValid)
             {
-                var errors = string.Join("; ", validateResult.Errors.Select(e => e.ErrorMessage));
+                var errors = string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage));
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, errors);
             }
 
-            // Kiểm tra role đã tồn tại chưa
             var exists = await _roleManager.RoleExistsAsync(model.RoleName);
             if (exists)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Role already exists.");
@@ -96,17 +97,16 @@ namespace BeautySpa.Services.Service
             if (!result.Succeeded)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join(", ", result.Errors.Select(x => x.Description)));
 
-            return role.Id;
+            return BaseResponseModel<Guid>.Success(role.Id);
         }
-
-        public async Task UpdateAsync(PUTRoleModelViews model)
+        public async Task<BaseResponseModel<string>> UpdateAsync(PUTRoleModelViews model)
         {
-            // Validate Model
             var validator = new PUTRoleModelViewsValidator();
-            var validateResult = await validator.ValidateAsync(model);
-            if (!validateResult.IsValid)
+            var validationResult = await validator.ValidateAsync(model);
+
+            if (!validationResult.IsValid)
             {
-                var errors = string.Join("; ", validateResult.Errors.Select(e => e.ErrorMessage));
+                var errors = string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage));
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, errors);
             }
 
@@ -123,9 +123,10 @@ namespace BeautySpa.Services.Service
 
             await repo.UpdateAsync(role);
             await _unitOfWork.SaveAsync();
-        }
 
-        public async Task DeleteAsync(Guid id)
+            return BaseResponseModel<string>.Success("Role updated successfully.");
+        }
+        public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
             if (id == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Role ID is invalid.");
@@ -141,6 +142,9 @@ namespace BeautySpa.Services.Service
 
             await repo.UpdateAsync(role);
             await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<string>.Success("Role deleted successfully.");
         }
+
     }
 }
