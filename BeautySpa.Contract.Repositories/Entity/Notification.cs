@@ -8,7 +8,7 @@ namespace BeautySpa.Contract.Repositories.Entity
     {
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
-        public string NotificationType { get; set; } = string.Empty;
+        public string NotificationType { get; set; } = string.Empty; // System, Booking, Chat, Reward, Alert
         public bool IsRead { get; set; } = false;
         public string UserType { get; set; } = string.Empty;
         // Khóa ngoại

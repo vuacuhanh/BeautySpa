@@ -8,18 +8,15 @@ namespace BeautySpa.Services.Mapper
     {
         public MessageMapping()
         {
-            CreateMap<Message, GETMessageModelViews>();
-
-            CreateMap<POSTMessageModelViews, Message>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.IsRead, opt => opt.MapFrom(_ => false))
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
-
-            CreateMap<PUTMessageModelViews, Message>()
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
+            CreateMap<Message, GETMessageModelViews>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.Content, opt => opt.MapFrom(src => src.Content))
+                .ForMember(dest => dest.IsRead, opt => opt.MapFrom(src => src.IsRead))
+                .ForMember(dest => dest.SenderType, opt => opt.MapFrom(src => src.SenderType))
+                .ForMember(dest => dest.ReceiverType, opt => opt.MapFrom(src => src.ReceiverType))
+                .ForMember(dest => dest.SenderId, opt => opt.MapFrom(src => src.SenderId))
+                .ForMember(dest => dest.ReceiverId, opt => opt.MapFrom(src => src.ReceiverId))
+                .ForMember(dest => dest.CreatedTime, opt => opt.MapFrom(src => src.CreatedTime));
         }
     }
 }
