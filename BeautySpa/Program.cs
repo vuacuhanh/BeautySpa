@@ -10,7 +10,7 @@ using StackExchange.Redis;
 using System.Text;
 using BeautySpa.API.Middleware;
 using BeautySpa.Services.seeding;
-using BeautySpa.Core.SignalR; // 👈 thêm để dùng MessageHub
+using BeautySpa.Core.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,7 +70,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    // ✅ Cho phép truyền access_token qua query (WebSocket)
+    //Cho phép truyền access_token qua query (WebSocket)
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -148,6 +148,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
 }
 
 app.UseMiddleware<ExceptionMiddleware>();

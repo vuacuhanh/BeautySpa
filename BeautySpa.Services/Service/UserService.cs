@@ -3,6 +3,7 @@ using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Core.Base;
 using BeautySpa.Core.Infrastructure;
+using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.UserModelViews;
 using BeautySpa.Services.Validations.UserValidator;
 using FluentValidation;
@@ -187,7 +188,7 @@ namespace BeautySpa.Services.Service
                 {
                     _mapper.Map(model.UserInfor, userInfor);
                     userInfor.LastUpdatedBy = CurrentUserId;
-                    userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
+                    userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
                     await userInforRepo.UpdateAsync(userInfor);
                 }

@@ -17,7 +17,7 @@ namespace BeautySpa.Repositories.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.0")
+                .HasAnnotation("ProductVersion", "8.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -167,7 +167,7 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTimeOffset>("CreatedTime")
+                    b.Property<DateTimeOffset?>("CreatedTime")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("DeletedBy")
@@ -179,7 +179,7 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<string>("LastUpdatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTimeOffset>("LastUpdatedTime")
+                    b.Property<DateTimeOffset?>("LastUpdatedTime")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("Name")
@@ -566,10 +566,6 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("UserType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
@@ -896,6 +892,94 @@ namespace BeautySpa.Repositories.Migrations
                     b.ToTable("ServiceCategories");
                 });
 
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceProvider", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("AverageRating")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BusinessName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BusinessType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContactFullName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContactPosition")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("DeletedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("LastUpdatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("MaxAppointmentsPerSlot")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ProviderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TotalReviews")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WebsiteOrSocialLink")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("YearsOfExperience")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderId")
+                        .IsUnique();
+
+                    b.ToTable("ServiceProviders");
+                });
+
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.UserInfor", b =>
                 {
                     b.Property<Guid>("Id")
@@ -981,7 +1065,7 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.ToTable("AspNetRoleClaims", (string)null);
 
-                    b.HasDiscriminator<string>("Discriminator").HasValue("IdentityRoleClaim<Guid>");
+                    b.HasDiscriminator().HasValue("IdentityRoleClaim<Guid>");
 
                     b.UseTphMappingStrategy();
                 });
@@ -1014,7 +1098,7 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.ToTable("AspNetUserClaims", (string)null);
 
-                    b.HasDiscriminator<string>("Discriminator").HasValue("IdentityUserClaim<Guid>");
+                    b.HasDiscriminator().HasValue("IdentityUserClaim<Guid>");
 
                     b.UseTphMappingStrategy();
                 });
@@ -1044,7 +1128,7 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.ToTable("AspNetUserLogins", (string)null);
 
-                    b.HasDiscriminator<string>("Discriminator").HasValue("IdentityUserLogin<Guid>");
+                    b.HasDiscriminator().HasValue("IdentityUserLogin<Guid>");
 
                     b.UseTphMappingStrategy();
                 });
@@ -1068,7 +1152,7 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.ToTable("AspNetUserRoles", (string)null);
 
-                    b.HasDiscriminator<string>("Discriminator").HasValue("IdentityUserRole<Guid>");
+                    b.HasDiscriminator().HasValue("IdentityUserRole<Guid>");
 
                     b.UseTphMappingStrategy();
                 });
@@ -1096,7 +1180,7 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.ToTable("AspNetUserTokens", (string)null);
 
-                    b.HasDiscriminator<string>("Discriminator").HasValue("IdentityUserToken<Guid>");
+                    b.HasDiscriminator().HasValue("IdentityUserToken<Guid>");
 
                     b.UseTphMappingStrategy();
                 });
@@ -1238,10 +1322,8 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.Property<string>("ImageUrl")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsPrimary")
-                        .HasColumnType("bit");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("LastUpdatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -1249,12 +1331,22 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<DateTimeOffset?>("LastUpdatedTime")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<Guid>("ServiceId")
+                    b.Property<Guid?>("ServiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ServiceProviderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ServiceProviderId1")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ServiceId");
+
+                    b.HasIndex("ServiceProviderId");
+
+                    b.HasIndex("ServiceProviderId1");
 
                     b.ToTable("ServiceImages");
                 });
@@ -1306,90 +1398,6 @@ namespace BeautySpa.Repositories.Migrations
                     b.HasIndex("ServiceId");
 
                     b.ToTable("ServicePromotions");
-                });
-
-            modelBuilder.Entity("ServiceProvider", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("AverageRating")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("BusinessName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("BusinessType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ContactFullName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ContactPosition")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset>("CreatedTime")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset?>("DeletedTime")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsApproved")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("LastUpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset?>("LastUpdatedTime")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<int>("MaxAppointmentsPerSlot")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TotalReviews")
-                        .HasColumnType("int");
-
-                    b.Property<string>("WebsiteOrSocialLink")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("YearsOfExperience")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderId")
-                        .IsUnique();
-
-                    b.ToTable("ServiceProviders");
                 });
 
             modelBuilder.Entity("Staff", b =>
@@ -1824,6 +1832,17 @@ namespace BeautySpa.Repositories.Migrations
                     b.Navigation("Provider");
                 });
 
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceProvider", b =>
+                {
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "Provider")
+                        .WithOne("ServiceProvider")
+                        .HasForeignKey("BeautySpa.Contract.Repositories.Entity.ServiceProvider", "ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.UserInfor", b =>
                 {
                     b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "User")
@@ -1910,13 +1929,21 @@ namespace BeautySpa.Repositories.Migrations
 
             modelBuilder.Entity("ServiceImage", b =>
                 {
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.Service", "Service")
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.Service", null)
                         .WithMany("ServiceImages")
-                        .HasForeignKey("ServiceId")
+                        .HasForeignKey("ServiceId");
+
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceProvider", "ServiceProvider")
+                        .WithMany()
+                        .HasForeignKey("ServiceProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Service");
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceProvider", null)
+                        .WithMany("ServiceImages")
+                        .HasForeignKey("ServiceProviderId1");
+
+                    b.Navigation("ServiceProvider");
                 });
 
             modelBuilder.Entity("ServicePromotion", b =>
@@ -1932,17 +1959,6 @@ namespace BeautySpa.Repositories.Migrations
                         .IsRequired();
 
                     b.Navigation("Service");
-                });
-
-            modelBuilder.Entity("ServiceProvider", b =>
-                {
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "Provider")
-                        .WithOne("ServiceProvider")
-                        .HasForeignKey("ServiceProvider", "ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("Staff", b =>
@@ -2052,6 +2068,11 @@ namespace BeautySpa.Repositories.Migrations
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceCategory", b =>
                 {
                     b.Navigation("Services");
+                });
+
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceProvider", b =>
+                {
+                    b.Navigation("ServiceImages");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,5 +1,4 @@
 ﻿using BeautySpa.Contract.Repositories.Entity;
-using BeautySpa.Core.Base;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -159,6 +158,17 @@ namespace BeautySpa.Repositories.Context
             builder.Entity<Rank>()
                 .Property(r => r.DiscountPercent)
                 .HasPrecision(5, 2);
+
+            builder.Entity<ServiceImage>()
+            .HasOne(si => si.ServiceProvider)
+            .WithMany()
+            .HasForeignKey(si => si.ServiceProviderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ServiceImage>()
+                .Property(si => si.ImageUrl)
+                .IsRequired()
+                .HasMaxLength(1000);
         }
     }
 }

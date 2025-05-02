@@ -1,16 +1,17 @@
-﻿using BeautySpa.Contract.Repositories.Entity;
+﻿// ========================
+// 6. CONTROLLER (ServiceImageController.cs)
+// ========================
 using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.ServiceImageModelViews;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using System;
 
 namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [SwaggerTag("Quản lý hình ảnh cơ sở nhà cung cấp")]
     public class ServiceImageController : ControllerBase
     {
         private readonly IServiceImages _imageService;
@@ -19,69 +20,47 @@ namespace BeautySpa.API.Controllers
         {
             _imageService = imageService;
         }
+
         [HttpGet]
-        [SwaggerOperation(Summary = "Get a paginated list of service images")]
-        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
+        [SwaggerOperation(Summary = "Lấy danh sách ảnh nhà cung cấp (phân trang)")]
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
-            var images = await _imageService.GetAllAsync(pageNumber, pageSize);
-            return Ok(new BaseResponseModel<BasePaginatedList<GETServiceImageModelViews>>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: images
-            ));
+            return Ok(await _imageService.GetAllAsync(pageNumber, pageSize));
         }
 
-        [HttpGet("{id}")]
-        [SwaggerOperation(Summary = "Get a service image by ID")]
-        public async Task<IActionResult> GetById(Guid id)
+        [HttpGet("{id:guid}")]
+        [SwaggerOperation(Summary = "Lấy ảnh nhà cung cấp theo ID")]
+        public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            var image = await _imageService.GetByIdAsync(id);
-            return Ok(new BaseResponseModel<GETServiceImageModelViews>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: image
-            ));
+            return Ok(await _imageService.GetByIdAsync(id));
         }
 
         [HttpPost]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Create a new service image")]
+        [SwaggerOperation(Summary = "Tạo mới ảnh cho nhà cung cấp")]
         public async Task<IActionResult> Create([FromBody] POSTServiceImageModelViews model)
         {
-            var imageId = await _imageService.CreateAsync(model);
-            return Ok(new BaseResponseModel<string>(
-                statusCode: StatusCodes.Status200OK,
-                code: ResponseCodeConstants.SUCCESS,
-                data: "Service image created successfully."
-            ));
+            return Ok(await _imageService.CreateAsync(model));
         }
 
-     
         [HttpPut]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Update an existing service image")]
+        [SwaggerOperation(Summary = "Cập nhật ảnh nhà cung cấp")]
         public async Task<IActionResult> Update([FromBody] PUTServiceImageModelViews model)
         {
-            await _imageService.UpdateAsync(model);
-            return Ok(new BaseResponseModel<string>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: "Service image updated successfully."
-            ));
-
+            return Ok(await _imageService.UpdateAsync(model));
         }
 
-        [HttpDelete("{id}")]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Delete a service image (soft delete)")]
-        public async Task<IActionResult> Delete(Guid id)
+        [HttpDelete("{id:guid}")]
+        [SwaggerOperation(Summary = "Xóa mềm ảnh nhà cung cấp")]
+        public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
-            await _imageService.DeleteAsync(id);
-            return Ok(new BaseResponseModel<string>(
-               statusCode: StatusCodes.Status200OK,
-               code: ResponseCodeConstants.SUCCESS,
-               data: "Service image deleted successfully."
-             ));
+            return Ok(await _imageService.DeleteAsync(id));
+        }
+
+        [HttpPut("set-primary/{imageId:guid}")]
+        [SwaggerOperation(Summary = "Chọn ảnh làm ảnh chính cho nhà cung cấp")]
+        public async Task<IActionResult> SetPrimaryImage([FromRoute] Guid imageId)
+        {
+            return Ok(await _imageService.SetPrimaryImageAsync(imageId));
         }
     }
 }

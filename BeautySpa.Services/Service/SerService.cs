@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
+using AutoMapper.QueryableExtensions;
 
 namespace BeautySpa.Services.Service
 {
@@ -16,7 +17,7 @@ namespace BeautySpa.Services.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IHttpContextAccessor _contextAccessor;
-        private string currentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+        private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
         public SerService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
@@ -25,174 +26,112 @@ namespace BeautySpa.Services.Service
             _contextAccessor = contextAccessor;
         }
 
-        public async Task<Guid> CreateAsync(POSTServiceModelViews model)
+        public async Task<BaseResponseModel<Guid>> CreateAsync(POSTServiceModelViews model)
         {
             if (string.IsNullOrWhiteSpace(model.ServiceName))
-            {
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name cannot be empty.");
-            }
 
             var providerExists = await _unitOfWork.GetRepository<ApplicationUsers>().Entities
-                .FirstOrDefaultAsync(p => p.Id == model.ProviderId && !p.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Provider not found.");
+                .AnyAsync(p => p.Id == model.ProviderId && !p.DeletedTime.HasValue);
+            if (!providerExists)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Provider not found.");
 
             var categoryExists = await _unitOfWork.GetRepository<ServiceCategory>().Entities
-                .FirstOrDefaultAsync(c => c.Id == model.CategoryId && !c.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service category not found.");
+                .AnyAsync(c => c.Id == model.CategoryId && !c.DeletedTime.HasValue);
+            if (!categoryExists)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service category not found.");
 
-            var serviceExists = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
-                .Entities.FirstOrDefaultAsync(s => s.ServiceName.ToLower() == model.ServiceName.ToLower() && !s.DeletedTime.HasValue);
-
-            if (serviceExists != null)
-            {
+            var nameExists = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().Entities
+                .AnyAsync(s => s.ServiceName.ToLower() == model.ServiceName.ToLower() && !s.DeletedTime.HasValue);
+            if (nameExists)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name already exists.");
-            }
 
-            var servicePromotion = _mapper.Map<BeautySpa.Contract.Repositories.Entity.Service>(model);
-            servicePromotion.Id = Guid.NewGuid();
-            servicePromotion.CreatedBy = currentUserId;
-            servicePromotion.CreatedTime = CoreHelper.SystemTimeNow;
-            servicePromotion.LastUpdatedBy = currentUserId;
-            servicePromotion.LastUpdatedTime = CoreHelper.SystemTimeNow;
+            var entity = _mapper.Map<BeautySpa.Contract.Repositories.Entity.Service>(model);
+            entity.Id = Guid.NewGuid();
+            entity.CreatedBy = CurrentUserId;
+            entity.CreatedTime = CoreHelper.SystemTimeNow;
+            entity.LastUpdatedBy = CurrentUserId;
+            entity.LastUpdatedTime = entity.CreatedTime;
 
-            // Xử lý ServiceImages
-            servicePromotion.ServiceImages = new List<ServiceImage>();
-            foreach (var image in model.Images)
-            {
-                var serviceImage = new ServiceImage
-                {
-                    Id = Guid.NewGuid(),
-                    ImageUrl = image.ImageUrl,
-                    IsPrimary = image.IsPrimary,
-
-                    //ServiceProviderId = servicePromotion.ProviderId, 
-                    CreatedBy = currentUserId,
-                    CreatedTime = CoreHelper.SystemTimeNow,
-                    LastUpdatedBy = currentUserId,
-                    LastUpdatedTime = CoreHelper.SystemTimeNow
-                };
-                servicePromotion.ServiceImages.Add(serviceImage);
-            }
-
-            await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().InsertAsync(servicePromotion);
+            await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().InsertAsync(entity);
             await _unitOfWork.SaveAsync();
-            return servicePromotion.Id;
+
+            return BaseResponseModel<Guid>.Success(entity.Id);
         }
 
-        public async Task<BasePaginatedList<GETServiceModelViews>> GetAllAsync(int pageNumber, int pageSize)
+
+        public async Task<BaseResponseModel<BasePaginatedList<GETServiceModelViews>>> GetAllAsync(int pageNumber, int pageSize)
         {
             if (pageNumber <= 0 || pageSize <= 0)
-            {
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
-            }
 
-            IQueryable<BeautySpa.Contract.Repositories.Entity.Service> services = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
-                .Entities.Where(s => !s.DeletedTime.HasValue)
-                .Include(s => s.ServiceImages)
-                .OrderByDescending(s => s.CreatedTime).AsQueryable();
+            IQueryable<BeautySpa.Contract.Repositories.Entity.Service> query = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
+                .Entities
+                .Where(x => x.DeletedTime == null)
+                .OrderByDescending(x => x.CreatedTime);
 
-            var paginatedServices = await services
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var pagedQuery = query.Skip((pageNumber - 1) * pageSize).Take(pageSize);
 
-            return new BasePaginatedList<GETServiceModelViews>(_mapper.Map<List<GETServiceModelViews>>(paginatedServices),
-                await services.CountAsync(), pageNumber, pageSize);
+            var mappedItems = await pagedQuery.ProjectTo<GETServiceModelViews>(_mapper.ConfigurationProvider).ToListAsync();
+            var totalCount = await query.CountAsync();
+
+            var result = new BasePaginatedList<GETServiceModelViews>(mappedItems, totalCount, pageNumber, pageSize);
+            return BaseResponseModel<BasePaginatedList<GETServiceModelViews>>.Success(result);
         }
 
-        public async Task<GETServiceModelViews> GetByIdAsync(Guid id)
+
+        public async Task<BaseResponseModel<GETServiceModelViews>> GetByIdAsync(Guid id)
         {
             if (id == Guid.Empty)
-            {
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid service ID.");
-            }
 
-            var service = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().Entities
-                .Include(s => s.ServiceImages)
-                .FirstOrDefaultAsync(s => s.Id == id && !s.DeletedTime.HasValue)
+            var entity = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().Entities
+                .Include(x => x.ServiceImages)
+                .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service not found.");
 
-            return _mapper.Map<GETServiceModelViews>(service);
+            return BaseResponseModel<GETServiceModelViews>.Success(_mapper.Map<GETServiceModelViews>(entity));
         }
 
-        public async Task UpdateAsync(PUTServiceModelViews model)
+        public async Task<BaseResponseModel<string>> UpdateAsync(PUTServiceModelViews model)
         {
-            if (model.Id == Guid.Empty)
-            {
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid service ID.");
-            }
+            if (model.Id == Guid.Empty || string.IsNullOrWhiteSpace(model.ServiceName))
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid input.");
 
-            if (string.IsNullOrWhiteSpace(model.ServiceName))
-            {
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name cannot be empty.");
-            }
+            var repo = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>();
+            var entity = await repo.Entities.FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service not found.");
 
-            var providerExists = await _unitOfWork.GetRepository<ApplicationUsers>().Entities
-                .FirstOrDefaultAsync(p => p.Id == model.ProviderId && !p.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Provider not found.");
-
-            var categoryExists = await _unitOfWork.GetRepository<ServiceCategory>()
-                .Entities.FirstOrDefaultAsync(c => c.Id == model.CategoryId && !c.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service category not found.");
-
-            var genericRepository = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>();
-            var servicePromotion = await genericRepository.Entities
-                .Include(s => s.ServiceImages)
-                .FirstOrDefaultAsync(s => s.Id == model.Id && !s.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Service with id = {model.Id} not found.");
-
-            var serviceNameExists = await genericRepository.Entities
-                .FirstOrDefaultAsync(s => s.ServiceName.ToLower() == model.ServiceName.ToLower() && s.Id != model.Id && !s.DeletedTime.HasValue);
-
-            if (serviceNameExists != null)
-            {
+            var nameExists = await repo.Entities.AnyAsync(x => x.ServiceName.ToLower() == model.ServiceName.ToLower() && x.Id != model.Id && x.DeletedTime == null);
+            if (nameExists)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name already exists.");
-            }
 
-            _mapper.Map(model, servicePromotion);
-            servicePromotion.LastUpdatedBy = currentUserId;
-            servicePromotion.LastUpdatedTime = CoreHelper.SystemTimeNow;
+            _mapper.Map(model, entity);
+            entity.LastUpdatedBy = CurrentUserId;
+            entity.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-            // Xử lý ServiceImages
-            servicePromotion.ServiceImages.Clear();
-            foreach (var image in model.Images)
-            {
-                var serviceImage = new ServiceImage
-                {
-                    Id = Guid.NewGuid(),
-                    ImageUrl = image.ImageUrl,
-                    IsPrimary = image.IsPrimary,
-                    //ServiceProviderId = servicePromotion.ProviderId,
-                    CreatedBy = currentUserId,
-                    CreatedTime = CoreHelper.SystemTimeNow,
-                    LastUpdatedBy = currentUserId,
-                    LastUpdatedTime = CoreHelper.SystemTimeNow
-                };
-                servicePromotion.ServiceImages.Add(serviceImage);
-            }
+            await repo.UpdateAsync(entity);
+            await _unitOfWork.SaveAsync();
 
-            await genericRepository.UpdateAsync(servicePromotion);
-            await genericRepository.SaveAsync();
+            return BaseResponseModel<string>.Success("Service updated successfully.");
         }
 
-        public async Task DeleteAsync(Guid id)
+        public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
             if (id == Guid.Empty)
-            {
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid service ID.");
-            }
 
-            var genericRepository = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>();
+            var repo = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>();
+            var entity = await repo.Entities.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service not found.");
 
-            var service = await genericRepository.Entities
-                .FirstOrDefaultAsync(s => s.Id == id && !s.DeletedTime.HasValue)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Service with id = {id} not found.");
+            entity.DeletedTime = CoreHelper.SystemTimeNow;
+            entity.DeletedBy = CurrentUserId;
 
-            service.DeletedTime = CoreHelper.SystemTimeNow;
-            service.DeletedBy = currentUserId;
+            await repo.UpdateAsync(entity);
+            await _unitOfWork.SaveAsync();
 
-            await genericRepository.UpdateAsync(service);
-            await genericRepository.SaveAsync();
+            return BaseResponseModel<string>.Success("Service deleted successfully.");
         }
     }
 }

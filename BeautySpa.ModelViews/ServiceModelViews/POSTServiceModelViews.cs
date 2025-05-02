@@ -17,6 +17,5 @@ namespace BeautySpa.ModelViews.ServiceModelViews
         public bool IsAvailable { get; set; } = true;
         public Guid ProviderId { get; set; }
         public Guid CategoryId { get; set; }
-        public List<POSTServiceImageModelViews> Images { get; set; } = new List<POSTServiceImageModelViews>();
     }
 }

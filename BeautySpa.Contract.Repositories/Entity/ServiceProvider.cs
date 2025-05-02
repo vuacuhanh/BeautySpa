@@ -6,6 +6,7 @@ namespace BeautySpa.Contract.Repositories.Entity
     {
         public string BusinessName { get; set; } = string.Empty;
         public string WebsiteOrSocialLink { get; set; } = string.Empty;
+        public string ImageUrl { get; set; } = string.Empty;
         public string BusinessType { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string ContactFullName { get; set; } = string.Empty;
@@ -22,5 +23,7 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         public Guid ProviderId { get; set; }
         public virtual ApplicationUsers? Provider { get; set; }
+
+        public virtual ICollection<ServiceImage>? ServiceImages { get; set; }
     }
 }
