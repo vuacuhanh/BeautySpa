@@ -60,5 +60,6 @@ packages/
 Thumbs.db
 
 
-appsettings.json
-Migrations
+**/appsettings.json
+**/Migrations
+**/appsettings.Development.json

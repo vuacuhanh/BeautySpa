@@ -1,112 +1,97 @@
 ﻿using AutoMapper;
-using BeautySpa.Core.Base;
-using BeautySpa.ModelViews.FavoriteModelViews;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Repositories.Context;
+using BeautySpa.Core.Base;
+using BeautySpa.Core.Infrastructure;
+using BeautySpa.Core.Utils;
+using BeautySpa.ModelViews.FavoriteModelViews;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeautySpa.Services.Service
 {
     public class FavoriteService : IFavoriteService
     {
-        private readonly DatabaseContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _contextAccessor;
 
-        public FavoriteService(DatabaseContext context, IMapper mapper)
+        public FavoriteService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _contextAccessor = contextAccessor;
         }
 
-        public async Task<BasePaginatedList<GETFavoriteModelViews>> GetAllAsync(int pageNumber, int pageSize)
-        {
-            if (pageNumber < 1 || pageSize < 1)
-                throw new ArgumentException("Page number and page size must be greater than 0.");
+        private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
-            var query = _context.Favorites
-                .AsNoTracking()
-                .Where(f => f.DeletedTime == null)
+        public async Task<BaseResponseModel<string>> LikeOrUnlikeAsync(Guid customerId, Guid providerId)
+        {
+            IQueryable<Favorite> query = _unitOfWork.GetRepository<Favorite>().Entities
+                .IgnoreQueryFilters()
+                .Where(f => f.CustomerId == customerId && f.ProviderId == providerId);
+
+            Favorite? existing = await query.FirstOrDefaultAsync();
+
+            if (existing == null)
+            {
+                var favorite = new Favorite
+                {
+                    Id = Guid.NewGuid(),
+                    CustomerId = customerId,
+                    ProviderId = providerId,
+                    CreatedTime = CoreHelper.SystemTimeNow,
+                    CreatedBy = CurrentUserId
+                };
+
+                await _unitOfWork.GetRepository<Favorite>().InsertAsync(favorite);
+                await _unitOfWork.SaveAsync();
+
+                return BaseResponseModel<string>.Success("Like Success");
+            }
+
+            if (existing.DeletedTime == null)
+            {
+                existing.DeletedTime = CoreHelper.SystemTimeNow;
+                existing.DeletedBy = CurrentUserId;
+
+                await _unitOfWork.GetRepository<Favorite>().UpdateAsync(existing);
+                await _unitOfWork.SaveAsync();
+
+                return BaseResponseModel<string>.Success("Unlike Success");
+            }
+
+            existing.DeletedTime = null;
+            existing.DeletedBy = null;
+            existing.LastUpdatedTime = CoreHelper.SystemTimeNow;
+            existing.LastUpdatedBy = CurrentUserId;
+
+            await _unitOfWork.GetRepository<Favorite>().UpdateAsync(existing);
+            await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<string>.Success("Relike Success");
+        }
+
+        public async Task<BaseResponseModel<bool>> IsFavoriteAsync(Guid customerId, Guid providerId)
+        {
+            IQueryable<Favorite> query = _unitOfWork.GetRepository<Favorite>().Entities
+                .Where(f => f.CustomerId == customerId && f.ProviderId == providerId && f.DeletedTime == null);
+
+            bool exists = await query.AnyAsync();
+            return BaseResponseModel<bool>.Success(exists);
+        }
+
+        public async Task<BaseResponseModel<List<GETFavoriteModelViews>>> GetFavoritesByProviderAsync(Guid providerId)
+        {
+            IQueryable<Favorite> query = _unitOfWork.GetRepository<Favorite>().Entities
+                .Where(f => f.ProviderId == providerId && f.DeletedTime == null)
                 .OrderByDescending(f => f.CreatedTime);
 
-            var totalCount = await query.CountAsync();
-            var items = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            List<Favorite> list = await query.ToListAsync();
+            var result = _mapper.Map<List<GETFavoriteModelViews>>(list);
 
-            var mappedItems = _mapper.Map<IReadOnlyCollection<GETFavoriteModelViews>>(items);
-            return new BasePaginatedList<GETFavoriteModelViews>(mappedItems, totalCount, pageNumber, pageSize);
-        }
-
-        public async Task<GETFavoriteModelViews> GetByIdAsync(Guid id)
-        {
-            var favorite = await _context.Favorites
-                .AsNoTracking()
-                .FirstOrDefaultAsync(f => f.Id == id && f.DeletedTime == null);
-
-            if (favorite == null)
-                throw new Exception("Favorite not found.");
-
-            return _mapper.Map<GETFavoriteModelViews>(favorite);
-        }
-
-        public async Task<Guid> CreateAsync(POSTFavoriteModelViews model)
-        {
-            if (model.CustomerId == Guid.Empty || model.ProviderId == Guid.Empty)
-                throw new ArgumentException("CustomerId and ProviderId are required.");
-
-            var exists = await _context.Favorites.AnyAsync(f =>
-                f.CustomerId == model.CustomerId &&
-                f.ProviderId == model.ProviderId &&
-                f.DeletedTime == null);
-
-            if (exists)
-                throw new Exception("Favorite already exists.");
-
-            var favorite = _mapper.Map<Favorite>(model);
-            favorite.Id = Guid.NewGuid();
-            favorite.CreatedTime = DateTimeOffset.UtcNow;
-
-            // Tránh lỗi navigation nếu AutoMapper chưa ignore
-            favorite.Customer = null;
-            favorite.Provider = null;
-
-            _context.Favorites.Add(favorite);
-            await _context.SaveChangesAsync();
-
-            return favorite.Id;
-        }
-
-        public async Task UpdateAsync(PUTFavoriteModelViews model)
-        {
-            var favorite = await _context.Favorites.FirstOrDefaultAsync(f => f.Id == model.Id && f.DeletedTime == null);
-            if (favorite == null)
-                throw new Exception("Favorite not found.");
-
-            // Không cho update navigation trực tiếp
-            _mapper.Map(model, favorite);
-            favorite.LastUpdatedTime = DateTimeOffset.UtcNow;
-            favorite.Customer = null;
-            favorite.Provider = null;
-
-            _context.Favorites.Update(favorite);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteAsync(Guid id)
-        {
-            var favorite = await _context.Favorites.FirstOrDefaultAsync(f => f.Id == id && f.DeletedTime == null);
-            if (favorite == null)
-                throw new Exception("Favorite not found.");
-
-            favorite.DeletedTime = DateTimeOffset.UtcNow;
-
-            _context.Favorites.Update(favorite);
-            await _context.SaveChangesAsync();
+            return BaseResponseModel<List<GETFavoriteModelViews>>.Success(result);
         }
     }
 }

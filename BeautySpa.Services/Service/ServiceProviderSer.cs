@@ -1,8 +1,4 @@
-﻿// ============================
-// FULL UPDATED CLASS FOR ServiceProviderSer
-// ============================
-
-using AutoMapper;
+﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;

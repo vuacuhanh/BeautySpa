@@ -8,24 +8,11 @@ namespace BeautySpa.Services.Mapper
     {
         public FavoriteMapping()
         {
-            // Entity -> GET View
-            CreateMap<Favorite, GETFavoriteModelViews>();
-
-            // POST View -> Entity
-            CreateMap<POSTFavoriteModelViews, Favorite>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore()) // Id sẽ được tạo mới trong service
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.Customer, opt => opt.Ignore())
-                .ForMember(dest => dest.Provider, opt => opt.Ignore());
-
-            // PUT View -> Entity
-            CreateMap<PUTFavoriteModelViews, Favorite>()
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore()) // Không cho sửa CreatedTime
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.Customer, opt => opt.Ignore())
-                .ForMember(dest => dest.Provider, opt => opt.Ignore());
+            CreateMap<Favorite, GETFavoriteModelViews>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.CustomerId, opt => opt.MapFrom(src => src.CustomerId))
+                .ForMember(dest => dest.ProviderId, opt => opt.MapFrom(src => src.ProviderId))
+                .ForMember(dest => dest.CreatedTime, opt => opt.MapFrom(src => src.CreatedTime));
         }
     }
 }

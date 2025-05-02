@@ -1,5 +1,4 @@
 ﻿using BeautySpa.Contract.Repositories.Entity;
-using BeautySpa.Core.Base;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 

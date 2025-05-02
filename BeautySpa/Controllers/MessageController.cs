@@ -1,5 +1,4 @@
 ﻿using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.MessageModelViews;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -8,54 +7,50 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Tin nhắn trao đổi giữa khách hàng và nhà cung cấp")]
+    [SwaggerTag("Quản lý tin nhắn giữa người dùng")]
     public class MessageController : ControllerBase
     {
-        private readonly IMessageService _service;
+        private readonly IMessageService _messageService;
 
-        public MessageController(IMessageService service)
+        public MessageController(IMessageService messageService)
         {
-            _service = service;
+            _messageService = messageService;
         }
 
-        [HttpPost]
-        [SwaggerOperation(Summary = "Gửi tin nhắn")]
-        public async Task<IActionResult> Create([FromBody] POSTMessageModelViews model)
+        [HttpGet("conversations/{userId}")]
+        [SwaggerOperation(Summary = "Lấy danh sách các đoạn hội thoại đã nhắn với user này")]
+        public async Task<IActionResult> GetConversations(Guid userId)
         {
-            var id = await _service.CreateAsync(model);
-            return Ok(new BaseResponseModel<Guid>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, id));
+            return Ok(await _messageService.GetConversationsAsync(userId));
         }
 
-        [HttpGet("all")]
-        [SwaggerOperation(Summary = "Danh sách tin nhắn (phân trang)")]
-        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
+        [HttpGet("thread")]
+        [SwaggerOperation(Summary = "Lấy đoạn chat 2 chiều giữa 2 người")]
+        public async Task<IActionResult> GetThread([FromQuery] Guid user1Id, [FromQuery] Guid user2Id)
         {
-            var result = await _service.GetAllAsync(pageNumber, pageSize);
-            return Ok(new BaseResponseModel<BasePaginatedList<GETMessageModelViews>>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, result));
+            return Ok(await _messageService.GetThreadAsync(user1Id, user2Id));
         }
 
-        [HttpGet("{id}")]
-        [SwaggerOperation(Summary = "Xem tin nhắn theo ID")]
-        public async Task<IActionResult> GetById(Guid id)
+        [HttpPost("send")]
+        [SwaggerOperation(Summary = "Gửi tin nhắn mới từ người dùng hiện tại tới người nhận")]
+        public async Task<IActionResult> Send([FromBody] CreateMessageRequest model)
         {
-            var result = await _service.GetByIdAsync(id);
-            return Ok(new BaseResponseModel<GETMessageModelViews>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, result));
+            return Ok(await _messageService.SendMessageAsync(model));
         }
 
-        [HttpPut]
-        [SwaggerOperation(Summary = "Cập nhật nội dung/trạng thái tin nhắn")]
-        public async Task<IActionResult> Update([FromBody] PUTMessageModelViews model)
+        [HttpPatch("read/{messageId}")]
+        [SwaggerOperation(Summary = "Đánh dấu tin nhắn đã đọc")]
+        public async Task<IActionResult> MarkAsRead(Guid messageId)
         {
-            await _service.UpdateAsync(model);
-            return Ok(new BaseResponseModel<string>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, "Update successful"));
+            return Ok(await _messageService.MarkAsReadAsync(messageId));
         }
 
-        [HttpDelete("{id}")]
-        [SwaggerOperation(Summary = "Xoá tin nhắn (soft delete)")]
-        public async Task<IActionResult> Delete(Guid id)
+        [HttpDelete("{messageId}")]
+        [SwaggerOperation(Summary = "Xóa tin nhắn (soft delete)")]
+        public async Task<IActionResult> Delete(Guid messageId)
         {
-            await _service.DeleteAsync(id);
-            return Ok(new BaseResponseModel<string>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, "Delete successful"));
+            return Ok(await _messageService.DeleteMessageAsync(messageId));
         }
+
     }
 }

@@ -10,12 +10,13 @@ using StackExchange.Redis;
 using System.Text;
 using BeautySpa.API.Middleware;
 using BeautySpa.Services.seeding;
+using BeautySpa.Core.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Add services
 builder.Services.AddDbContext<DatabaseContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpadb")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")));
@@ -68,6 +69,21 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
+
+    //Cho phép truyền access_token qua query (WebSocket)
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/message"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // 3. CORS
@@ -77,7 +93,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:3000")
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // FE connect SignalR
     });
 });
 
@@ -114,6 +131,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Add SignalR
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 // 5. Seed Role
@@ -127,11 +147,8 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-            //c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dispatch api v1");
-            //c.RoutePrefix = string.Empty;
-    });
+    app.UseSwaggerUI();
+
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
@@ -145,5 +162,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+//  Map SignalR hub
+app.MapHub<MessageHub>("/hubs/message");
 
 app.Run();

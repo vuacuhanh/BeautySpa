@@ -5,10 +5,10 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface INotificationService
     {
-        Task<BasePaginatedList<GETNotificationModelViews>> GetAllAsync(int pageNumber, int pageSize);
-        Task<GETNotificationModelViews> GetByIdAsync(Guid id);
-        Task<Guid> CreateAsync(POSTNotificationModelViews model);
-        Task UpdateAsync(PUTNotificationModelViews model);
-        Task DeleteAsync(Guid id);
+        Task<BaseResponseModel<List<GETNotificationModelView>>> GetAllByUserIdAsync(Guid userId);
+        Task<BaseResponseModel<string>> CreateAsync(POSTNotificationModelView model);
+        Task<BaseResponseModel<string>> MarkAsReadAsync(Guid notificationId);
+        Task<BaseResponseModel<int>> GetUnreadCountAsync(Guid userId);
+        Task<BaseResponseModel<string>> DeleteAsync(Guid notificationId);
     }
 }
