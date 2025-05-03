@@ -43,14 +43,6 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
-        [SwaggerOperation(Summary = "Đăng nhập bằng Facebook")]
-        [HttpPost("sign-in-facebook")]
-        public async Task<IActionResult> SignInWithFacebook([FromBody] SignInWithFacebookModelView model)
-        {
-            var result = await _authService.SignInWithFacebookAsync(model);
-            return Ok(result);
-        }
-
         [SwaggerOperation(Summary = "Yêu cầu gửi OTP tới Email để xác thực hoặc đăng ký")]
         [HttpPost("request-otp")]
         public async Task<IActionResult> RequestOtp([FromBody] ResendOtpRequestModelView model)

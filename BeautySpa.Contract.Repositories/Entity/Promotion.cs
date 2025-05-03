@@ -13,7 +13,6 @@ namespace BeautySpa.Contract.Repositories.Entity
         public bool IsActive { get; set; } = true;
 
         public Guid ProviderId { get; set; }
-        public virtual ApplicationUsers Provider { get; set; }
-        public virtual ICollection<ServicePromotion> ServicePromotions { get; set; } = new List<ServicePromotion>();
+        public virtual ApplicationUsers? Provider { get; set; }
     }
 }

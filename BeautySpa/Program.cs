@@ -136,12 +136,16 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
-// 5. Seed Role
+// 5. Seed Role + Seed Rank
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRoles>>();
     await RoleSeeder.SeedRolesAsync(roleManager);
+
+    var serviceProvider = scope.ServiceProvider;
+    await RankSeeder.SeedRanksAsync(serviceProvider);
 }
+
 
 // 6. Configure pipeline
 if (app.Environment.IsDevelopment())
