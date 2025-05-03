@@ -9,8 +9,9 @@ public class Staff : BaseEntity
     public Guid StaffUserId { get; set; }
     public virtual ApplicationUsers StaffUser { get; set; }
 
-    public string StaffRole { get; set; } = "Staff"; // Staff, Manager
-    public string Permissions { get; set; } = ""; // Ví dụ: ["ManageServices","ManageAppointments"]
+    public string StaffRole { get; set; } = "Staff";
+
+    public string Permissions { get; set; } = ""; 
 
     public bool IsActive { get; set; } = true;
 }

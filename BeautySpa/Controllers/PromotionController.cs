@@ -8,7 +8,7 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Khuyến mãi")]
+    [SwaggerTag("Khuyến mãi nhà cung cấp")]
     public class PromotionController : ControllerBase
     {
         private readonly IPromotionService _service;
@@ -22,8 +22,8 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Tạo khuyến mãi")]
         public async Task<IActionResult> Create([FromBody] POSTPromotionModelViews model)
         {
-            var id = await _service.CreateAsync(model);
-            return Ok(new BaseResponseModel<Guid>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, id));
+            var result = await _service.CreateAsync(model);
+            return Ok(result);
         }
 
         [HttpGet("all")]
@@ -31,7 +31,7 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
         {
             var result = await _service.GetAllAsync(pageNumber, pageSize);
-            return Ok(new BaseResponseModel<BasePaginatedList<GETPromotionModelViews>>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, result));
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
@@ -39,23 +39,23 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             var result = await _service.GetByIdAsync(id);
-            return Ok(new BaseResponseModel<GETPromotionModelViews>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, result));
+            return Ok(result);
         }
 
         [HttpPut]
         [SwaggerOperation(Summary = "Cập nhật khuyến mãi")]
         public async Task<IActionResult> Update([FromBody] PUTPromotionModelViews model)
         {
-            await _service.UpdateAsync(model);
-            return Ok(new BaseResponseModel<string>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, "Update successful"));
+            var result = await _service.UpdateAsync(model);
+            return Ok(result);
         }
 
         [HttpDelete("{id}")]
         [SwaggerOperation(Summary = "Xoá khuyến mãi (soft delete)")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            await _service.DeleteAsync(id);
-            return Ok(new BaseResponseModel<string>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, "Delete successful"));
+            var result = await _service.DeleteAsync(id);
+            return Ok(result);
         }
     }
 }
