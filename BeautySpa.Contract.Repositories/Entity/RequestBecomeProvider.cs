@@ -10,7 +10,7 @@ public class RequestBecomeProvider : BaseEntity
     public string? Address { get; set; }
     public string? Description { get; set; }
 
-    public string RequestStatus { get; set; } = "pending"; // pending, approved, rejected
+    public string RequestStatus { get; set; } = "pending"; 
 
     public Guid UserId { get; set; }
     public virtual ApplicationUsers? User { get; set; }

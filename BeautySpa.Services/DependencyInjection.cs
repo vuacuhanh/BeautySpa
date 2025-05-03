@@ -49,6 +49,7 @@ namespace BeautySpa.Services
             services.AddScoped<ILocationService, LocationService>();
             services.AddScoped<IRankService, RankService>();
             services.AddScoped<IMemberShipService, MemberShipService>();
+            services.AddScoped<IStaff, StaffService>();
         }
     }
 }
