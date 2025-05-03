@@ -4,10 +4,10 @@ using BeautySpa.Core.Base;
 public class Staff : BaseEntity
 {
     public Guid ProviderId { get; set; }
-    public virtual ApplicationUsers Provider { get; set; }
+    public virtual ApplicationUsers? Provider { get; set; }
 
     public Guid StaffUserId { get; set; }
-    public virtual ApplicationUsers StaffUser { get; set; }
+    public virtual ApplicationUsers? StaffUser { get; set; }
 
     public string StaffRole { get; set; } = "Staff";
 

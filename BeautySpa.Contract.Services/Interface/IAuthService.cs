@@ -6,9 +6,10 @@ namespace BeautySpa.Contract.Services.Interface
     public interface IAuthService
     {
         Task<BaseResponseModel<string>> SignUpAsync(SignUpAuthModelView model);
+
         Task<BaseResponseModel<TokenResponseModelView>> SignInAsync(SignInAuthModelView model);
         Task<BaseResponseModel<TokenResponseModelView>> SignInWithGoogleAsync(SignInWithGoogleModelView model);
-        Task<BaseResponseModel<TokenResponseModelView>> SignInWithFacebookAsync(SignInWithFacebookModelView model);
+
         Task<BaseResponseModel<string>> RequestOtpAsync(string email);
         Task<BaseResponseModel<string>> ForgotPasswordAsync(ForgotPasswordAuthModelView model);
         Task<BaseResponseModel<string>> ResetPasswordAsync(ResetPasswordAuthModelView model);

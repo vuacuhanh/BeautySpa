@@ -1,5 +1,6 @@
 ﻿using BeautySpa.Core.Utils;
 using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations.Schema;
 
 
 namespace BeautySpa.Contract.Repositories.Entity
@@ -16,7 +17,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public DateTimeOffset? DeletedTime { get; set; }
 
         // Mối quan hệ
-        public virtual MemberShip MemberShip { get; set; } = default!;
+        public virtual MemberShip? MemberShip { get; set; }
         public virtual UserInfor? UserInfor { get; set; }
         public virtual ServiceProvider? ServiceProvider { get; set; }
         public virtual ICollection<Service> Services { get; set; } = new List<Service>();
@@ -37,5 +38,8 @@ namespace BeautySpa.Contract.Repositories.Entity
             CreatedTime = DateTimeOffset.UtcNow;
             LastUpdatedTime = CreatedTime;
         }
+
+        [NotMapped]
+        public string? CurrentRankName => MemberShip?.Rank?.Name;
     }
 }
