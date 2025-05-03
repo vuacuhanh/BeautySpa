@@ -4,9 +4,11 @@ using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.Core.Infrastructure;
+using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.AuthModelViews;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using StackExchange.Redis;
@@ -85,19 +87,44 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join("; ", addToRoleResult.Errors.Select(x => x.Description)));
             }
 
+            // Tạo thông tin cá nhân
             var userInfor = new UserInfor
             {
                 UserId = user.Id,
                 FullName = model.FullName
             };
             await _unitOfWork.GetRepository<UserInfor>().InsertAsync(userInfor);
-            await _unitOfWork.SaveAsync();
 
+            // Gán Rank Bronze mặc định (MinPoints = 0)
+            IQueryable<Rank> rankQuery = _unitOfWork.GetRepository<Rank>().Entities
+                .Where(r => r.DeletedTime == null)
+                .OrderBy(r => r.MinPoints);
+
+            var defaultRank = await rankQuery.FirstOrDefaultAsync();
+            if (defaultRank == null)
+            {
+                await _userManager.DeleteAsync(user);
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Default rank not found.");
+            }
+
+            // Tạo MemberShip mặc định
+            var membership = new MemberShip
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                RankId = defaultRank.Id,
+                AccumulatedPoints = 0,
+                CreatedBy = user.Id.ToString(),
+                CreatedTime = CoreHelper.SystemTimeNow
+            };
+            await _unitOfWork.GetRepository<MemberShip>().InsertAsync(membership);
+
+            // Lưu toàn bộ
+            await _unitOfWork.SaveAsync();
             await db.KeyDeleteAsync($"otp:{model.Email}");
 
             return BaseResponseModel<string>.Success("Sign up successfully.");
         }
-
 
         //==============================================================================================================================
         public async Task<BaseResponseModel<TokenResponseModelView>> SignInAsync(SignInAuthModelView model)
@@ -115,13 +142,6 @@ namespace BeautySpa.Services.Service
         public async Task<BaseResponseModel<TokenResponseModelView>> SignInWithGoogleAsync(SignInWithGoogleModelView model)
         {
             var mockUser = new ApplicationUsers { Id = Guid.NewGuid(), Email = "google@example.com" };
-            var token = await _tokenService.GenerateTokenAsync(mockUser, new List<string> { "Customer" }, CurrentIp, CurrentDevice);
-            return BaseResponseModel<TokenResponseModelView>.Success(token);
-        }
-        //==============================================================================================================================
-        public async Task<BaseResponseModel<TokenResponseModelView>> SignInWithFacebookAsync(SignInWithFacebookModelView model)
-        {
-            var mockUser = new ApplicationUsers { Id = Guid.NewGuid(), Email = "facebook@example.com" };
             var token = await _tokenService.GenerateTokenAsync(mockUser, new List<string> { "Customer" }, CurrentIp, CurrentDevice);
             return BaseResponseModel<TokenResponseModelView>.Success(token);
         }

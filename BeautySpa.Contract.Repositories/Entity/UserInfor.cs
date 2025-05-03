@@ -17,6 +17,6 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         // Khóa ngoại
         public Guid UserId { get; set; }
-        public virtual ApplicationUsers User { get; set; }
+        public virtual ApplicationUsers? User { get; set; }
     }
 }
