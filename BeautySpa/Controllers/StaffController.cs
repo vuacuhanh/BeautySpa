@@ -8,7 +8,7 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Quản lý nhân viên (Nhân viên bên thứ 3, nhân viên nhà cung cấp ")]
+    [SwaggerTag("Nhân viên bên nhà đăng ký dịch vụ")]
     public class StaffController : ControllerBase
     {
         private readonly IStaff _staffService;
@@ -47,7 +47,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 10, [FromQuery] Guid? providerId = null)
+        public async Task<IActionResult> GetAll([FromQuery] int page, [FromQuery] int size, [FromQuery] Guid? providerId = null)
         {
             var result = await _staffService.GetAllAsync(page, size, providerId);
             return StatusCode(result.StatusCode, result);
