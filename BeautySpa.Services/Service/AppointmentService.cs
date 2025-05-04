@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
