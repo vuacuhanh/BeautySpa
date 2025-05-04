@@ -121,9 +121,10 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<string>.Success("Service image deleted successfully.");
         }
 
-        public async Task<BaseResponseModel<string>> SetPrimaryImageAsync(Guid imageId)
+        /*public Task<BaseResponseModel<string>> SetPrimaryImageAsync(Guid imageId)
         {
-            throw new NotImplementedException("Primary image is now handled by ImageUrl in ServiceProvider.");
-        }
+            throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput,
+                "Primary image is now handled via the 'ImageUrl' property in ServiceProvider. This action is no longer supported.");
+        }*/
     }
 }

@@ -26,15 +26,15 @@ namespace BeautySpa.Services.Service
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim("ip", ipAddress),
-                new Claim("device", deviceInfo)
+                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.Email, user.Email ?? string.Empty),
+                new("ip", ipAddress),
+                new("device", deviceInfo)
             };
 
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var expiration = DateTime.UtcNow.AddHours(1);
 
@@ -65,37 +65,58 @@ namespace BeautySpa.Services.Service
             return refreshToken;
         }
 
-        public async Task<bool> ValidateTokenClaimsAsync(HttpContext httpContext)
+        public Task<bool> ValidateTokenClaimsAsync(HttpContext httpContext)
         {
             var ipClaim = httpContext.User.FindFirst("ip")?.Value;
             var deviceClaim = httpContext.User.FindFirst("device")?.Value;
             var currentIp = httpContext.Connection.RemoteIpAddress?.ToString();
-            var currentDevice = httpContext.Request.Headers["User-Agent"].ToString();
+            var currentDevice = httpContext.Request.Headers["User-Agent"].FirstOrDefault()?.ToString();
 
-            return ipClaim == currentIp && deviceClaim == currentDevice;
+            var isValid = string.Equals(ipClaim, currentIp, StringComparison.OrdinalIgnoreCase) &&
+                          string.Equals(deviceClaim, currentDevice, StringComparison.OrdinalIgnoreCase);
+
+            return Task.FromResult(isValid);
         }
 
-        public async Task<string> GetUserIdFromTokenAsync(string accessToken)
+        public Task<string> GetUserIdFromTokenAsync(string accessToken)
         {
+            if (string.IsNullOrWhiteSpace(accessToken))
+                return Task.FromResult(string.Empty);
+
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadJwtToken(accessToken);
-            return token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            var userId = token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+            return Task.FromResult(userId);
         }
 
-        public async Task<IList<string>> GetRolesFromTokenAsync(string accessToken)
+        public Task<IList<string>> GetRolesFromTokenAsync(string accessToken)
         {
+            if (string.IsNullOrWhiteSpace(accessToken))
+                return Task.FromResult<IList<string>>(new List<string>());
+
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadJwtToken(accessToken);
-            return token.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+            var roles = token.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => c.Value)
+                .ToList();
+
+            return Task.FromResult<IList<string>>(roles);
         }
 
-        public async Task<(string Ip, string Device)> GetIpDeviceFromTokenAsync(string accessToken)
+        public Task<(string Ip, string Device)> GetIpDeviceFromTokenAsync(string accessToken)
         {
+            if (string.IsNullOrWhiteSpace(accessToken))
+                return Task.FromResult(("", ""));
+
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadJwtToken(accessToken);
+
             var ip = token.Claims.FirstOrDefault(c => c.Type == "ip")?.Value ?? string.Empty;
             var device = token.Claims.FirstOrDefault(c => c.Type == "device")?.Value ?? string.Empty;
-            return (ip, device);
+
+            return Task.FromResult((ip, device));
         }
     }
 }

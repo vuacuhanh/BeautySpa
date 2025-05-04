@@ -65,7 +65,7 @@ namespace BeautySpa.Services.Service
                 LastMessage = item.LastMessage?.Content ?? string.Empty,
                 LastTime = item.LastMessage?.CreatedTime ?? DateTimeOffset.MinValue,
                 UnreadCount = item.UnreadCount,
-                UserName = userNameMap.ContainsKey(item.UserId) ? userNameMap[item.UserId] : "Unknown"
+                UserName = userNameMap.TryGetValue(item.UserId, out string? value) ? value : "Unknown"
             }).ToList();
 
             return BaseResponseModel<List<ConversationItem>>.Success(result);
@@ -85,18 +85,25 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<List<GETMessageModelViews>>.Success(result);
         }
-
         public async Task<BaseResponseModel<string>> SendMessageAsync(CreateMessageRequest model)
         {
             await new CreateMessageRequestValidator().ValidateAndThrowAsync(model);
 
-            string senderType = Authentication.GetUserRoleFromHttpContext(_contextAccessor.HttpContext!);
+            if (_contextAccessor.HttpContext == null)
+            {
+                throw new ErrorException(StatusCodes.Status401Unauthorized, ErrorCode.UnAuthenticated, "HttpContext is not available.");
+            }
+
+            var httpContext = _contextAccessor.HttpContext;
+
+            Guid senderId = Guid.Parse(Authentication.GetUserIdFromHttpContext(httpContext));
+            string senderType = Authentication.GetUserRoleFromHttpContext(httpContext);
 
             var message = new Message
             {
                 Id = Guid.NewGuid(),
                 Content = model.Content,
-                SenderId = model.SenderId,
+                SenderId = senderId,
                 ReceiverId = model.ReceiverId,
                 SenderType = senderType,
                 ReceiverType = model.ReceiverType,

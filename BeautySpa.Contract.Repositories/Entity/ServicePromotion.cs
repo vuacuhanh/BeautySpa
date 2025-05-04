@@ -4,12 +4,13 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class ServicePromotion : BaseEntity
     {
-        public decimal DiscountPrice { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 
-        // Khóa ngoại
         public Guid ServiceId { get; set; }
         public virtual Service? Service { get; set; }
+
+        public Guid PromotionId { get; set; }
+        public virtual Promotion? Promotion { get; set; }
     }
 }

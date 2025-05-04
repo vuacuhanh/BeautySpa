@@ -56,11 +56,11 @@ namespace BeautySpa.API.Controllers
             return Ok(await _imageService.DeleteAsync(id));
         }
 
-        [HttpPut("set-primary/{imageId:guid}")]
+        /*[HttpPut("set-primary/{imageId:guid}")]
         [SwaggerOperation(Summary = "Chọn ảnh làm ảnh chính cho nhà cung cấp")]
         public async Task<IActionResult> SetPrimaryImage([FromRoute] Guid imageId)
         {
             return Ok(await _imageService.SetPrimaryImageAsync(imageId));
-        }
+        }*/
     }
 }

@@ -5,7 +5,7 @@ public class Appointment : BaseEntity
 {
     public DateTime AppointmentDate { get; set; }
     public TimeSpan StartTime { get; set; }
-    public string BookingStatus { get; set; } = "pending"; // pending, confirmed, rejected, completed, canceled
+    public string BookingStatus { get; set; } = "pending";
     public string? Notes { get; set; }
 
     public decimal DepositAmount { get; set; } = 0;
@@ -28,4 +28,10 @@ public class Appointment : BaseEntity
 
     public virtual Payment? Payment { get; set; }
     public virtual Review? Review { get; set; }
+
+    public Guid? PromotionId { get; set; }
+    public virtual Promotion? Promotion { get; set; }
+
+    public Guid? PromotionAdminId { get; set; }
+    public virtual PromotionAdmin? PromotionAdmin { get; set; }
 }

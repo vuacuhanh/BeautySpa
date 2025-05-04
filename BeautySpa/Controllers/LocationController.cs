@@ -26,28 +26,28 @@ namespace BeautySpa.API.Controllers
             return Ok(await _locationService.GetAllBranchesAsync());
         }
 
-        [HttpGet("spa/{id}")]
+        [HttpGet("get/spa/{id}")]
         [SwaggerOperation(Summary = "Lấy chi tiết spa theo ID")]
         public async Task<IActionResult> GetSpaById(Guid id)
         {
             return Ok(await _locationService.GetBranchByIdAsync(id));
         }
 
-        [HttpPost("spa")]
+        [HttpPost("create/spa")]
         [SwaggerOperation(Summary = "Tạo mới chi spa")]
         public async Task<IActionResult> CreateSpa([FromBody] POSTBranchLocationModelView model)
         {
             return Ok(await _locationService.CreateBranchAsync(model));
         }
 
-        [HttpPut("spa")]
+        [HttpPut("upadate/spa")]
         [SwaggerOperation(Summary = "Cập nhật spa")]
         public async Task<IActionResult> UpdateSpa([FromBody] PUTBranchLocationModelView model)
         {
             return Ok(await _locationService.UpdateBranchAsync(model));
         }
 
-        [HttpDelete("spa/{id}")]
+        [HttpDelete("delete/spa/{id}")]
         [SwaggerOperation(Summary = "Xóa mềm spa")]
         public async Task<IActionResult> DeleteSpa(Guid id)
         {
@@ -56,42 +56,42 @@ namespace BeautySpa.API.Controllers
 
         // ===== Location APIs =====
 
-        [HttpGet("locations")]
+        [HttpGet("getall/locations")]
         [SwaggerOperation(Summary = "Lấy tất cả địa chỉ chi nhánh spa")]
         public async Task<IActionResult> GetAllLocationBranches()
         {
             return Ok(await _locationService.GetAllLocationsAsync());
         }
 
-        [HttpGet("locations/{id}")]
+        [HttpGet("get/locations/branches/{id}")]
         [SwaggerOperation(Summary = "Lấy địa chỉ chi nhánh spa theo ID")]
         public async Task<IActionResult> GetLocationBranchesById(Guid id)
         {
             return Ok(await _locationService.GetLocationByIdAsync(id));
         }
 
-        [HttpPost("locations")]
+        [HttpPost("create/locations/branches")]
         [SwaggerOperation(Summary = "Tạo mới địa chỉ địa chỉ spa")]
         public async Task<IActionResult> CreateLocationBranches([FromBody] POSTLocationSpaModelView model)
         {
             return Ok(await _locationService.CreateLocationAsync(model));
         }
 
-        [HttpPut("locations")]
+        [HttpPut("update/locations/branches")]
         [SwaggerOperation(Summary = "Cập nhật địa chỉ chi nhánh spa")]
         public async Task<IActionResult> UpdateLocationBranches([FromBody] PUTLocationSpaModelView model)
         {
             return Ok(await _locationService.UpdateLocationAsync(model));
         }
 
-        [HttpDelete("locations/{id}")]
+        [HttpDelete("delete/locations/branches{id}")]
         [SwaggerOperation(Summary = "Xóa mềm địa chỉ chi nhánh spa")]
         public async Task<IActionResult> DeleteLocationBranches(Guid id)
         {
             return Ok(await _locationService.DeleteLocationAsync(id));
         }
 
-        [HttpGet("locations/by-spa/{branchId}")]
+        [HttpGet("get/locations/branches/by-spa/{branchId}")]
         [SwaggerOperation(Summary = "Lấy danh sách địa chỉ theo spa")]
         public async Task<IActionResult> GetLocationsBySpaId(Guid branchId)
         {

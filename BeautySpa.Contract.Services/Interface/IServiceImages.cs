@@ -15,6 +15,6 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<GETServiceImageModelViews>> GetByIdAsync(Guid id);
         Task<BaseResponseModel<string>> UpdateAsync(PUTServiceImageModelViews model);
         Task<BaseResponseModel<string>> DeleteAsync(Guid id);
-        Task<BaseResponseModel<string>> SetPrimaryImageAsync(Guid imageId);
+        //Task<BaseResponseModel<string>> SetPrimaryImageAsync(Guid imageId);
     }
 }
