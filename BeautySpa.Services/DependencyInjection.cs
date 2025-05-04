@@ -50,6 +50,7 @@ namespace BeautySpa.Services
             services.AddScoped<IRankService, RankService>();
             services.AddScoped<IMemberShipService, MemberShipService>();
             services.AddScoped<IStaff, StaffService>();
+            services.AddScoped<IAdminStaff, AdminStaffService>();
         }
     }
 }

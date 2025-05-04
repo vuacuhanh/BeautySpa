@@ -14,37 +14,37 @@ public class AdminStaffController : ControllerBase
         _service = service;
     }
 
-    [HttpGet]
+    [HttpGet("get-all")]
     [SwaggerOperation(Summary = "Lấy danh sách AdminStaff (phân trang)")]
-    public async Task<IActionResult> GetAll([FromQuery] int page, [FromQuery] int size)
+    public async Task<IActionResult> GetAllStaff([FromQuery] int page, [FromQuery] int size)
     {
         return Ok(await _service.GetAllAsync(page, size));
     }
 
     [HttpGet("{id}")]
     [SwaggerOperation(Summary = "Lấy chi tiết một AdminStaff theo ID")]
-    public async Task<IActionResult> GetById(Guid id)
+    public async Task<IActionResult> GetStaffById(Guid id)
     {
         return Ok(await _service.GetByIdAsync(id));
     }
 
-    [HttpPost]
+    [HttpPost("create")]
     [SwaggerOperation(Summary = "Tạo mới một AdminStaff")]
-    public async Task<IActionResult> Create([FromBody] POSTAdminStaffModelView model)
+    public async Task<IActionResult> CreateStaff([FromBody] POSTAdminStaffModelView model)
     {
         return Ok(await _service.CreateAsync(model));
     }
 
-    [HttpPut]
+    [HttpPut("update")]
     [SwaggerOperation(Summary = "Cập nhật thông tin AdminStaff")]
-    public async Task<IActionResult> Update([FromBody] PUTAdminStaffModelView model)
+    public async Task<IActionResult> UpdateStaff([FromBody] PUTAdminStaffModelView model)
     {
         return Ok(await _service.UpdateAsync(model));
     }
 
     [HttpDelete("{id}")]
     [SwaggerOperation(Summary = "Xóa mềm một AdminStaff theo ID")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> DeleteStaffById(Guid id)
     {
         return Ok(await _service.DeleteAsync(id));
     }

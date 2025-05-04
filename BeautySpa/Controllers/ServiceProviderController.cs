@@ -17,7 +17,7 @@ namespace BeautySpa.API.Controllers
             _providerService = providerService;
         }
 
-        [HttpGet]
+        [HttpGet("get-all")]
         [SwaggerOperation(Summary = "Lấy danh sách nhà cung cấp (phân trang)")]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
@@ -31,14 +31,14 @@ namespace BeautySpa.API.Controllers
             return Ok(await _providerService.GetByIdAsync(id));
         }
 
-        [HttpPost]
+        [HttpPost("create")]
         [SwaggerOperation(Summary = "Tạo mới nhà cung cấp dịch vụ")]
         public async Task<IActionResult> Create([FromBody] POSTServiceProviderModelViews model)
         {
             return Ok(await _providerService.CreateAsync(model));
         }
 
-        [HttpPut]
+        [HttpPut("update")]
         [SwaggerOperation(Summary = "Cập nhật thông tin nhà cung cấp dịch vụ")]
         public async Task<IActionResult> Update([FromBody] PUTServiceProviderModelViews model)
         {

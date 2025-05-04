@@ -20,9 +20,9 @@ namespace BeautySpa.API.Controllers
             _serviceService = serviceService;
         }
 
-        [HttpGet]
+        [HttpGet("get-all")]
         [SwaggerOperation(Summary = "Lấy danh sách dịch vụ (phân trang)")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             return Ok(await _serviceService.GetAllAsync(pageNumber, pageSize));
         }
@@ -34,14 +34,14 @@ namespace BeautySpa.API.Controllers
             return Ok(await _serviceService.GetByIdAsync(id));
         }
 
-        [HttpPost]
+        [HttpPost("create")]
         [SwaggerOperation(Summary = "Tạo mới dịch vụ")]
         public async Task<IActionResult> Create([FromBody] POSTServiceModelViews model)
         {
             return Ok(await _serviceService.CreateAsync(model));
         }
 
-        [HttpPut]
+        [HttpPut("update")]
         [SwaggerOperation(Summary = "Cập nhật thông tin dịch vụ")]
         public async Task<IActionResult> Update([FromBody] PUTServiceModelViews model)
         {

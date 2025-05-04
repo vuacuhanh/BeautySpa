@@ -1,6 +1,4 @@
-﻿// ========================
-// 6. CONTROLLER (ServiceImageController.cs)
-// ========================
+﻿using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.ServiceImageModelViews;
@@ -21,46 +19,36 @@ namespace BeautySpa.API.Controllers
             _imageService = imageService;
         }
 
-        [HttpGet]
-        [SwaggerOperation(Summary = "Lấy danh sách ảnh nhà cung cấp (phân trang)")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
+        [HttpPost("multi-create")]
+        [SwaggerOperation(Summary = "Tạo nhiều ảnh mô tả cho nhà cung cấp")]
+        public async Task<IActionResult> CreateMultiple([FromBody] POSTServiceImageModelViews model)
         {
-            return Ok(await _imageService.GetAllAsync(pageNumber, pageSize));
+            var result = await _imageService.CreateMultipleAsync(model);
+            return Ok(result);
         }
 
-        [HttpGet("{id:guid}")]
-        [SwaggerOperation(Summary = "Lấy ảnh nhà cung cấp theo ID")]
-        public async Task<IActionResult> GetById([FromRoute] Guid id)
+        [HttpGet("by-provider/{providerId}/paged")]
+        [SwaggerOperation(Summary = "Lấy danh sách ảnh của nhà cung cấp (phân trang)")]
+        public async Task<IActionResult> GetPaged(Guid providerId, [FromQuery] int page, [FromQuery] int size)
         {
-            return Ok(await _imageService.GetByIdAsync(id));
+            var result = await _imageService.GetPagedByProviderIdAsync(providerId, page, size);
+            return Ok(result);
         }
 
-        [HttpPost]
-        [SwaggerOperation(Summary = "Tạo mới ảnh cho nhà cung cấp")]
-        public async Task<IActionResult> Create([FromBody] POSTServiceImageModelViews model)
+        [HttpGet("by-provider/{providerId}")]
+        [SwaggerOperation(Summary = "Lấy tất cả ảnh của nhà cung cấp")]
+        public async Task<IActionResult> GetByProvider(Guid providerId)
         {
-            return Ok(await _imageService.CreateAsync(model));
+            var result = await _imageService.GetByProviderIdAsync(providerId);
+            return Ok(result);
         }
 
-        [HttpPut]
-        [SwaggerOperation(Summary = "Cập nhật ảnh nhà cung cấp")]
-        public async Task<IActionResult> Update([FromBody] PUTServiceImageModelViews model)
+        [HttpDelete("{imageId}")]
+        [SwaggerOperation(Summary = "Xóa mềm ảnh theo ID")]
+        public async Task<IActionResult> Delete(Guid imageId)
         {
-            return Ok(await _imageService.UpdateAsync(model));
-        }
-
-        [HttpDelete("{id:guid}")]
-        [SwaggerOperation(Summary = "Xóa mềm ảnh nhà cung cấp")]
-        public async Task<IActionResult> Delete([FromRoute] Guid id)
-        {
-            return Ok(await _imageService.DeleteAsync(id));
-        }
-
-        [HttpPut("set-primary/{imageId:guid}")]
-        [SwaggerOperation(Summary = "Chọn ảnh làm ảnh chính cho nhà cung cấp")]
-        public async Task<IActionResult> SetPrimaryImage([FromRoute] Guid imageId)
-        {
-            return Ok(await _imageService.SetPrimaryImageAsync(imageId));
+            var result = await _imageService.DeleteAsync(imageId);
+            return Ok(result);
         }
     }
 }
