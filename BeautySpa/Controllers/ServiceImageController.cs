@@ -47,8 +47,27 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Xóa mềm ảnh theo ID")]
         public async Task<IActionResult> Delete(Guid imageId)
         {
+<<<<<<< HEAD
+            return Ok(await _imageService.UpdateAsync(model));
+        }
+
+        [HttpDelete("{id:guid}")]
+        [SwaggerOperation(Summary = "Xóa mềm ảnh nhà cung cấp")]
+        public async Task<IActionResult> Delete([FromRoute] Guid id)
+        {
+            return Ok(await _imageService.DeleteAsync(id));
+        }
+
+        /*[HttpPut("set-primary/{imageId:guid}")]
+        [SwaggerOperation(Summary = "Chọn ảnh làm ảnh chính cho nhà cung cấp")]
+        public async Task<IActionResult> SetPrimaryImage([FromRoute] Guid imageId)
+        {
+            return Ok(await _imageService.SetPrimaryImageAsync(imageId));
+        }*/
+=======
             var result = await _imageService.DeleteAsync(imageId);
             return Ok(result);
         }
+>>>>>>> f10d2edc9c521bf9ffcf36161b33af05f888b4d8
     }
 }

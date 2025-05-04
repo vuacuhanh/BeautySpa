@@ -1,6 +1,9 @@
-﻿using BeautySpa.Contract.Repositories.Entity;
+﻿using BeautySpa.API.Middleware;
+using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Core.SignalR;
 using BeautySpa.Repositories.Context;
 using BeautySpa.Services;
+using BeautySpa.Services.seeding;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -8,19 +11,18 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
-using BeautySpa.API.Middleware;
-using BeautySpa.Services.seeding;
-using BeautySpa.Core.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add services
+// 1. Database
 builder.Services.AddDbContext<DatabaseContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")));
+// 2. Redis
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
 
+// 3. Identity
 builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 {
     options.Password.RequireDigit = true;
@@ -33,8 +35,10 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 .AddEntityFrameworkStores<DatabaseContext>()
 .AddDefaultTokenProviders();
 
+// 4. DI services
 builder.Services.AddInfrastructure();
 
+// 5. Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -44,7 +48,7 @@ builder.Services.AddSession(options =>
     options.Cookie.Name = ".BeautySpa.Session";
 });
 
-// 2. Authentication - JWT
+// 6. JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings.GetValue<string>("Secret") ?? throw new InvalidOperationException("JWT Secret not configured.");
 var key = Encoding.ASCII.GetBytes(secretKey);
@@ -70,23 +74,25 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    //Cho phép truyền access_token qua query (WebSocket)
+    // Hỗ trợ access_token qua query (SignalR)
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
+
             if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/message"))
             {
                 context.Token = accessToken;
             }
+
             return Task.CompletedTask;
         }
     };
 });
 
-// 3. CORS
+// 7. CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
@@ -94,13 +100,15 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:3000")
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials(); // FE connect SignalR
+              .AllowCredentials(); // cần cho SignalR
     });
 });
 
+// 8. MVC + SignalR
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
-// 4. Swagger
+// 9. Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -131,12 +139,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Add SignalR
-builder.Services.AddSignalR();
-
 var app = builder.Build();
 
-// 5. Seed Role + Seed Rank
+// 10. Seed dữ liệu
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRoles>>();
@@ -146,13 +151,11 @@ using (var scope = app.Services.CreateScope())
     await RankSeeder.SeedRanksAsync(serviceProvider);
 }
 
-
-// 6. Configure pipeline
+// 11. Middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
@@ -166,8 +169,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-//  Map SignalR hub
 app.MapHub<MessageHub>("/hubs/message");
 
 app.Run();

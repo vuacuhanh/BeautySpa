@@ -1,10 +1,7 @@
 ﻿using BeautySpa.Contract.Services.Interface;
 using BeautySpa.ModelViews.RoleModelViews;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using System;
-using System.Threading.Tasks;
 
 namespace BeautySpa.API.Controllers
 {

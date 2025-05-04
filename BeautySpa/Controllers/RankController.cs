@@ -17,7 +17,7 @@ namespace BeautySpa.API.Controllers
             _rankService = rankService;
         }
 
-        [HttpGet]
+        [HttpGet("getall/ranks")]
         [SwaggerOperation(Summary = "Lấy danh sách rank có phân trang")]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -25,28 +25,28 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("get/{id}")]
         [SwaggerOperation(Summary = "Lấy rank theo ID")]
         public async Task<IActionResult> GetById(Guid id)
         {
             return Ok(await _rankService.GetByIdAsync(id));
         }
 
-        [HttpPost]
+        [HttpPost("create/rank")]
         [SwaggerOperation(Summary = "Tạo mới một rank")]
         public async Task<IActionResult> Create([FromBody] POSTRankModelView model)
         {
             return Ok(await _rankService.CreateAsync(model));
         }
 
-        [HttpPut]
+        [HttpPut("update/rank")]
         [SwaggerOperation(Summary = "Cập nhật thông tin rank")]
         public async Task<IActionResult> Update([FromBody] PUTRankModelView model)
         {
             return Ok(await _rankService.UpdateAsync(model));
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("delete/rank/{id}")]
         [SwaggerOperation(Summary = "Xóa mềm rank")]
         public async Task<IActionResult> Delete(Guid id)
         {

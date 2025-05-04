@@ -43,7 +43,6 @@ namespace BeautySpa.Repositories.Context
         {
             base.OnModelCreating(builder);
 
-            // Cấu hình các quan hệ đặc biệt
             builder.Entity<Appointment>()
                 .HasOne(a => a.Customer)
                 .WithMany(u => u.CustomerAppointments)
@@ -98,8 +97,6 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(s => s.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-
             builder.Entity<Staff>()
                 .HasOne(s => s.StaffUser)
                 .WithMany()
@@ -118,7 +115,6 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(a => a.StaffUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Cấu hình decimal (precision)
             builder.Entity<Payment>()
                 .Property(p => p.Amount)
                 .HasPrecision(10, 2);
@@ -147,10 +143,6 @@ namespace BeautySpa.Repositories.Context
                 .Property(s => s.DiscountPrice)
                 .HasPrecision(10, 2);
 
-            builder.Entity<ServicePromotion>()
-                .Property(sp => sp.DiscountPrice)
-                .HasPrecision(10, 2);
-
             builder.Entity<UserInfor>()
                 .Property(ui => ui.Salary)
                 .HasPrecision(15, 2);
@@ -160,15 +152,21 @@ namespace BeautySpa.Repositories.Context
                 .HasPrecision(5, 2);
 
             builder.Entity<ServiceImage>()
-            .HasOne(si => si.ServiceProvider)
-            .WithMany()
-            .HasForeignKey(si => si.ServiceProviderId)
-            .OnDelete(DeleteBehavior.Cascade);
+                .HasOne(si => si.ServiceProvider)
+                .WithMany()
+                .HasForeignKey(si => si.ServiceProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<ServiceImage>()
                 .Property(si => si.ImageUrl)
                 .IsRequired()
                 .HasMaxLength(1000);
+
+            builder.Entity<ServicePromotion>()
+                .HasOne(sp => sp.Promotion)
+                .WithMany(p => p.ServicePromotions)
+                .HasForeignKey(sp => sp.PromotionId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

@@ -12,22 +12,22 @@ namespace BeautySpa.Core.Base
             StatusCode = statusCode;
         }
 
-
         public string Code { get; }
 
         public int StatusCode { get; set; }
 
-        [JsonExtensionData] public Dictionary<string, object> AdditionalData { get; set; }
-
+        [JsonExtensionData]
+        public Dictionary<string, object> AdditionalData { get; set; } = new(); 
     }
+
     public class BadRequestException : ErrorException
     {
-        public BadRequestException(string errorCode, string message = null)
+        public BadRequestException(string errorCode, string? message = null) 
             : base(400, errorCode, message)
         {
         }
-        public BadRequestException(
-            ICollection<KeyValuePair<string, ICollection<string>>> errors)
+
+        public BadRequestException(ICollection<KeyValuePair<string, ICollection<string>>> errors)
             : base(400, new ErrorDetail
             {
                 ErrorCode = "bad_request",
@@ -43,13 +43,13 @@ namespace BeautySpa.Core.Base
 
         public ErrorDetail ErrorDetail { get; }
 
-        public ErrorException(int statusCode, string errorCode, string message = null)
+        public ErrorException(int statusCode, string errorCode, string? message = null)
         {
             StatusCode = statusCode;
             ErrorDetail = new ErrorDetail
             {
                 ErrorCode = errorCode,
-                ErrorMessage = message
+                ErrorMessage = message ?? string.Empty
             };
         }
 
@@ -62,11 +62,14 @@ namespace BeautySpa.Core.Base
 
     public class ErrorDetail
     {
-        [JsonPropertyName("errorCode")] public required string ErrorCode { get; set; }
+        [JsonPropertyName("errorCode")]
+        public required string ErrorCode { get; set; }
 
-        [JsonPropertyName("errorMessage")] public required object ErrorMessage { get; set; }
+        [JsonPropertyName("errorMessage")]
+        public required object ErrorMessage { get; set; }
     }
-    public class ErrorCode
+
+    public static class ErrorCode
     {
         public const string BadRequest = "Bad Request";
         public const string UnAuthenticated = "Un-Authenticate";
@@ -82,7 +85,8 @@ namespace BeautySpa.Core.Base
         public const string InternalServerError = "Internal Server Error";
         public const string Duplicate = "Duplicate";
     }
-    public class ResponseCodeConstants
+
+    public static class ResponseCodeConstants
     {
         public const string NOT_FOUND = "Not found!";
         public const string SUCCESS = "Success!";

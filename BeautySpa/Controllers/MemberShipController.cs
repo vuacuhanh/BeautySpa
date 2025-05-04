@@ -17,7 +17,7 @@ namespace BeautySpa.API.Controllers
             _memberShipService = memberShipService;
         }
 
-        [HttpGet]
+        [HttpGet("getall/membership")]
         [SwaggerOperation(Summary = "Lấy danh sách thành viên (phân trang)")]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -25,7 +25,7 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("get/membership/by{id}")]
         [SwaggerOperation(Summary = "Lấy thành viên theo ID")]
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -41,7 +41,7 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("delete/membership/{id}")]
         [SwaggerOperation(Summary = "Xóa mềm thành viên")]
         public async Task<IActionResult> Delete(Guid id)
         {

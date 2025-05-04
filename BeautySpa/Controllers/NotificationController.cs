@@ -17,7 +17,7 @@ namespace BeautySpa.API.Controllers
             _notificationService = notificationService;
         }
 
-        [HttpGet("user/{userId}")]
+        [HttpGet("getall/noti/by-user/{userId}")]
         [SwaggerOperation(Summary = "Lấy danh sách thông báo của người dùng")]
         public async Task<IActionResult> GetByUser(Guid userId)
         {
@@ -31,21 +31,21 @@ namespace BeautySpa.API.Controllers
             return Ok(await _notificationService.GetUnreadCountAsync(userId));
         }
 
-        [HttpPost]
+        [HttpPost("create/noti")]
         [SwaggerOperation(Summary = "Tạo thông báo mới cho người dùng")]
         public async Task<IActionResult> Create([FromBody] POSTNotificationModelView model)
         {
             return Ok(await _notificationService.CreateAsync(model));
         }
 
-        [HttpPatch("read/{id}")]
+        [HttpPatch("read/noti/{id}")]
         [SwaggerOperation(Summary = "Đánh dấu thông báo đã đọc")]
         public async Task<IActionResult> MarkAsRead(Guid id)
         {
             return Ok(await _notificationService.MarkAsReadAsync(id));
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("delete/noti/{id}")]
         [SwaggerOperation(Summary = "Xóa thông báo (soft delete)")]
         public async Task<IActionResult> Delete(Guid id)
         {
