@@ -9,7 +9,7 @@ namespace BeautySpa.ModelViews.ServiceCategoryModelViews
     public class POSTServiceCategoryModelViews
     {
         public string CategoryName { get; set; } = string.Empty;
-        public string? IconUrl { get; set; }
+        //public string? IconUrl { get; set; }
         public bool IsActive { get; set; } = true;
     }
 }

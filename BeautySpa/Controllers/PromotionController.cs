@@ -18,7 +18,7 @@ namespace BeautySpa.API.Controllers
             _service = service;
         }
 
-        [HttpPost]
+        [HttpPost("create")]
         [SwaggerOperation(Summary = "Tạo khuyến mãi")]
         public async Task<IActionResult> Create([FromBody] POSTPromotionModelViews model)
         {
@@ -26,23 +26,23 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("all")]
+        [HttpGet("get-all")]
         [SwaggerOperation(Summary = "Danh sách khuyến mãi (phân trang)")]
-        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             var result = await _service.GetAllAsync(pageNumber, pageSize);
             return Ok(result);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:guid}")]
         [SwaggerOperation(Summary = "Lấy khuyến mãi theo ID")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var result = await _service.GetByIdAsync(id);
             return Ok(result);
         }
 
-        [HttpPut]
+        [HttpPut("update")]
         [SwaggerOperation(Summary = "Cập nhật khuyến mãi")]
         public async Task<IActionResult> Update([FromBody] PUTPromotionModelViews model)
         {
@@ -50,9 +50,9 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:guid}")]
         [SwaggerOperation(Summary = "Xoá khuyến mãi (soft delete)")]
-        public async Task<IActionResult> Delete(Guid id)
+        public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
             var result = await _service.DeleteAsync(id);
             return Ok(result);

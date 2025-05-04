@@ -8,6 +8,7 @@ public class RequestBecomeProvider : BaseEntity
     public string PhoneNumber { get; set; } = string.Empty;
     public string WebsiteOrSocialLink { get; set; } = string.Empty;
     public string? Address { get; set; }
+
     public string? Description { get; set; }
 
     public string RequestStatus { get; set; } = "pending"; 

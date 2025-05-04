@@ -10,6 +10,7 @@ namespace BeautySpa.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [SwaggerTag("Đăng nhập / Đăng ký")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;

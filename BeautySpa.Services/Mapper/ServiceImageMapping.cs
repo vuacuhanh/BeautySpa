@@ -14,17 +14,6 @@ namespace BeautySpa.Services.Mapper
         public ServiceImageMapping()
         {
             CreateMap<ServiceImage, GETServiceImageModelViews>();
-
-            CreateMap<POSTServiceImageModelViews, ServiceImage>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
-
-            CreateMap<PUTServiceImageModelViews, ServiceImage>()
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
         }
     }
 }
