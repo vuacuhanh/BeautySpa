@@ -24,6 +24,7 @@ namespace BeautySpa.Repositories.Context
         public DbSet<ServicePromotion> ServicePromotions => Set<ServicePromotion>();
         public DbSet<WorkingHour> WorkingHours => Set<WorkingHour>();
         public DbSet<Appointment> Appointments => Set<Appointment>();
+        public DbSet<AppointmentService> AppointmentServices => Set<AppointmentService>(); // NEW
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<Favorite> Favorites => Set<Favorite>();
@@ -115,41 +116,32 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(a => a.StaffUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<Payment>()
-                .Property(p => p.Amount)
-                .HasPrecision(10, 2);
+            // AppointmentService
+            builder.Entity<AppointmentService>()
+                .HasOne(x => x.Appointment)
+                .WithMany(a => a.AppointmentServices)
+                .HasForeignKey(x => x.AppointmentId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            builder.Entity<Promotion>()
-                .Property(p => p.DiscountAmount)
-                .HasPrecision(10, 2);
+            builder.Entity<AppointmentService>()
+                .HasOne(x => x.Service)
+                .WithMany()
+                .HasForeignKey(x => x.ServiceId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<Promotion>()
-                .Property(p => p.DiscountPercent)
-                .HasPrecision(5, 2);
+            // Precision settings
+            builder.Entity<Payment>().Property(p => p.Amount).HasPrecision(10, 2);
+            builder.Entity<Payment>().Property(p => p.RefundAmount).HasPrecision(10, 2);
+            builder.Entity<Payment>().Property(p => p.PlatformFee).HasPrecision(10, 2);
 
-            builder.Entity<PromotionAdmin>()
-                .Property(pa => pa.DiscountAmount)
-                .HasPrecision(10, 2);
-
-            builder.Entity<PromotionAdmin>()
-                .Property(pa => pa.DiscountPercent)
-                .HasPrecision(5, 2);
-
-            builder.Entity<Service>()
-                .Property(s => s.Price)
-                .HasPrecision(10, 2);
-
-            builder.Entity<Service>()
-                .Property(s => s.DiscountPrice)
-                .HasPrecision(10, 2);
-
-            builder.Entity<UserInfor>()
-                .Property(ui => ui.Salary)
-                .HasPrecision(15, 2);
-
-            builder.Entity<Rank>()
-                .Property(r => r.DiscountPercent)
-                .HasPrecision(5, 2);
+            builder.Entity<Promotion>().Property(p => p.DiscountAmount).HasPrecision(10, 2);
+            builder.Entity<Promotion>().Property(p => p.DiscountPercent).HasPrecision(5, 2);
+            builder.Entity<PromotionAdmin>().Property(pa => pa.DiscountAmount).HasPrecision(10, 2);
+            builder.Entity<PromotionAdmin>().Property(pa => pa.DiscountPercent).HasPrecision(5, 2);
+            builder.Entity<Service>().Property(s => s.Price).HasPrecision(10, 2);
+            builder.Entity<Service>().Property(s => s.DiscountPrice).HasPrecision(10, 2);
+            builder.Entity<UserInfor>().Property(ui => ui.Salary).HasPrecision(15, 2);
+            builder.Entity<Rank>().Property(r => r.DiscountPercent).HasPrecision(5, 2);
 
             builder.Entity<ServiceImage>()
                 .HasOne(si => si.ServiceProvider)
