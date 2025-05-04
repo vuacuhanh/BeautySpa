@@ -85,9 +85,11 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<GETStaffModelView>> GetByIdAsync(Guid id)
         {
-            var staff = await _unitOfWork.GetRepository<Staff>()
-                .Entities.FirstOrDefaultAsync(s => s.Id == id && s.DeletedTime == null);
+            IQueryable<Staff> query = _unitOfWork.GetRepository<Staff>()
+                .Entities
+                .AsNoTracking();
 
+            var staff = await query.FirstOrDefaultAsync(s => s.Id == id && s.DeletedTime == null);
             if (staff == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
 
@@ -101,13 +103,15 @@ namespace BeautySpa.Services.Service
 
             IQueryable<Staff> query = _unitOfWork.GetRepository<Staff>()
                 .Entities
-                .Where(s => s.DeletedTime == null && (providerId == null || s.ProviderId == providerId))
+                .AsNoTracking()
+                .Where(s => s.DeletedTime == null && (!providerId.HasValue || s.ProviderId == providerId))
                 .OrderByDescending(s => s.CreatedTime);
 
+            var totalCount = await query.CountAsync();
             var pagedStaff = await query.Skip((page - 1) * size).Take(size).ToListAsync();
             var result = new BasePaginatedList<GETStaffModelView>(
                 _mapper.Map<List<GETStaffModelView>>(pagedStaff),
-                await query.CountAsync(),
+                totalCount,
                 page,
                 size
             );

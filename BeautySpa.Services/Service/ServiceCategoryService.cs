@@ -57,12 +57,20 @@ namespace BeautySpa.Services.Service
             if (pageNumber <= 0 || pageSize <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
 
-            var query = _unitOfWork.GetRepository<ServiceCategory>()
-                .Entities.Where(c => !c.DeletedTime.HasValue)
+            IQueryable<ServiceCategory> query = _unitOfWork.GetRepository<ServiceCategory>()
+                .Entities
+                .Where(c => !c.DeletedTime.HasValue)
                 .OrderByDescending(c => c.CreatedTime);
 
+            // Đếm tổng số bản ghi
             var count = await query.CountAsync();
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            // Áp dụng phân trang và lấy dữ liệu
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
             var mappedItems = _mapper.Map<List<GETServiceCategoryModelViews>>(items);
 
             var result = new BasePaginatedList<GETServiceCategoryModelViews>(mappedItems, count, pageNumber, pageSize);

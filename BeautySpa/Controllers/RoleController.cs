@@ -1,10 +1,7 @@
 ﻿using BeautySpa.Contract.Services.Interface;
 using BeautySpa.ModelViews.RoleModelViews;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using System;
-using System.Threading.Tasks;
 
 namespace BeautySpa.API.Controllers
 {
@@ -21,36 +18,36 @@ namespace BeautySpa.API.Controllers
             _roleService = roleService;
         }
 
+        [HttpGet("get-all")]
         [SwaggerOperation(Summary = "Lấy danh sách các role (phân trang)")]
-        [HttpGet("getall/roles")]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             return Ok(await _roleService.GetAllAsync(pageNumber, pageSize));
         }
 
+        [HttpGet("{id:guid}")]
         [SwaggerOperation(Summary = "Lấy thông tin chi tiết role theo ID")]
-        [HttpGet("get/role/by{id:guid}")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             return Ok(await _roleService.GetByIdAsync(id));
         }
 
+        [HttpPost("create")]
         [SwaggerOperation(Summary = "Tạo mới role")]
-        [HttpPost("create/role")]
         public async Task<IActionResult> Create([FromBody] POSTRoleModelViews model)
         {
             return Ok(await _roleService.CreateAsync(model));
         }
 
+        [HttpPut("update")]
         [SwaggerOperation(Summary = "Cập nhật role")]
-        [HttpPut("update/role")]
         public async Task<IActionResult> Update([FromBody] PUTRoleModelViews model)
         {
             return Ok(await _roleService.UpdateAsync(model));
         }
 
+        [HttpDelete("{id:guid}")]
         [SwaggerOperation(Summary = "Xóa mềm role theo ID")]
-        [HttpDelete("delete/role/{id:guid}")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
             return Ok(await _roleService.DeleteAsync(id));

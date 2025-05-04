@@ -12,7 +12,16 @@ namespace BeautySpa.Services.Validations.ServiceImageValidator
     {
         public POSTServiceImageModelViewsValidator()
         {
+            RuleFor(x => x.ServiceProviderId)
+                .NotEmpty().WithMessage("ServiceProviderId is required.");
 
+            RuleFor(x => x.ImageUrls)
+                .NotEmpty().WithMessage("At least one image URL must be provided.");
+
+            RuleForEach(x => x.ImageUrls)
+                .NotEmpty().WithMessage("Image URL cannot be empty.")
+                .Must(url => Uri.TryCreate(url, UriKind.Absolute, out _))
+                .WithMessage("Invalid image URL format.");
         }
     }
 }

@@ -33,13 +33,19 @@ namespace BeautySpa.Services.Service
 
             IQueryable<ServiceProvider> query = _unitOfWork.GetRepository<ServiceProvider>()
                 .Entities
+                .AsNoTracking()
                 .Include(sp => sp.ServiceImages)
                 .Where(x => x.DeletedTime == null)
                 .OrderByDescending(x => x.CreatedTime);
 
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+            int totalCount = await query.CountAsync();
+            List<ServiceProvider> items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
             var mapped = _mapper.Map<List<GETServiceProviderModelViews>>(items);
-            var result = new BasePaginatedList<GETServiceProviderModelViews>(mapped, await query.CountAsync(), pageNumber, pageSize);
+            var result = new BasePaginatedList<GETServiceProviderModelViews>(mapped, totalCount, pageNumber, pageSize);
 
             return BaseResponseModel<BasePaginatedList<GETServiceProviderModelViews>>.Success(result);
         }
@@ -49,9 +55,12 @@ namespace BeautySpa.Services.Service
             if (id == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid ServiceProvider ID.");
 
-            var entity = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.Include(x => x.ServiceImages)
-                .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
+            IQueryable<ServiceProvider> query = _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities
+                .AsNoTracking()
+                .Include(x => x.ServiceImages);
+
+            var entity = await query.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
 
             return BaseResponseModel<GETServiceProviderModelViews>.Success(_mapper.Map<GETServiceProviderModelViews>(entity));
@@ -82,7 +91,6 @@ namespace BeautySpa.Services.Service
             entity.CreatedBy = CurrentUserId;
             entity.CreatedTime = CoreHelper.SystemTimeNow;
 
-            // ✅ Nếu chưa có avatar, chọn ảnh đầu tiên trong danh sách ServiceImages làm đại diện
             if (string.IsNullOrWhiteSpace(entity.ImageUrl))
             {
                 var firstImage = await _unitOfWork.GetRepository<ServiceImage>().Entities

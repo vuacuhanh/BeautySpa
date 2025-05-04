@@ -8,7 +8,7 @@ namespace BeautySpa.ModelViews.ServiceImageModelViews
 {
     public class POSTServiceImageModelViews
     {
-        public string ImageUrl { get; set; } = string.Empty;
         public Guid ServiceProviderId { get; set; }
+        public List<string> ImageUrls { get; set; } = new();
     }
 }

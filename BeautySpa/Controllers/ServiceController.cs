@@ -10,7 +10,7 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Dịch vụ")]
+    [SwaggerTag("Quản lý dịch vụ (Service)")]
     public class ServiceController : ControllerBase
     {
         private readonly IServices _serviceService;
@@ -19,40 +19,40 @@ namespace BeautySpa.API.Controllers
         {
             _serviceService = serviceService;
         }
-        [HttpGet]
-        [SwaggerOperation(Summary = "Get a paginated list of services")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+
+        [HttpGet("get-all")]
+        [SwaggerOperation(Summary = "Lấy danh sách dịch vụ (phân trang)")]
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             return Ok(await _serviceService.GetAllAsync(pageNumber, pageSize));
         }
 
         [HttpGet("{id:guid}")]
-        [SwaggerOperation(Summary = "Get a service by ID")]
+        [SwaggerOperation(Summary = "Lấy chi tiết dịch vụ theo ID")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             return Ok(await _serviceService.GetByIdAsync(id));
         }
 
-        [HttpPost]
-        [SwaggerOperation(Summary = "Create a new service")]
+        [HttpPost("create")]
+        [SwaggerOperation(Summary = "Tạo mới dịch vụ")]
         public async Task<IActionResult> Create([FromBody] POSTServiceModelViews model)
         {
             return Ok(await _serviceService.CreateAsync(model));
         }
 
-        [HttpPut]
-        [SwaggerOperation(Summary = "Update an existing service")]
+        [HttpPut("update")]
+        [SwaggerOperation(Summary = "Cập nhật thông tin dịch vụ")]
         public async Task<IActionResult> Update([FromBody] PUTServiceModelViews model)
         {
             return Ok(await _serviceService.UpdateAsync(model));
         }
 
         [HttpDelete("{id:guid}")]
-        [SwaggerOperation(Summary = "Delete a service (soft delete)")]
+        [SwaggerOperation(Summary = "Xóa mềm dịch vụ theo ID")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
             return Ok(await _serviceService.DeleteAsync(id));
         }
-
     }
 }
