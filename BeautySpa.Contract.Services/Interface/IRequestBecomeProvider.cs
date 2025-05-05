@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BeautySpa.Core.Base;
+using BeautySpa.ModelViews.RequestBecomeProviderModelView;
 
 namespace BeautySpa.Contract.Services.Interface
 {
-    class IRequestBecomeProvider
+    public interface IRequestBecomeProvider
     {
+        Task<BaseResponseModel<Guid>> CreateRequestAsync(POSTRequestBecomeProviderModelView model);
+        Task<BaseResponseModel<BasePaginatedList<GETRequestBecomeProviderModelView>>> GetAllAsync(string? requestStatus, int pageNumber, int pageSize);
+        Task<BaseResponseModel<string>> ApproveRequestAsync(Guid requestId);
+        Task<BaseResponseModel<string>> RejectRequestAsync(Guid requestId, string reason);
     }
 }

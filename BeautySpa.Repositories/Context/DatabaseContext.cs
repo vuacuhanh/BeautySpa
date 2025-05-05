@@ -39,6 +39,7 @@ namespace BeautySpa.Repositories.Context
         public DbSet<AdminStaff> AdminStaffs => Set<AdminStaff>();
         public DbSet<Staff> Staffs => Set<Staff>();
         public DbSet<RequestBecomeProvider> RequestBecomeProviders => Set<RequestBecomeProvider>();
+        public DbSet<ServiceProviderCategory> ServiceProviderCategories => Set<ServiceProviderCategory>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -127,6 +128,46 @@ namespace BeautySpa.Repositories.Context
                 .HasOne(x => x.Service)
                 .WithMany()
                 .HasForeignKey(x => x.ServiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+            // RequestBecomeProvider → ApplicationUsers
+            builder.Entity<RequestBecomeProvider>()
+                .HasOne(r => r.User)
+                .WithMany(u => u.BecomeProviderRequests)
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ServiceProvider → ApplicationUsers
+            builder.Entity<ServiceProvider>()
+                .HasOne(sp => sp.Provider)
+                .WithOne(u => u.ServiceProvider)
+                .HasForeignKey<ServiceProvider>(sp => sp.ProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ServiceProvider → ServiceImage
+            builder.Entity<ServiceImage>()
+                .HasOne(si => si.ServiceProvider)
+                .WithMany(sp => sp.ServiceImages)
+                .HasForeignKey(si => si.ServiceProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ServiceProvider → WorkingHour
+            builder.Entity<WorkingHour>()
+                .HasOne(wh => wh.ServiceProvider)
+                .WithMany(sp => sp.WorkingHours)
+                .HasForeignKey(wh => wh.ServiceProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ServiceProvider → ServiceProviderCategory (many-to-many)
+            builder.Entity<ServiceProviderCategory>()
+                .HasOne(spc => spc.ServiceProvider)
+                .WithMany(sp => sp.ServiceProviderCategories)
+                .HasForeignKey(spc => spc.ServiceProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ServiceProviderCategory>()
+                .HasOne(spc => spc.ServiceCategory)
+                .WithMany()
+                .HasForeignKey(spc => spc.ServiceCategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Precision settings
