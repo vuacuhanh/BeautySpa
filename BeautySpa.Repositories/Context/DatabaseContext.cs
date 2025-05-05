@@ -36,6 +36,7 @@ namespace BeautySpa.Repositories.Context
         public DbSet<MemberShip> Memberships => Set<MemberShip>();
         public DbSet<Promotion> Promotions => Set<Promotion>();
         public DbSet<PromotionAdmin> PromotionAdmins => Set<PromotionAdmin>();
+        public DbSet<PromotionAdminRank> PromotionAdminRanks => Set<PromotionAdminRank>();
         public DbSet<AdminStaff> AdminStaffs => Set<AdminStaff>();
         public DbSet<Staff> Staffs => Set<Staff>();
         public DbSet<RequestBecomeProvider> RequestBecomeProviders => Set<RequestBecomeProvider>();
