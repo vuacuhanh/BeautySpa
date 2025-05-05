@@ -1,0 +1,227 @@
+﻿using AutoMapper;
+using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Contract.Repositories.IUOW;
+using BeautySpa.Contract.Services.Interface;
+using BeautySpa.Core.Base;
+using BeautySpa.Core.Infrastructure;
+using BeautySpa.Core.Utils;
+using BeautySpa.ModelViews.RequestBecomeProviderModelView;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+
+namespace BeautySpa.Services.Service
+{
+    public class RequestBecomeProviderService : IRequestBecomeProvider
+    {
+        private readonly IEmailService _emailService;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _contextAccessor;
+        private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+
+        public RequestBecomeProviderService(IEmailService emailService, IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
+        {
+            _emailService = emailService;
+            _unitOfWork = unitOfWork;
+            _mapper = mapper;
+            _contextAccessor = contextAccessor;
+        }
+
+        public async Task<BaseResponseModel<Guid>> CreateRequestAsync(POSTRequestBecomeProviderModelView model)
+        {
+            var userId = Guid.Parse(CurrentUserId);
+            var user = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(userId)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            foreach (var categoryId in model.ServiceCategoryIds)
+            {
+                _ = await _unitOfWork.GetRepository<ServiceCategory>().GetByIdAsync(categoryId)
+                    ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Service category {categoryId} not found.");
+            }
+
+            var existing = await _unitOfWork.GetRepository<RequestBecomeProvider>()
+                .Entities.FirstOrDefaultAsync(x => x.UserId == userId && x.RequestStatus == "pending");
+
+            if (existing != null)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Already have pending request.");
+
+            var request = _mapper.Map<RequestBecomeProvider>(model);
+            request.Id = Guid.NewGuid();
+            request.UserId = userId;
+            request.RequestStatus = "pending";
+            request.CreatedBy = CurrentUserId;
+            request.CreatedTime = CoreHelper.SystemTimeNow;
+            request.LastUpdatedBy = CurrentUserId;
+            request.LastUpdatedTime = request.CreatedTime;
+
+            await _unitOfWork.GetRepository<RequestBecomeProvider>().InsertAsync(request);
+            await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<Guid>.Success(request.Id);
+        }
+
+        public async Task<BaseResponseModel<BasePaginatedList<GETRequestBecomeProviderModelView>>> GetAllAsync(string? requestStatus, int pageNumber, int pageSize)
+        {
+            if (pageNumber <= 0 || pageSize <= 0)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid pagination.");
+
+            var query = _unitOfWork.GetRepository<RequestBecomeProvider>()
+                .Entities
+                .Where(r => r.DeletedTime == null);
+
+            if (!string.IsNullOrEmpty(requestStatus))
+            {
+                requestStatus = requestStatus.ToLower();
+                query = query.Where(r => r.RequestStatus.ToLower() == requestStatus);
+            }
+
+            var total = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(r => r.CreatedTime)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var mapped = _mapper.Map<List<GETRequestBecomeProviderModelView>>(items);
+            return BaseResponseModel<BasePaginatedList<GETRequestBecomeProviderModelView>>.Success(
+                new BasePaginatedList<GETRequestBecomeProviderModelView>(mapped, total, pageNumber, pageSize));
+        }
+
+        public async Task<BaseResponseModel<string>> ApproveRequestAsync(Guid requestId)
+        {
+            var requestRepo = _unitOfWork.GetRepository<RequestBecomeProvider>();
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+            var providerRepo = _unitOfWork.GetRepository<ServiceProvider>();
+            var providerCategoryRepo = _unitOfWork.GetRepository<ServiceProviderCategory>();
+            var workingHourRepo = _unitOfWork.GetRepository<WorkingHour>();
+            var imageRepo = _unitOfWork.GetRepository<ServiceImage>();
+
+            var request = await requestRepo.Entities
+                .FirstOrDefaultAsync(r => r.Id == requestId && r.RequestStatus == "pending" && r.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Request Not Found.");
+
+            var user = await userRepo.GetByIdAsync(request.UserId)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User Not Found.");
+
+            if (user.ServiceProvider != null)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "User is already a provider.");
+
+            var provider = new ServiceProvider
+            {
+                Id = Guid.NewGuid(),
+                BusinessName = request.BusinessName,
+                PhoneNumber = request.PhoneNumber,
+                WebsiteOrSocialLink = request.WebsiteOrSocialLink ?? "",
+                Description = request.Description,
+                ImageUrl = request.ImageUrl ?? "",
+                ProviderId = user.Id,
+                ContactFullName = user.UserName ?? "",
+                ContactPosition = "Chủ cơ sở",
+                Status = "approved",
+                IsApproved = true,
+                AverageRating = 0,
+                TotalReviews = 0,
+            };
+            await providerRepo.InsertAsync(provider);
+
+            var categoryIds = request.ServiceCategoryIds?.Split('|', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToList() ?? new();
+            foreach (var catId in categoryIds)
+            {
+                await providerCategoryRepo.InsertAsync(new ServiceProviderCategory
+                {
+                    Id = Guid.NewGuid(),
+                    ServiceProviderId = provider.Id,
+                    ServiceCategoryId = catId
+                });
+            }
+
+            if (request.OpenTime.HasValue && request.CloseTime.HasValue)
+            {
+                await workingHourRepo.InsertAsync(new WorkingHour
+                {
+                    Id = Guid.NewGuid(),
+                    ServiceProviderId = provider.Id,
+                    DayOfWeek = 1,
+                    OpeningTime = request.OpenTime.Value,
+                    ClosingTime = request.CloseTime.Value,
+                    IsWorking = true
+                });
+            }
+
+            var descImages = request.DescriptionImages?.Split('|', StringSplitOptions.RemoveEmptyEntries);
+            if (descImages != null)
+            {
+                foreach (var img in descImages)
+                {
+                    await imageRepo.InsertAsync(new ServiceImage
+                    {
+                        Id = Guid.NewGuid(),
+                        ServiceProviderId = provider.Id,
+                        ImageUrl = img
+                    });
+                }
+            }
+
+            request.RequestStatus = "approved";
+            request.LastUpdatedBy = CurrentUserId;
+            request.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+            await requestRepo.UpdateAsync(request);
+            await _unitOfWork.SaveAsync();
+
+            // 📩 Gửi email thông báo đã duyệt
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                var subject = "Yêu cầu trở thành nhà cung cấp đã được duyệt";
+                var body = $@"
+                    <p>Xin chào <strong>{user.UserName}</strong>,</p>
+                    <p>Chúc mừng! Yêu cầu trở thành nhà cung cấp của bạn trên hệ thống <strong>ZENORA</strong> đã được <strong>phê duyệt</strong>.</p>
+                    <p>Bạn đã có thể đăng nhập và cập nhật thêm thông tin về dịch vụ, lịch làm việc, hình ảnh,... trong trang quản lý.</p>
+                    <p>Nếu có bất kỳ thắc mắc nào, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi.</p>
+                    <p>Trân trọng,<br/>Đội ngũ BeautySpa</p>";
+
+                await _emailService.SendEmailAsync(user.Email, subject, body);
+            }
+
+            return BaseResponseModel<string>.Success("Đã duyệt yêu cầu và gửi email thông báo.");
+        }
+
+
+        public async Task<BaseResponseModel<string>> RejectRequestAsync(Guid requestId, string reason)
+        {
+            var repo = _unitOfWork.GetRepository<RequestBecomeProvider>();
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+
+            var request = await repo.Entities
+                .FirstOrDefaultAsync(r => r.Id == requestId && r.RequestStatus == "pending" && r.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Request not found.");
+
+            var user = await userRepo.GetByIdAsync(request.UserId)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            request.RequestStatus = "rejected";  // ✅ chuyển về string
+            request.RejectedReason = reason;
+            request.LastUpdatedBy = CurrentUserId;
+            request.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+            await repo.UpdateAsync(request);
+            await _unitOfWork.SaveAsync();
+
+            // 📩 Gửi email thông báo từ chối
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                var subject = "Yêu cầu trở thành nhà cung cấp đã bị từ chối";
+                var body = $@"
+                <p>Xin chào <strong>{user.UserName}</strong>,</p>
+                <p>Chúng tôi rất tiếc phải thông báo rằng yêu cầu trở thành nhà cung cấp của bạn đã bị <strong>từ chối</strong>.</p>
+                <p><strong>Lý do:</strong> {reason}</p>
+                <p>Nếu bạn có thắc mắc, vui lòng liên hệ với bộ phận hỗ trợ của chúng tôi.</p>
+                <p>Trân trọng,<br/>Đội ngũ ZENORA</p>";
+
+                await _emailService.SendEmailAsync(user.Email, subject, body);
+            }
+
+            return BaseResponseModel<string>.Success("Request rejected and email sent.");
+        }
+    }
+}

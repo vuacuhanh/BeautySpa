@@ -8,6 +8,6 @@ public class WorkingHour : BaseEntity
     public TimeSpan ClosingTime { get; set; }
     public bool IsWorking { get; set; } = true;
 
-    public Guid ProviderId { get; set; }
-    public virtual ApplicationUsers? Provider { get; set; }
+    public Guid ServiceProviderId { get; set; }
+    public virtual ServiceProvider? ServiceProvider { get; set; }
 }

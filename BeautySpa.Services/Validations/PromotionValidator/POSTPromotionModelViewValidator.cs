@@ -25,9 +25,17 @@ namespace BeautySpa.Services.Validations.PromotionValidator
                 .InclusiveBetween(0, 100).When(x => x.DiscountPercent.HasValue)
                 .WithMessage("Phần trăm giảm giá phải từ 0 đến 100");
 
+            RuleFor(x => x.DiscountPercent)
+               .InclusiveBetween(0, 100).When(x => x.DiscountPercent.HasValue)
+               .WithMessage("Phần trăm giảm giá phải từ 0 đến 100");
+
+            RuleFor(x => x.DiscountAmount)
+                .GreaterThan(0).When(x => x.DiscountAmount.HasValue)
+                .WithMessage("Giá trị giảm phải lớn hơn 0");
+
             RuleFor(x => x)
-                .Must(x => x.DiscountPercent.HasValue)
-                .WithMessage("Nhập giá trị % muốn giảm ");
+                .Must(x => x.DiscountPercent.HasValue ^ x.DiscountAmount.HasValue)
+                .WithMessage("Chỉ được nhập MỘT trong hai: phần trăm giảm giá HOẶC số tiền giảm giá.");
         }
     }
 }
