@@ -10,5 +10,6 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         // Mối quan hệ
         public virtual ICollection<Service> Services { get; set; } = new List<Service>();
+        public virtual ICollection<ServiceProviderCategory>? ServiceProviderCategories { get; set; } = new List<ServiceProviderCategory>(); // Mối quan hệ nhiều-nhiều
     }
 }

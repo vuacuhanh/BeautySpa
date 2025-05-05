@@ -33,6 +33,8 @@ namespace BeautySpa.Contract.Repositories.Entity
         public virtual ICollection<Message> SentMessages { get; set; } = new List<Message>();
         public virtual ICollection<Message> ReceivedMessages { get; set; } = new List<Message>();
 
+        public virtual ICollection<RequestBecomeProvider> BecomeProviderRequests { get; set; } = new List<RequestBecomeProvider>();
+
         public ApplicationUsers()
         {
             CreatedTime = DateTimeOffset.UtcNow;
