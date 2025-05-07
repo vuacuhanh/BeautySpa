@@ -14,6 +14,7 @@ namespace BeautySpa.Validations.Auth
             RuleFor(x => x.OtpCode)
                 .NotEmpty().WithMessage("OTP code is required.");
 
+
             RuleFor(x => x.IpAddress)
                 .NotEmpty().WithMessage("IP address is required.");
 

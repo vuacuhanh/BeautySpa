@@ -31,10 +31,12 @@ namespace BeautySpa.Services.Service
             if (string.IsNullOrWhiteSpace(model.ServiceName))
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name cannot be empty.");
 
-            var providerExists = await _unitOfWork.GetRepository<ApplicationUsers>().Entities
-                .AnyAsync(p => p.Id == model.ProviderId && !p.DeletedTime.HasValue);
-            if (!providerExists)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Provider not found.");
+            var currentUserId = Guid.Parse(CurrentUserId);
+            var provider = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.FirstOrDefaultAsync(p => p.ProviderId == currentUserId && p.DeletedTime == null);
+
+            if (provider == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Bạn không phải là nhà cung cấp dịch vụ.");
 
             var categoryExists = await _unitOfWork.GetRepository<ServiceCategory>().Entities
                 .AnyAsync(c => c.Id == model.CategoryId && !c.DeletedTime.HasValue);
@@ -47,6 +49,7 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name already exists.");
 
             var entity = _mapper.Map<BeautySpa.Contract.Repositories.Entity.Service>(model);
+            entity.ProviderId = provider.Id; 
             entity.Id = Guid.NewGuid();
             entity.CreatedBy = CurrentUserId;
             entity.CreatedTime = CoreHelper.SystemTimeNow;
@@ -60,18 +63,29 @@ namespace BeautySpa.Services.Service
         }
 
 
-        public async Task<BaseResponseModel<BasePaginatedList<GETServiceModelViews>>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<BaseResponseModel<BasePaginatedList<GETServiceModelViews>>> GetAllAsync(int pageNumber, int pageSize, bool isMineOnly = false)
         {
             if (pageNumber <= 0 || pageSize <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
 
             IQueryable<BeautySpa.Contract.Repositories.Entity.Service> query = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
                 .Entities
-                .Where(x => x.DeletedTime == null)
-                .OrderByDescending(x => x.CreatedTime);
+                .Where(x => x.DeletedTime == null);
+
+            if (isMineOnly)
+            {
+                var currentUserId = Guid.Parse(CurrentUserId);
+                var provider = await _unitOfWork.GetRepository<ServiceProvider>().Entities
+                    .FirstOrDefaultAsync(p => p.ProviderId == currentUserId && p.DeletedTime == null);
+                if (provider != null)
+                {
+                    query = query.Where(x => x.ProviderId == provider.Id);
+                }
+            }
+
+            query = query.OrderByDescending(x => x.CreatedTime);
 
             var pagedQuery = query.Skip((pageNumber - 1) * pageSize).Take(pageSize);
-
             var mappedItems = await pagedQuery.ProjectTo<GETServiceModelViews>(_mapper.ConfigurationProvider).ToListAsync();
             var totalCount = await query.CountAsync();
 
@@ -86,7 +100,6 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid service ID.");
 
             var entity = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>().Entities
-                .Include(x => x.ServiceImages)
                 .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service not found.");
 
@@ -95,6 +108,11 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<string>> UpdateAsync(PUTServiceModelViews model)
         {
+            var categoryExists = await _unitOfWork.GetRepository<ServiceCategory>().Entities
+                .AnyAsync(c => c.Id == model.CategoryId && !c.DeletedTime.HasValue);
+            if (!categoryExists)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service category not found.");
+
             if (model.Id == Guid.Empty || string.IsNullOrWhiteSpace(model.ServiceName))
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid input.");
 
@@ -105,6 +123,10 @@ namespace BeautySpa.Services.Service
             var nameExists = await repo.Entities.AnyAsync(x => x.ServiceName.ToLower() == model.ServiceName.ToLower() && x.Id != model.Id && x.DeletedTime == null);
             if (nameExists)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name already exists.");
+
+            if (entity.ProviderId != Guid.Parse(CurrentUserId))
+                throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "You don't have permission service");
+
 
             _mapper.Map(model, entity);
             entity.LastUpdatedBy = CurrentUserId;
