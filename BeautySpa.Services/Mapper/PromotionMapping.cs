@@ -8,9 +8,11 @@ namespace BeautySpa.Services.Mapper
     {
         public PromotionMapping()
         {
-            CreateMap<Promotion, GETPromotionModelViews>();
-            CreateMap<POSTPromotionModelViews, Promotion>();
-            CreateMap<PUTPromotionModelViews, Promotion>();
+            CreateMap<Promotion, GETPromotionModelView>()
+                .ForMember(dest => dest.ProviderName, opt => opt.MapFrom(src => src.Provider!.UserInfor!.FullName));
+
+            CreateMap<POSTPromotionModelView, Promotion>();
+            CreateMap<PUTPromotionModelView, Promotion>();
         }
     }
 }
