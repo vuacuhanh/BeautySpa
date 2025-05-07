@@ -178,12 +178,6 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(spc => spc.ServiceCategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ServicePromotion → Service (FLASH SALE)
-            builder.Entity<ServicePromotion>()
-                .HasOne(sp => sp.Service)
-                .WithMany(s => s.ServicePromotions)
-                .HasForeignKey(sp => sp.ServiceId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             // Precision configs
             builder.Entity<Payment>().Property(p => p.Amount).HasPrecision(10, 2);
@@ -194,7 +188,6 @@ namespace BeautySpa.Repositories.Context
             builder.Entity<PromotionAdmin>().Property(pa => pa.DiscountAmount).HasPrecision(10, 2);
             builder.Entity<PromotionAdmin>().Property(pa => pa.DiscountPercent).HasPrecision(5, 2);
             builder.Entity<Service>().Property(s => s.Price).HasPrecision(10, 2);
-            builder.Entity<Service>().Property(s => s.DiscountPrice).HasPrecision(10, 2);
             builder.Entity<ServicePromotion>().Property(sp => sp.DiscountAmount).HasPrecision(10, 2);
             builder.Entity<ServicePromotion>().Property(sp => sp.DiscountPercent).HasPrecision(5, 2);
             builder.Entity<UserInfor>().Property(ui => ui.Salary).HasPrecision(15, 2);

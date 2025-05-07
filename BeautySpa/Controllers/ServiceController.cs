@@ -22,9 +22,9 @@ namespace BeautySpa.API.Controllers
 
         [HttpGet("get-all")]
         [SwaggerOperation(Summary = "Lấy danh sách dịch vụ (phân trang)")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize, bool isMineOnly)
         {
-            return Ok(await _serviceService.GetAllAsync(pageNumber, pageSize));
+            return Ok(await _serviceService.GetAllAsync(pageNumber, pageSize, isMineOnly));
         }
 
         [HttpGet("{id:guid}")]

@@ -53,17 +53,10 @@ namespace BeautySpa.Services.Service
         //================================================================================================================================
         public async Task<BaseResponseModel<string>> SignUpAsync(SignUpAuthModelView model)
         {
-            if (string.IsNullOrWhiteSpace(model.ConfirmOtp))
-                throw new BadRequestException(ErrorCode.InvalidInput, "OTP is required.");
-
             var db = _redis.GetDatabase();
-            var cache = await db.StringGetAsync($"otp:{model.Email}");
-            if (cache.IsNullOrEmpty)
-                throw new BadRequestException(ErrorCode.InvalidInput, "OTP expired or not found.");
-
-            var payload = JsonConvert.DeserializeObject<OtpVerifyModelView>(cache!);
-            if (payload == null || payload.OtpCode != model.ConfirmOtp || payload.IpAddress != CurrentIp || payload.DeviceInfo != CurrentDevice)
-                throw new BadRequestException(ErrorCode.InvalidInput, "OTP validation failed.");
+            var verified = await db.StringGetAsync($"otp:verified:{model.Email}");
+            if (verified.IsNullOrEmpty || verified != "true")
+                throw new BadRequestException(ErrorCode.InvalidInput, "Email has not been verified.");
 
             var user = _mapper.Map<ApplicationUsers>(model);
             user.UserName = model.Email;
@@ -87,7 +80,6 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join("; ", addToRoleResult.Errors.Select(x => x.Description)));
             }
 
-            // Tạo thông tin cá nhân
             var userInfor = new UserInfor
             {
                 UserId = user.Id,
@@ -95,8 +87,7 @@ namespace BeautySpa.Services.Service
             };
             await _unitOfWork.GetRepository<UserInfor>().InsertAsync(userInfor);
 
-            // Gán Rank Bronze mặc định (MinPoints = 0)
-            IQueryable<Rank> rankQuery = _unitOfWork.GetRepository<Rank>().Entities
+            var rankQuery = _unitOfWork.GetRepository<Rank>().Entities
                 .Where(r => r.DeletedTime == null)
                 .OrderBy(r => r.MinPoints);
 
@@ -107,7 +98,6 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Default rank not found.");
             }
 
-            // Tạo MemberShip mặc định
             var membership = new MemberShip
             {
                 Id = Guid.NewGuid(),
@@ -119,9 +109,9 @@ namespace BeautySpa.Services.Service
             };
             await _unitOfWork.GetRepository<MemberShip>().InsertAsync(membership);
 
-            // Lưu toàn bộ
             await _unitOfWork.SaveAsync();
             await db.KeyDeleteAsync($"otp:{model.Email}");
+            await db.KeyDeleteAsync($"otp:verified:{model.Email}");
 
             return BaseResponseModel<string>.Success("Sign up successfully.");
         }
@@ -148,6 +138,7 @@ namespace BeautySpa.Services.Service
         //==============================================================================================================================
         public async Task<BaseResponseModel<string>> RequestOtpAsync(string email)
         {
+
             if (string.IsNullOrWhiteSpace(email))
                 throw new BadRequestException(ErrorCode.InvalidInput, "Email cannot be empty.");
 
@@ -213,6 +204,25 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Password reset successfully.");
         }
+        //==================================================================================================================================================================
+        public async Task<BaseResponseModel<string>> VerifyOtpAsync(OtpVerifyModelView model)
+        {
+            var db = _redis.GetDatabase();
+            var cache = await db.StringGetAsync($"otp:{model.Email}");
+            if (cache.IsNullOrEmpty)
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP expired or not found.");
+
+            var payload = JsonConvert.DeserializeObject<OtpVerifyModelView>(cache!);
+            if (payload == null || payload.OtpCode != model.OtpCode || payload.IpAddress != CurrentIp || payload.DeviceInfo != CurrentDevice)
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP validation failed.");
+
+            var isVerified = await db.StringGetAsync($"otp:verified:{model.Email}");
+            if (isVerified == "true") return BaseResponseModel<string>.Success("OTP already verified.");
+
+            await db.StringSetAsync($"otp:verified:{model.Email}", "true", TimeSpan.FromMinutes(10));
+            return BaseResponseModel<string>.Success("OTP verified successfully.");
+        }
+
         //==============================================================================================================================
         public async Task<BaseResponseModel<string>> ChangePasswordAsync(ChangePasswordAuthModelView model)
         {

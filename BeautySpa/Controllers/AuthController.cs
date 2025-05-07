@@ -36,6 +36,14 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
+        [SwaggerOperation(Summary = "Xác minh OTP trước khi đăng ký")]
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOtp([FromBody] OtpVerifyModelView model)
+        {
+            var result = await _authService.VerifyOtpAsync(model);
+            return Ok(result);
+        }
+
         [SwaggerOperation(Summary = "Đăng nhập bằng Google")]
         [HttpPost("sign-in-google")]
         public async Task<IActionResult> SignInWithGoogle([FromBody] SignInWithGoogleModelView model)

@@ -10,7 +10,9 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<TokenResponseModelView>> SignInAsync(SignInAuthModelView model);
         Task<BaseResponseModel<TokenResponseModelView>> SignInWithGoogleAsync(SignInWithGoogleModelView model);
 
+
         Task<BaseResponseModel<string>> RequestOtpAsync(string email);
+        Task<BaseResponseModel<string>> VerifyOtpAsync(OtpVerifyModelView model);
         Task<BaseResponseModel<string>> ForgotPasswordAsync(ForgotPasswordAuthModelView model);
         Task<BaseResponseModel<string>> ResetPasswordAsync(ResetPasswordAuthModelView model);
         Task<BaseResponseModel<string>> ChangePasswordAsync(ChangePasswordAuthModelView model);
