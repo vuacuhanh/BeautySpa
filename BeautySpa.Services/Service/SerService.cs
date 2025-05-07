@@ -49,7 +49,7 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name already exists.");
 
             var entity = _mapper.Map<BeautySpa.Contract.Repositories.Entity.Service>(model);
-            entity.ProviderId = provider.Id; 
+            entity.ProviderId = provider.ProviderId;
             entity.Id = Guid.NewGuid();
             entity.CreatedBy = CurrentUserId;
             entity.CreatedTime = CoreHelper.SystemTimeNow;
@@ -79,7 +79,7 @@ namespace BeautySpa.Services.Service
                     .FirstOrDefaultAsync(p => p.ProviderId == currentUserId && p.DeletedTime == null);
                 if (provider != null)
                 {
-                    query = query.Where(x => x.ProviderId == provider.Id);
+                    query = query.Where(x => x.ProviderId == provider.ProviderId);
                 }
             }
 
