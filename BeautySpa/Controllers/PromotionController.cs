@@ -1,61 +1,53 @@
 ﻿using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.PromotionModelViews;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
-namespace BeautySpa.API.Controllers
+[Route("api/[controller]")]
+[ApiController]
+[SwaggerTag("Manage Provider Voucher Promotions")]
+public class PromotionController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    [SwaggerTag("Khuyến mãi nhà cung cấp")]
-    public class PromotionController : ControllerBase
+    private readonly IPromotionService _service;
+
+    public PromotionController(IPromotionService service)
     {
-        private readonly IPromotionService _service;
+        _service = service;
+    }
 
-        public PromotionController(IPromotionService service)
-        {
-            _service = service;
-        }
+    [HttpGet("all")]
+    [SwaggerOperation(Summary = "Get all promotions (paginated)")]
+    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 10)
+    {
+        return Ok(await _service.GetAllAsync(page, size));
+    }
 
-        [HttpPost("create")]
-        [SwaggerOperation(Summary = "Tạo khuyến mãi")]
-        public async Task<IActionResult> Create([FromBody] POSTPromotionModelViews model)
-        {
-            var result = await _service.CreateAsync(model);
-            return Ok(result);
-        }
+    [HttpGet("{id}")]
+    [SwaggerOperation(Summary = "Get promotion by ID")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        return Ok(await _service.GetByIdAsync(id));
+    }
 
-        [HttpGet("get-all")]
-        [SwaggerOperation(Summary = "Danh sách khuyến mãi (phân trang)")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
-        {
-            var result = await _service.GetAllAsync(pageNumber, pageSize);
-            return Ok(result);
-        }
+    [HttpPost("create")]
+    [SwaggerOperation(Summary = "Create new promotion")]
+    public async Task<IActionResult> Create([FromBody] POSTPromotionModelView model)
+    {
+        return Ok(await _service.CreateAsync(model));
+    }
 
-        [HttpGet("{id:guid}")]
-        [SwaggerOperation(Summary = "Lấy khuyến mãi theo ID")]
-        public async Task<IActionResult> GetById([FromRoute] Guid id)
-        {
-            var result = await _service.GetByIdAsync(id);
-            return Ok(result);
-        }
+    [HttpPut("update")]
+    [SwaggerOperation(Summary = "Update promotion")]
+    public async Task<IActionResult> Update([FromBody] PUTPromotionModelView model)
+    {
+        return Ok(await _service.UpdateAsync(model));
+    }
 
-        [HttpPut("update")]
-        [SwaggerOperation(Summary = "Cập nhật khuyến mãi")]
-        public async Task<IActionResult> Update([FromBody] PUTPromotionModelViews model)
-        {
-            var result = await _service.UpdateAsync(model);
-            return Ok(result);
-        }
-
-        [HttpDelete("{id:guid}")]
-        [SwaggerOperation(Summary = "Xoá khuyến mãi (soft delete)")]
-        public async Task<IActionResult> Delete([FromRoute] Guid id)
-        {
-            var result = await _service.DeleteAsync(id);
-            return Ok(result);
-        }
+    [HttpDelete("delete/{id}")]
+    [SwaggerOperation(Summary = "Delete promotion")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        return Ok(await _service.DeleteAsync(id));
     }
 }
+

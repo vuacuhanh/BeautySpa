@@ -1,6 +1,4 @@
-﻿// ... (các using giữ nguyên)
-
-using AutoMapper;
+﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
@@ -9,108 +7,112 @@ using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.PromotionModelViews;
 using BeautySpa.Services.Validations.PromotionValidator;
+using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
 
-namespace BeautySpa.Services.Service
+public class PromotionService : IPromotionService
 {
-    public class PromotionService : IPromotionService
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
+    private readonly IHttpContextAccessor _contextAccessor;
+
+    public PromotionService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
     {
-        private readonly IUnitOfWork _uow;
-        private readonly IMapper _mapper;
-        private readonly IHttpContextAccessor _contextAccessor;
+        _unitOfWork = unitOfWork;
+        _mapper = mapper;
+        _contextAccessor = contextAccessor;
+    }
 
-        private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+    private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
-        public PromotionService(IUnitOfWork uow, IMapper mapper, IHttpContextAccessor contextAccessor)
-        {
-            _uow = uow;
-            _mapper = mapper;
-            _contextAccessor = contextAccessor;
-        }
+    public async Task<BaseResponseModel<BasePaginatedList<GETPromotionModelView>>> GetAllAsync(int pageNumber, int pageSize)
+    {
+        if (pageNumber <= 0 || pageSize <= 0)
+            throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
 
-        public async Task<BaseResponseModel<Guid>> CreateAsync(POSTPromotionModelViews model)
-        {
-            var validator = new POSTPromotionModelViewValidator();
-            var result = await validator.ValidateAsync(model);
-            if (!result.IsValid)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput,
-                    string.Join("; ", result.Errors.Select(e => e.ErrorMessage)));
+        IQueryable<Promotion> query = _unitOfWork.GetRepository<Promotion>().Entities
+            .Include(p => p.Provider)
+            .Where(p => !p.DeletedTime.HasValue)
+            .OrderByDescending(p => p.CreatedTime);
 
-            var promo = _mapper.Map<Promotion>(model);
-            promo.Id = Guid.NewGuid();
-            promo.CreatedTime = CoreHelper.SystemTimeNow;
-            promo.CreatedBy = CurrentUserId;
+        var page = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
 
-            await _uow.GetRepository<Promotion>().InsertAsync(promo);
-            await _uow.SaveAsync();
-            return BaseResponseModel<Guid>.Success(promo.Id);
-        }
+        var result = new BasePaginatedList<GETPromotionModelView>(
+            _mapper.Map<List<GETPromotionModelView>>(page),
+            await query.CountAsync(),
+            pageNumber,
+            pageSize
+        );
 
-        public async Task<BaseResponseModel<string>> UpdateAsync(PUTPromotionModelViews model)
-        {
-            var validator = new PUTPromotionModelViewValidator();
-            var result = await validator.ValidateAsync(model);
-            if (!result.IsValid)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput,
-                    string.Join("; ", result.Errors.Select(e => e.ErrorMessage)));
+        return BaseResponseModel<BasePaginatedList<GETPromotionModelView>>.Success(result);
+    }
 
-            var repo = _uow.GetRepository<Promotion>();
-            var entity = await repo.Entities.FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null);
-            if (entity == null)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Promotion Not Found");
+    public async Task<BaseResponseModel<GETPromotionModelView>> GetByIdAsync(Guid id)
+    {
+        var entity = await _unitOfWork.GetRepository<Promotion>().Entities
+            .Include(p => p.Provider)
+            .FirstOrDefaultAsync(p => p.Id == id && p.DeletedTime == null);
 
-            _mapper.Map(model, entity);
-            entity.LastUpdatedTime = CoreHelper.SystemTimeNow;
-            entity.LastUpdatedBy = CurrentUserId;
+        if (entity == null)
+            throw new ErrorException(404, ErrorCode.NotFound, "Promotion not found");
 
-            await repo.UpdateAsync(entity);
-            await _uow.SaveAsync();
-            return BaseResponseModel<string>.Success("Update Successful");
-        }
+        var result = _mapper.Map<GETPromotionModelView>(entity);
+        return BaseResponseModel<GETPromotionModelView>.Success(result);
+    }
 
-        public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
-        {
-            var repo = _uow.GetRepository<Promotion>();
-            var entity = await repo.Entities.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null);
-            if (entity == null)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Promotion Not Found");
+    public async Task<BaseResponseModel<string>> CreateAsync(POSTPromotionModelView model)
+    {
+        await new POSTPromotionValidator().ValidateAndThrowAsync(model);
 
-            entity.DeletedTime = CoreHelper.SystemTimeNow;
-            entity.DeletedBy = CurrentUserId;
+        var entity = _mapper.Map<Promotion>(model);
+        entity.Id = Guid.NewGuid();
+        entity.ProviderId = Guid.Parse(CurrentUserId);
+        entity.CreatedBy = CurrentUserId;
+        entity.CreatedTime = CoreHelper.SystemTimeNow;
 
-            await repo.UpdateAsync(entity);
-            await _uow.SaveAsync();
-            return BaseResponseModel<string>.Success("Delete Successful");
-        }
+        await _unitOfWork.GetRepository<Promotion>().InsertAsync(entity);
+        await _unitOfWork.SaveAsync();
 
-        public async Task<BaseResponseModel<GETPromotionModelViews>> GetByIdAsync(Guid id)
-        {
-            var entity = await _uow.GetRepository<Promotion>().Entities
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null);
-            if (entity == null)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Promotion Not Found");
+        return BaseResponseModel<string>.Success("Promotion created successfully");
+    }
 
-            return BaseResponseModel<GETPromotionModelViews>.Success(_mapper.Map<GETPromotionModelViews>(entity));
-        }
+    public async Task<BaseResponseModel<string>> UpdateAsync(PUTPromotionModelView model)
+    {
+        await new PUTPromotionValidator().ValidateAndThrowAsync(model);
 
-        public async Task<BaseResponseModel<BasePaginatedList<GETPromotionModelViews>>> GetAllAsync(int page, int size)
-        {
-            if (page <= 0 || size <= 0)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
+        var repo = _unitOfWork.GetRepository<Promotion>();
+        var entity = await repo.Entities.FirstOrDefaultAsync(p => p.Id == model.Id && p.DeletedTime == null);
+        if (entity == null)
+            throw new ErrorException(404, ErrorCode.NotFound, "Promotion not found");
 
-            IQueryable<Promotion> query = _uow.GetRepository<Promotion>().Entities
-                .AsNoTracking()
-                .Where(x => x.DeletedTime == null)
-                .OrderByDescending(x => x.CreatedTime);
+        _mapper.Map(model, entity);
+        entity.LastUpdatedTime = CoreHelper.SystemTimeNow;
+        entity.LastUpdatedBy = CurrentUserId;
 
-            var count = await query.CountAsync();
-            var items = await query.Skip((page - 1) * size).Take(size).ToListAsync();
-            var result = _mapper.Map<List<GETPromotionModelViews>>(items);
+        await repo.UpdateAsync(entity);
+        await _unitOfWork.SaveAsync();
 
-            return BaseResponseModel<BasePaginatedList<GETPromotionModelViews>>.Success(
-                new BasePaginatedList<GETPromotionModelViews>(result, count, page, size));
-        }
+        return BaseResponseModel<string>.Success("Promotion updated successfully");
+    }
+
+    public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
+    {
+        var repo = _unitOfWork.GetRepository<Promotion>();
+        var entity = await repo.Entities.FirstOrDefaultAsync(p => p.Id == id && p.DeletedTime == null);
+        if (entity == null)
+            throw new ErrorException(404, ErrorCode.NotFound, "Promotion not found");
+
+        entity.DeletedTime = CoreHelper.SystemTimeNow;
+        entity.DeletedBy = CurrentUserId;
+
+        await repo.UpdateAsync(entity);
+        await _unitOfWork.SaveAsync();
+
+        return BaseResponseModel<string>.Success("Promotion deleted successfully");
     }
 }

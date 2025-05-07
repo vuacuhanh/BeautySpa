@@ -6,17 +6,21 @@ namespace BeautySpa.Contract.Repositories.Entity
     {
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public decimal? DiscountPercent { get; set; }    // Giảm theo %
-        public decimal? DiscountAmount { get; set; }     // Giảm theo số tiền
+
+        // Chỉ dùng 1 loại giảm giá: phần trăm hoặc số tiền
+        public decimal? DiscountPercent { get; set; }   // Giảm theo %
+        public decimal? DiscountAmount { get; set; }    // Giảm theo số tiền
+
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
+
         public bool IsActive { get; set; } = true;
 
+        // Nhà cung cấp tạo khuyến mãi
         public Guid ProviderId { get; set; }
         public virtual ApplicationUsers? Provider { get; set; }
 
-        public virtual ICollection<ServicePromotion> ServicePromotions { get; set; } = new List<ServicePromotion>();
+        // Danh sách lịch hẹn đã áp dụng khuyến mãi
         public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     }
 }
-    

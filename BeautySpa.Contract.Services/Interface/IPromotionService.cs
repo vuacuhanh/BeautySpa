@@ -5,10 +5,10 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface IPromotionService
     {
-        Task<BaseResponseModel<BasePaginatedList<GETPromotionModelViews>>> GetAllAsync(int pageNumber, int pageSize);
-        Task<BaseResponseModel<GETPromotionModelViews>> GetByIdAsync(Guid id);
-        Task<BaseResponseModel<Guid>> CreateAsync(POSTPromotionModelViews model);
-        Task<BaseResponseModel<string>> UpdateAsync(PUTPromotionModelViews model);
+        Task<BaseResponseModel<BasePaginatedList<GETPromotionModelView>>> GetAllAsync(int pageNumber, int pageSize);
+        Task<BaseResponseModel<GETPromotionModelView>> GetByIdAsync(Guid id);
+        Task<BaseResponseModel<string>> CreateAsync(POSTPromotionModelView model);
+        Task<BaseResponseModel<string>> UpdateAsync(PUTPromotionModelView model);
         Task<BaseResponseModel<string>> DeleteAsync(Guid id);
     }
 }

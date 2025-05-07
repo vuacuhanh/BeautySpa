@@ -24,7 +24,7 @@ namespace BeautySpa.Repositories.Context
         public DbSet<ServicePromotion> ServicePromotions => Set<ServicePromotion>();
         public DbSet<WorkingHour> WorkingHours => Set<WorkingHour>();
         public DbSet<Appointment> Appointments => Set<Appointment>();
-        public DbSet<AppointmentService> AppointmentServices => Set<AppointmentService>(); // NEW
+        public DbSet<AppointmentService> AppointmentServices => Set<AppointmentService>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<Favorite> Favorites => Set<Favorite>();
@@ -46,6 +46,7 @@ namespace BeautySpa.Repositories.Context
         {
             base.OnModelCreating(builder);
 
+            // Appointment relations
             builder.Entity<Appointment>()
                 .HasOne(a => a.Customer)
                 .WithMany(u => u.CustomerAppointments)
@@ -58,6 +59,7 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(a => a.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Favorite
             builder.Entity<Favorite>()
                 .HasOne(f => f.Customer)
                 .WithMany(u => u.CustomerFavorites)
@@ -70,6 +72,7 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(f => f.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Message
             builder.Entity<Message>()
                 .HasOne(m => m.Sender)
                 .WithMany(u => u.SentMessages)
@@ -82,6 +85,7 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(m => m.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Review
             builder.Entity<Review>()
                 .HasOne(r => r.Customer)
                 .WithMany(u => u.CustomerReviews)
@@ -94,6 +98,7 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(r => r.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Staff
             builder.Entity<Staff>()
                 .HasOne(s => s.Provider)
                 .WithMany()
@@ -106,6 +111,7 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(s => s.StaffUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // AdminStaff
             builder.Entity<AdminStaff>()
                 .HasOne(a => a.Admin)
                 .WithMany()
@@ -130,35 +136,36 @@ namespace BeautySpa.Repositories.Context
                 .WithMany()
                 .HasForeignKey(x => x.ServiceId)
                 .OnDelete(DeleteBehavior.Restrict);
-            // RequestBecomeProvider → ApplicationUsers
+
+            // RequestBecomeProvider → User
             builder.Entity<RequestBecomeProvider>()
                 .HasOne(r => r.User)
                 .WithMany(u => u.BecomeProviderRequests)
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ServiceProvider → ApplicationUsers
+            // ServiceProvider → User
             builder.Entity<ServiceProvider>()
                 .HasOne(sp => sp.Provider)
                 .WithOne(u => u.ServiceProvider)
                 .HasForeignKey<ServiceProvider>(sp => sp.ProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // ServiceProvider → ServiceImage
+            // ServiceImage → ServiceProvider
             builder.Entity<ServiceImage>()
                 .HasOne(si => si.ServiceProvider)
                 .WithMany(sp => sp.ServiceImages)
                 .HasForeignKey(si => si.ServiceProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // ServiceProvider → WorkingHour
+            // WorkingHour → ServiceProvider
             builder.Entity<WorkingHour>()
                 .HasOne(wh => wh.ServiceProvider)
                 .WithMany(sp => sp.WorkingHours)
                 .HasForeignKey(wh => wh.ServiceProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // ServiceProvider → ServiceProviderCategory (many-to-many)
+            // ServiceProviderCategory many-to-many
             builder.Entity<ServiceProviderCategory>()
                 .HasOne(spc => spc.ServiceProvider)
                 .WithMany(sp => sp.ServiceProviderCategories)
@@ -171,36 +178,33 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(spc => spc.ServiceCategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Precision settings
+            // ServicePromotion → Service (FLASH SALE)
+            builder.Entity<ServicePromotion>()
+                .HasOne(sp => sp.Service)
+                .WithMany(s => s.ServicePromotions)
+                .HasForeignKey(sp => sp.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Precision configs
             builder.Entity<Payment>().Property(p => p.Amount).HasPrecision(10, 2);
             builder.Entity<Payment>().Property(p => p.RefundAmount).HasPrecision(10, 2);
             builder.Entity<Payment>().Property(p => p.PlatformFee).HasPrecision(10, 2);
-
             builder.Entity<Promotion>().Property(p => p.DiscountAmount).HasPrecision(10, 2);
             builder.Entity<Promotion>().Property(p => p.DiscountPercent).HasPrecision(5, 2);
             builder.Entity<PromotionAdmin>().Property(pa => pa.DiscountAmount).HasPrecision(10, 2);
             builder.Entity<PromotionAdmin>().Property(pa => pa.DiscountPercent).HasPrecision(5, 2);
             builder.Entity<Service>().Property(s => s.Price).HasPrecision(10, 2);
             builder.Entity<Service>().Property(s => s.DiscountPrice).HasPrecision(10, 2);
+            builder.Entity<ServicePromotion>().Property(sp => sp.DiscountAmount).HasPrecision(10, 2);
+            builder.Entity<ServicePromotion>().Property(sp => sp.DiscountPercent).HasPrecision(5, 2);
             builder.Entity<UserInfor>().Property(ui => ui.Salary).HasPrecision(15, 2);
             builder.Entity<Rank>().Property(r => r.DiscountPercent).HasPrecision(5, 2);
 
-            builder.Entity<ServiceImage>()
-                .HasOne(si => si.ServiceProvider)
-                .WithMany()
-                .HasForeignKey(si => si.ServiceProviderId)
-                .OnDelete(DeleteBehavior.Cascade);
-
+            // ServiceImage URL config
             builder.Entity<ServiceImage>()
                 .Property(si => si.ImageUrl)
                 .IsRequired()
                 .HasMaxLength(1000);
-
-            builder.Entity<ServicePromotion>()
-                .HasOne(sp => sp.Promotion)
-                .WithMany(p => p.ServicePromotions)
-                .HasForeignKey(sp => sp.PromotionId)
-                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

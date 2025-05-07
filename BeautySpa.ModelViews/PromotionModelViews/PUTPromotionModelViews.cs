@@ -1,8 +1,8 @@
 ﻿namespace BeautySpa.ModelViews.PromotionModelViews
 {
-    public class PUTPromotionModelViews : POSTPromotionModelViews
+    public class PUTPromotionModelView : POSTPromotionModelView
     {
         public Guid Id { get; set; }
-        public bool IsActive { get; set; }
     }
+
 }
