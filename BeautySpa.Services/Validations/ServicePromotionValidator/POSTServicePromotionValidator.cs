@@ -7,10 +7,23 @@ namespace BeautySpa.Services.Validations.ServicePromotionValidator
     {
         public POSTServicePromotionValidator()
         {
-            RuleFor(x => x.ServiceId).NotEmpty();
-            RuleFor(x => x.StartDate).LessThan(x => x.EndDate);
-            RuleFor(x => x).Must(x => x.DiscountAmount > 0 || x.DiscountPercent > 0)
-                .WithMessage("Either DiscountAmount or DiscountPercent must be greater than 0");
+            RuleFor(x => x.ServiceId)
+                .NotEmpty()
+                .WithMessage("ServiceId is required.");
+
+            RuleFor(x => x.StartDate)
+                .LessThan(x => x.EndDate)
+                .WithMessage("StartDate must be earlier than EndDate.");
+
+
+            RuleFor(x => x)
+                .Must(x =>
+                {
+                    bool hasPercent = x.DiscountPercent > 0;
+                    bool hasAmount = x.DiscountAmount > 0;
+                    return hasPercent ^ hasAmount; // XOR: chỉ một trong hai
+                })
+                .WithMessage("Only one of DiscountPercent or DiscountAmount should be provided and must be greater than 0.");
         }
     }
 }
