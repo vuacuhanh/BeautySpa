@@ -170,6 +170,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<MessageHub>("/hubs/message");
-
+//fix đây
 await app.RunAsync();
 
