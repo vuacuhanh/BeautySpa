@@ -170,5 +170,6 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<MessageHub>("/hubs/message");
 //fix đây
+Console.WriteLine("Starting BeautySpa.API...");
 await app.RunAsync();
 
