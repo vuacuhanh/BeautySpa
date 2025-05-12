@@ -12,21 +12,14 @@ using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
 
-Console.WriteLine("Starting BeautySpa Web API...");
-
 var builder = WebApplication.CreateBuilder(args);
-
-// Load environment variables from .env if available
-builder.Configuration.AddEnvironmentVariables();
-var configuration = builder.Configuration;
-
 // 1. Database
 builder.Services.AddDbContext<DatabaseContext>(options =>
-    options.UseSqlServer(configuration["DB_CONNECTION"]));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
 // 2. Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-    ConnectionMultiplexer.Connect(configuration["REDIS_CONNECTION"]!));
+    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
 
 // 3. Identity
 builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
@@ -55,8 +48,9 @@ builder.Services.AddSession(options =>
 });
 
 // 6. JWT Authentication
-var jwtSecret = configuration["JWT_SECRET"] ?? throw new InvalidOperationException("JWT_SECRET is missing.");
-var jwtKey = Encoding.ASCII.GetBytes(jwtSecret);
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var secretKey = jwtSettings.GetValue<string>("Secret") ?? throw new InvalidOperationException("JWT Secret not configured.");
+var key = Encoding.ASCII.GetBytes(secretKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -70,25 +64,28 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
+        IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateIssuer = true,
-        ValidIssuer = configuration["JWT_ISSUER"],
+        ValidIssuer = jwtSettings["Issuer"],
         ValidateAudience = true,
-        ValidAudience = configuration["JWT_AUDIENCE"],
+        ValidAudience = jwtSettings["Audience"],
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
 
+    // Hỗ trợ access_token qua query (SignalR)
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
+
             if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/message"))
             {
                 context.Token = accessToken;
             }
+
             return Task.CompletedTask;
         }
     };
@@ -102,7 +99,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:3000")
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();
+              .AllowCredentials(); // cần cho SignalR
     });
 });
 
@@ -118,7 +115,7 @@ builder.Services.AddSwaggerGen(c =>
     c.EnableAnnotations();
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'",
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
@@ -148,6 +145,7 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRoles>>();
     await RoleSeeder.SeedRolesAsync(roleManager);
+
     var serviceProvider = scope.ServiceProvider;
     await RankSeeder.SeedRanksAsync(serviceProvider);
 }
@@ -156,7 +154,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeautySpa API v1");
-    c.RoutePrefix = "swagger";
+    c.RoutePrefix = "swagger"; // truy cập /swagger
 });
 
 app.UseMiddleware<ExceptionMiddleware>();
@@ -171,12 +169,11 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<MessageHub>("/hubs/message");
-
-Console.WriteLine("BeautySpa Web API started successfully.");
-
+//fix đây
 await app.RunAsync();
 
 
+//==================================================================================================
 //using BeautySpa.API.Middleware;
 //using BeautySpa.Contract.Repositories.Entity;
 //using BeautySpa.Core.SignalR;
@@ -191,14 +188,21 @@ await app.RunAsync();
 //using StackExchange.Redis;
 //using System.Text;
 
+//Console.WriteLine("Starting BeautySpa Web API...");
+
 //var builder = WebApplication.CreateBuilder(args);
+
+//// Load environment variables from .env if available
+//builder.Configuration.AddEnvironmentVariables();
+//var configuration = builder.Configuration;
+
 //// 1. Database
 //builder.Services.AddDbContext<DatabaseContext>(options =>
-//    options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
+//    options.UseSqlServer(configuration["DB_CONNECTION"]));
 
 //// 2. Redis
 //builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-//    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
+//    ConnectionMultiplexer.Connect(configuration["REDIS_CONNECTION"]!));
 
 //// 3. Identity
 //builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
@@ -227,9 +231,8 @@ await app.RunAsync();
 //});
 
 //// 6. JWT Authentication
-//var jwtSettings = builder.Configuration.GetSection("Jwt");
-//var secretKey = jwtSettings.GetValue<string>("Secret") ?? throw new InvalidOperationException("JWT Secret not configured.");
-//var key = Encoding.ASCII.GetBytes(secretKey);
+//var jwtSecret = configuration["JWT_SECRET"] ?? throw new InvalidOperationException("JWT_SECRET is missing.");
+//var jwtKey = Encoding.ASCII.GetBytes(jwtSecret);
 
 //builder.Services.AddAuthentication(options =>
 //{
@@ -243,28 +246,25 @@ await app.RunAsync();
 //    options.TokenValidationParameters = new TokenValidationParameters
 //    {
 //        ValidateIssuerSigningKey = true,
-//        IssuerSigningKey = new SymmetricSecurityKey(key),
+//        IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
 //        ValidateIssuer = true,
-//        ValidIssuer = jwtSettings["Issuer"],
+//        ValidIssuer = configuration["JWT_ISSUER"],
 //        ValidateAudience = true,
-//        ValidAudience = jwtSettings["Audience"],
+//        ValidAudience = configuration["JWT_AUDIENCE"],
 //        ValidateLifetime = true,
 //        ClockSkew = TimeSpan.Zero
 //    };
 
-//    // Hỗ trợ access_token qua query (SignalR)
 //    options.Events = new JwtBearerEvents
 //    {
 //        OnMessageReceived = context =>
 //        {
 //            var accessToken = context.Request.Query["access_token"];
 //            var path = context.HttpContext.Request.Path;
-
 //            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/message"))
 //            {
 //                context.Token = accessToken;
 //            }
-
 //            return Task.CompletedTask;
 //        }
 //    };
@@ -278,7 +278,7 @@ await app.RunAsync();
 //        policy.WithOrigins("http://localhost:3000")
 //              .AllowAnyMethod()
 //              .AllowAnyHeader()
-//              .AllowCredentials(); // cần cho SignalR
+//              .AllowCredentials();
 //    });
 //});
 
@@ -294,7 +294,7 @@ await app.RunAsync();
 //    c.EnableAnnotations();
 //    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 //    {
-//        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+//        Description = "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'",
 //        Name = "Authorization",
 //        In = ParameterLocation.Header,
 //        Type = SecuritySchemeType.Http,
@@ -324,7 +324,6 @@ await app.RunAsync();
 //{
 //    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRoles>>();
 //    await RoleSeeder.SeedRolesAsync(roleManager);
-
 //    var serviceProvider = scope.ServiceProvider;
 //    await RankSeeder.SeedRanksAsync(serviceProvider);
 //}
@@ -333,7 +332,7 @@ await app.RunAsync();
 //app.UseSwaggerUI(c =>
 //{
 //    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeautySpa API v1");
-//    c.RoutePrefix = "swagger"; // truy cập /swagger
+//    c.RoutePrefix = "swagger";
 //});
 
 //app.UseMiddleware<ExceptionMiddleware>();
@@ -348,6 +347,11 @@ await app.RunAsync();
 
 //app.MapControllers();
 //app.MapHub<MessageHub>("/hubs/message");
-////fix đây
+
+//Console.WriteLine("BeautySpa Web API started successfully.");
+
 //await app.RunAsync();
+
+
+
 
