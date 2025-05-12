@@ -7,7 +7,12 @@ using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.RequestBecomeProviderModelView;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+// ✅ Alias để tránh trùng với Microsoft.Extensions.DependencyInjection.ServiceProvider
+using EntityServiceProvider = BeautySpa.Contract.Repositories.Entity.ServiceProvider;
 
 namespace BeautySpa.Services.Service
 {
@@ -91,7 +96,7 @@ namespace BeautySpa.Services.Service
         {
             var requestRepo = _unitOfWork.GetRepository<RequestBecomeProvider>();
             var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
-            var providerRepo = _unitOfWork.GetRepository<ServiceProvider>();
+            var providerRepo = _unitOfWork.GetRepository<EntityServiceProvider>();
             var providerCategoryRepo = _unitOfWork.GetRepository<ServiceProviderCategory>();
             var workingHourRepo = _unitOfWork.GetRepository<WorkingHour>();
             var imageRepo = _unitOfWork.GetRepository<ServiceImage>();
@@ -106,7 +111,30 @@ namespace BeautySpa.Services.Service
             if (user.ServiceProvider != null)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "User is already a provider.");
 
-            var provider = new ServiceProvider
+            // ✅ Thêm role Provider nếu chưa có
+            var roleManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<RoleManager<ApplicationRoles>>();
+            var userManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<UserManager<ApplicationUsers>>();
+
+            var currentRoles = await userManager.GetRolesAsync(user);
+            // Xoá Customer nếu có
+            if (currentRoles.Contains("Customer"))
+            {
+                await userManager.RemoveFromRoleAsync(user, "Customer");
+            }
+            // Thêm Provider nếu chưa có
+            if (!currentRoles.Contains("Provider"))
+            {
+                var roleExists = await roleManager.RoleExistsAsync("Provider");
+                if (!roleExists)
+                {
+                    var newRole = new ApplicationRoles { Name = "Provider" };
+                    await roleManager.CreateAsync(newRole);
+                }
+
+                await userManager.AddToRoleAsync(user, "Provider");
+            }
+            // ✅ Tạo ServiceProvider
+            var provider = new EntityServiceProvider
             {
                 Id = Guid.NewGuid(),
                 BusinessName = request.BusinessName,
@@ -169,23 +197,22 @@ namespace BeautySpa.Services.Service
             await requestRepo.UpdateAsync(request);
             await _unitOfWork.SaveAsync();
 
-            // 📩 Gửi email thông báo đã duyệt
+            // 📩 Gửi email xác nhận
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
                 var subject = "Yêu cầu trở thành nhà cung cấp đã được duyệt";
                 var body = $@"
-                    <p>Xin chào <strong>{user.UserName}</strong>,</p>
-                    <p>Chúc mừng! Yêu cầu trở thành nhà cung cấp của bạn trên hệ thống <strong>ZENORA</strong> đã được <strong>phê duyệt</strong>.</p>
-                    <p>Bạn đã có thể đăng nhập và cập nhật thêm thông tin về dịch vụ, lịch làm việc, hình ảnh,... trong trang quản lý.</p>
-                    <p>Nếu có bất kỳ thắc mắc nào, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi.</p>
-                    <p>Trân trọng,<br/>Đội ngũ BeautySpa</p>";
+                <p>Xin chào <strong>{user.UserName}</strong>,</p>
+                <p>Chúc mừng! Yêu cầu trở thành nhà cung cấp của bạn trên hệ thống <strong>ZENORA</strong> đã được <strong>phê duyệt</strong>.</p>
+                <p>Bạn đã có thể đăng nhập và cập nhật thêm thông tin về dịch vụ, lịch làm việc, hình ảnh,... trong trang quản lý.</p>
+                <p>Nếu có bất kỳ thắc mắc nào, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi.</p>
+                <p>Trân trọng,<br/>Đội ngũ ZENORA ( An Ngu ask)</p>";
 
                 await _emailService.SendEmailAsync(user.Email, subject, body);
             }
 
-            return BaseResponseModel<string>.Success("Đã duyệt yêu cầu và gửi email thông báo.");
+            return BaseResponseModel<string>.Success("Đã duyệt yêu cầu, cấp quyền Provider và gửi email thông báo.");
         }
-
 
         public async Task<BaseResponseModel<string>> RejectRequestAsync(Guid requestId, string reason)
         {
@@ -199,7 +226,7 @@ namespace BeautySpa.Services.Service
             var user = await userRepo.GetByIdAsync(request.UserId)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
-            request.RequestStatus = "rejected";  // ✅ chuyển về string
+            request.RequestStatus = "rejected";
             request.RejectedReason = reason;
             request.LastUpdatedBy = CurrentUserId;
             request.LastUpdatedTime = CoreHelper.SystemTimeNow;
@@ -207,7 +234,6 @@ namespace BeautySpa.Services.Service
             await repo.UpdateAsync(request);
             await _unitOfWork.SaveAsync();
 
-            // 📩 Gửi email thông báo từ chối
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
                 var subject = "Yêu cầu trở thành nhà cung cấp đã bị từ chối";

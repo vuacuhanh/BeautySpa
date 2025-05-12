@@ -30,25 +30,33 @@ namespace BeautySpa.API.Controllers
         }
 
         // GET: api/user
-        [HttpGet]
+        [HttpGet ("get-all")]
         [SwaggerOperation(Summary = "Lấy danh sách tất cả người dùng (phân trang)")]
         //[Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             return Ok(await _userService.GetAllAsync(pageNumber, pageSize));
         }
 
-        // GET: api/user/customer
-        [HttpGet("customer")]
-        [SwaggerOperation(Summary = "Lấy danh sách người dùng có vai trò Customer (phân trang)")]
-        [Authorize(Roles = "Admin, Customer")]
-        public async Task<IActionResult> GetCustomer([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        [HttpGet("role")]
+        [SwaggerOperation(Summary = "Lấy danh sách tất cả người dùng theo role (phân trang)")]
+        public async Task<IActionResult> GetByRole([FromQuery] string role, [FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
-            return Ok(await _userService.GetCustomerAsync(pageNumber, pageSize));
+            var result = await _userService.GetByRoleAsync(role, pageNumber, pageSize);
+            return Ok(result);
         }
 
+        // GET: api/user/customer
+        //[HttpGet("customer")]
+        //[SwaggerOperation(Summary = "Lấy danh sách người dùng có vai trò Customer (phân trang)")]
+        //[Authorize(Roles = "Admin, Customer")]
+        //public async Task<IActionResult> GetCustomer([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        //{
+        //    return Ok(await _userService.GetCustomerAsync(pageNumber, pageSize));
+        //}
+
         // PUT: api/user
-        [HttpPut]
+        [HttpPut("update")]
         [SwaggerOperation(Summary = "Cập nhật thông tin người dùng")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update([FromBody] PUTUserModelViews model)
@@ -57,13 +65,13 @@ namespace BeautySpa.API.Controllers
         }
 
         // PUT: api/user/customer
-        [HttpPut("customer")]
-        [SwaggerOperation(Summary = "Cập nhật thông tin khách hàng")]
-        [Authorize(Roles = "Customer")]
-        public async Task<IActionResult> UpdateCustomer([FromBody] PUTuserforcustomer model)
-        {
-            return Ok(await _userService.UpdateCustomerAsync(model));
-        }
+        //[HttpPut("customer")]
+        //[SwaggerOperation(Summary = "Cập nhật thông tin khách hàng")]
+        //[Authorize(Roles = "Customer")]
+        //public async Task<IActionResult> UpdateCustomer([FromBody] PUTuserforcustomer model)
+        //{
+        //    return Ok(await _userService.UpdateCustomerAsync(model));
+        //}
 
         // DELETE: api/user/{id}
         [HttpDelete("{id}")]
@@ -72,6 +80,24 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             return Ok(await _userService.DeleteAsync(id));
+        }
+
+        [HttpPut("deactivate-provider/{userId}")]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Hủy quyền và khóa tài khoản provider")]
+        public async Task<IActionResult> DeactivateProvider(Guid userId)
+        {
+            var result = await _userService.DeactivateProviderAccountAsync(userId);
+            return Ok(result);
+        }
+
+        [HttpPut("reactivate-provider/{userId}")]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Kích hoạt lại tài khoản provider bị khóa")]
+        public async Task<IActionResult> ReactivateProvider(Guid userId)
+        {
+            var result = await _userService.ReactivateProviderAccountAsync(userId);
+            return Ok(result);
         }
     }
 }

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeautySpa.Repositories.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    [Migration("20250510173734_InitialCreate")]
+    [Migration("20250512160441_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
