@@ -10,6 +10,8 @@ using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using ServiceProvider = BeautySpa.Contract.Repositories.Entity.ServiceProvider;
 
 namespace BeautySpa.Services.Service
 {
@@ -74,10 +76,42 @@ namespace BeautySpa.Services.Service
             );
         }
 
-        public async Task<BaseResponseModel<BasePaginatedList<GETUserModelViews>>> GetCustomerAsync(int pageNumber, int pageSize)
+        //public async Task<BaseResponseModel<BasePaginatedList<GETUserModelViews>>> GetCustomerAsync(int pageNumber, int pageSize)
+        //{
+        //    if (pageNumber <= 0 || pageSize <= 0)
+        //        throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
+
+        //    IQueryable<ApplicationUsers> query = _unitOfWork.GetRepository<ApplicationUsers>()
+        //        .Entities
+        //        .Include(u => u.UserInfor)
+        //        .Where(r => !r.DeletedTime.HasValue)
+        //        .OrderByDescending(r => r.CreatedTime);
+
+        //    var totalCount = await query.CountAsync();
+        //    var users = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+
+        //    var customers = new List<GETUserModelViews>();
+        //    foreach (var user in users)
+        //    {
+        //        var roles = await _userManager.GetRolesAsync(user);
+        //        if (roles.Contains("Customer"))
+        //        {
+        //            var model = _mapper.Map<GETUserModelViews>(user);
+        //            model.RoleName = roles.FirstOrDefault() ?? string.Empty;
+        //            customers.Add(model);
+        //        }
+        //    }
+
+        //    return BaseResponseModel<BasePaginatedList<GETUserModelViews>>.Success(
+        //        new BasePaginatedList<GETUserModelViews>(customers, totalCount, pageNumber, pageSize)
+        //    );
+        //}
+        public async Task<BaseResponseModel<BasePaginatedList<GETUserModelViews>>> GetByRoleAsync(string role, int pageNumber, int pageSize)
         {
             if (pageNumber <= 0 || pageSize <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
+            if (string.IsNullOrWhiteSpace(role))
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Role must be provided.");
 
             IQueryable<ApplicationUsers> query = _unitOfWork.GetRepository<ApplicationUsers>()
                 .Entities
@@ -88,23 +122,22 @@ namespace BeautySpa.Services.Service
             var totalCount = await query.CountAsync();
             var users = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
 
-            var customers = new List<GETUserModelViews>();
+            var filteredUsers = new List<GETUserModelViews>();
             foreach (var user in users)
             {
                 var roles = await _userManager.GetRolesAsync(user);
-                if (roles.Contains("Customer"))
+                if (roles.Contains(role, StringComparer.OrdinalIgnoreCase))
                 {
                     var model = _mapper.Map<GETUserModelViews>(user);
                     model.RoleName = roles.FirstOrDefault() ?? string.Empty;
-                    customers.Add(model);
+                    filteredUsers.Add(model);
                 }
             }
 
             return BaseResponseModel<BasePaginatedList<GETUserModelViews>>.Success(
-                new BasePaginatedList<GETUserModelViews>(customers, totalCount, pageNumber, pageSize)
+                new BasePaginatedList<GETUserModelViews>(filteredUsers, totalCount, pageNumber, pageSize)
             );
         }
-
         public async Task<BaseResponseModel<string>> UpdateAsync(PUTUserModelViews model)
         {
             await new PUTUserModelViewsValidator().ValidateAndThrowAsync(model);
@@ -153,58 +186,58 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<string>.Success("User updated successfully.");
         }
 
-        public async Task<BaseResponseModel<string>> UpdateCustomerAsync(PUTuserforcustomer model)
-        {
-            await new PUTuserforcustomerValidator().ValidateAndThrowAsync(model);
+        //public async Task<BaseResponseModel<string>> UpdateCustomerAsync(PUTuserforcustomer model)
+        //{
+        //    await new PUTuserforcustomerValidator().ValidateAndThrowAsync(model);
 
-            var user = await _userManager.FindByIdAsync(model.Id.ToString())
-                       ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Customer not found.");
+        //    var user = await _userManager.FindByIdAsync(model.Id.ToString())
+        //               ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Customer not found.");
 
-            var roles = await _userManager.GetRolesAsync(user);
-            if (!roles.Contains("Customer"))
-                throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "User is not a customer.");
+        //    var roles = await _userManager.GetRolesAsync(user);
+        //    if (!roles.Contains("Customer"))
+        //        throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "User is not a customer.");
 
-            var userInforRepo = _unitOfWork.GetRepository<UserInfor>();
-            var userInfor = await userInforRepo.Entities
-                .FirstOrDefaultAsync(u => u.UserId == user.Id);
+        //    var userInforRepo = _unitOfWork.GetRepository<UserInfor>();
+        //    var userInfor = await userInforRepo.Entities
+        //        .FirstOrDefaultAsync(u => u.UserId == user.Id);
 
-            if (model.UserInfor != null)
-            {
-                if (userInfor == null)
-                {
-                    userInfor = new UserInfor
-                    {
-                        UserId = user.Id,
-                        CreatedBy = CurrentUserId,
-                        CreatedTime = DateTimeOffset.UtcNow
-                    };
-                    _mapper.Map(model.UserInfor, userInfor);
-                    userInfor.LastUpdatedBy = CurrentUserId;
-                    userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
+        //    if (model.UserInfor != null)
+        //    {
+        //        if (userInfor == null)
+        //        {
+        //            userInfor = new UserInfor
+        //            {
+        //                UserId = user.Id,
+        //                CreatedBy = CurrentUserId,
+        //                CreatedTime = DateTimeOffset.UtcNow
+        //            };
+        //            _mapper.Map(model.UserInfor, userInfor);
+        //            userInfor.LastUpdatedBy = CurrentUserId;
+        //            userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
 
-                    await userInforRepo.InsertAsync(userInfor);
-                }
-                else
-                {
-                    _mapper.Map(model.UserInfor, userInfor);
-                    userInfor.LastUpdatedBy = CurrentUserId;
-                    userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
+        //            await userInforRepo.InsertAsync(userInfor);
+        //        }
+        //        else
+        //        {
+        //            _mapper.Map(model.UserInfor, userInfor);
+        //            userInfor.LastUpdatedBy = CurrentUserId;
+        //            userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-                    await userInforRepo.UpdateAsync(userInfor);
-                }
-            }
+        //            await userInforRepo.UpdateAsync(userInfor);
+        //        }
+        //    }
 
-            user.Email = model.Email;
-            user.LastUpdatedBy = CurrentUserId;
-            user.LastUpdatedTime = DateTimeOffset.UtcNow;
+        //    user.Email = model.Email;
+        //    user.LastUpdatedBy = CurrentUserId;
+        //    user.LastUpdatedTime = DateTimeOffset.UtcNow;
 
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to update customer.");
+        //    var result = await _userManager.UpdateAsync(user);
+        //    if (!result.Succeeded)
+        //        throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to update customer.");
 
-            await _unitOfWork.SaveAsync();
-            return BaseResponseModel<string>.Success("Customer updated successfully.");
-        }
+        //    await _unitOfWork.SaveAsync();
+        //    return BaseResponseModel<string>.Success("Customer updated successfully.");
+        //}
 
         public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
@@ -235,5 +268,98 @@ namespace BeautySpa.Services.Service
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("User deleted successfully.");
         }
+        public async Task<BaseResponseModel<string>> DeactivateProviderAccountAsync(Guid userId)
+        {
+            if (userId == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid user ID.");
+
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles.Contains("Provider"))
+            {
+                await _userManager.RemoveFromRoleAsync(user, "Provider");
+            }
+
+            // Xóa mềm ServiceProvider nếu có
+            var spRepo = _unitOfWork.GetRepository<ServiceProvider>();
+            var serviceProvider = await spRepo.Entities.FirstOrDefaultAsync(x => x.ProviderId == user.Id && x.DeletedTime == null);
+            if (serviceProvider != null)
+            {
+                serviceProvider.DeletedTime = CoreHelper.SystemTimeNow;
+                serviceProvider.DeletedBy = CurrentUserId;
+                await spRepo.UpdateAsync(serviceProvider);
+            }
+
+            // Khóa tài khoản
+            user.Status = "inactive";
+            user.LockoutEnabled = true;
+            user.LockoutEnd = DateTimeOffset.MaxValue;
+            user.LastUpdatedBy = CurrentUserId;
+            user.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to deactivate user.");
+
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("Provider account deactivated successfully.");
+        }
+        public async Task<BaseResponseModel<string>> ReactivateProviderAccountAsync(Guid userId)
+        {
+            if (userId == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid user ID.");
+
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            if (!roles.Contains("Provider"))
+            {
+                var roleExists = await _unitOfWork.GetRepository<ApplicationRoles>().Entities
+                    .AnyAsync(r => r.Name == "Provider" && r.DeletedTime == null);
+
+                if (!roleExists)
+                {
+                    var roleManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<RoleManager<ApplicationRoles>>();
+                    await roleManager.CreateAsync(new ApplicationRoles { Name = "Provider" });
+                }
+
+                await _userManager.AddToRoleAsync(user, "Provider");
+            }
+
+            // Khôi phục tài khoản
+            user.Status = "active";
+            user.LockoutEnabled = false;
+            user.LockoutEnd = null;
+            user.LastUpdatedBy = CurrentUserId;
+            user.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to reactivate user.");
+
+            // Khôi phục ServiceProvider nếu có
+            var spRepo = _unitOfWork.GetRepository<ServiceProvider>();
+            var serviceProvider = await spRepo.Entities
+                .IgnoreQueryFilters() // nếu dùng global filter cho soft delete
+                .FirstOrDefaultAsync(x => x.ProviderId == user.Id && x.DeletedTime != null);
+
+            if (serviceProvider != null)
+            {
+                serviceProvider.DeletedTime = null;
+                serviceProvider.DeletedBy = null;
+                serviceProvider.LastUpdatedBy = CurrentUserId;
+                serviceProvider.LastUpdatedTime = CoreHelper.SystemTimeNow;
+
+                await spRepo.UpdateAsync(serviceProvider);
+            }
+
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("Provider account reactivated successfully.");
+        }
+
     }
+
 }

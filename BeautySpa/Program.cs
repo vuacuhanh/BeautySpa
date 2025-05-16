@@ -170,12 +170,12 @@ using (var scope = app.Services.CreateScope())
     await RankSeeder.SeedRanksAsync(serviceProvider);
 }
 
-// 11. Middleware
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeautySpa API v1");
+    c.RoutePrefix = "swagger"; // truy cập /swagger
+});
 
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<LoggingMiddleware>();
@@ -189,5 +189,189 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<MessageHub>("/hubs/message");
+//fix đây
+await app.RunAsync();
 
-app.Run();
+
+//==================================================================================================
+//using BeautySpa.API.Middleware;
+//using BeautySpa.Contract.Repositories.Entity;
+//using BeautySpa.Core.SignalR;
+//using BeautySpa.Repositories.Context;
+//using BeautySpa.Services;
+//using BeautySpa.Services.seeding;
+//using Microsoft.AspNetCore.Authentication.JwtBearer;
+//using Microsoft.AspNetCore.Identity;
+//using Microsoft.EntityFrameworkCore;
+//using Microsoft.IdentityModel.Tokens;
+//using Microsoft.OpenApi.Models;
+//using StackExchange.Redis;
+//using System.Text;
+
+//Console.WriteLine("Starting BeautySpa Web API...");
+
+//var builder = WebApplication.CreateBuilder(args);
+
+//// Load environment variables from .env if available
+//builder.Configuration.AddEnvironmentVariables();
+//var configuration = builder.Configuration;
+
+//// 1. Database
+//builder.Services.AddDbContext<DatabaseContext>(options =>
+//    options.UseSqlServer(configuration["DB_CONNECTION"]));
+
+//// 2. Redis
+//builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+//    ConnectionMultiplexer.Connect(configuration["REDIS_CONNECTION"]!));
+
+//// 3. Identity
+//builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
+//{
+//    options.Password.RequireDigit = true;
+//    options.Password.RequireLowercase = true;
+//    options.Password.RequireUppercase = true;
+//    options.Password.RequireNonAlphanumeric = false;
+//    options.Password.RequiredLength = 6;
+//    options.SignIn.RequireConfirmedEmail = true;
+//})
+//.AddEntityFrameworkStores<DatabaseContext>()
+//.AddDefaultTokenProviders();
+
+//// 4. DI services
+//builder.Services.AddInfrastructure();
+
+//// 5. Session
+//builder.Services.AddDistributedMemoryCache();
+//builder.Services.AddSession(options =>
+//{
+//    options.IdleTimeout = TimeSpan.FromMinutes(30);
+//    options.Cookie.HttpOnly = true;
+//    options.Cookie.IsEssential = true;
+//    options.Cookie.Name = ".BeautySpa.Session";
+//});
+
+//// 6. JWT Authentication
+//var jwtSecret = configuration["JWT_SECRET"] ?? throw new InvalidOperationException("JWT_SECRET is missing.");
+//var jwtKey = Encoding.ASCII.GetBytes(jwtSecret);
+
+//builder.Services.AddAuthentication(options =>
+//{
+//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+//})
+//.AddJwtBearer(options =>
+//{
+//    options.RequireHttpsMetadata = false;
+//    options.SaveToken = true;
+//    options.TokenValidationParameters = new TokenValidationParameters
+//    {
+//        ValidateIssuerSigningKey = true,
+//        IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
+//        ValidateIssuer = true,
+//        ValidIssuer = configuration["JWT_ISSUER"],
+//        ValidateAudience = true,
+//        ValidAudience = configuration["JWT_AUDIENCE"],
+//        ValidateLifetime = true,
+//        ClockSkew = TimeSpan.Zero
+//    };
+
+//    options.Events = new JwtBearerEvents
+//    {
+//        OnMessageReceived = context =>
+//        {
+//            var accessToken = context.Request.Query["access_token"];
+//            var path = context.HttpContext.Request.Path;
+//            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/message"))
+//            {
+//                context.Token = accessToken;
+//            }
+//            return Task.CompletedTask;
+//        }
+//    };
+//});
+
+//// 7. CORS
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowSpecificOrigins", policy =>
+//    {
+//        policy.WithOrigins("http://localhost:3000")
+//              .AllowAnyMethod()
+//              .AllowAnyHeader()
+//              .AllowCredentials();
+//    });
+//});
+
+//// 8. MVC + SignalR
+//builder.Services.AddControllers();
+//builder.Services.AddSignalR();
+
+//// 9. Swagger
+//builder.Services.AddEndpointsApiExplorer();
+//builder.Services.AddSwaggerGen(c =>
+//{
+//    c.SwaggerDoc("v1", new OpenApiInfo { Title = "BeautySpa API", Version = "v1" });
+//    c.EnableAnnotations();
+//    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+//    {
+//        Description = "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'",
+//        Name = "Authorization",
+//        In = ParameterLocation.Header,
+//        Type = SecuritySchemeType.Http,
+//        Scheme = "bearer",
+//        BearerFormat = "JWT"
+//    });
+//    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+//    {
+//        {
+//            new OpenApiSecurityScheme
+//            {
+//                Reference = new OpenApiReference
+//                {
+//                    Type = ReferenceType.SecurityScheme,
+//                    Id = "Bearer"
+//                }
+//            },
+//            Array.Empty<string>()
+//        }
+//    });
+//});
+
+//var app = builder.Build();
+
+//// 10. Seed dữ liệu
+//using (var scope = app.Services.CreateScope())
+//{
+//    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRoles>>();
+//    await RoleSeeder.SeedRolesAsync(roleManager);
+//    var serviceProvider = scope.ServiceProvider;
+//    await RankSeeder.SeedRanksAsync(serviceProvider);
+//}
+
+//app.UseSwagger();
+//app.UseSwaggerUI(c =>
+//{
+//    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeautySpa API v1");
+//    c.RoutePrefix = "swagger";
+//});
+
+//app.UseMiddleware<ExceptionMiddleware>();
+//app.UseMiddleware<LoggingMiddleware>();
+
+//app.UseHttpsRedirection();
+//app.UseSession();
+//app.UseCors("AllowSpecificOrigins");
+
+//app.UseAuthentication();
+//app.UseAuthorization();
+
+//app.MapControllers();
+//app.MapHub<MessageHub>("/hubs/message");
+
+//Console.WriteLine("BeautySpa Web API started successfully.");
+
+//await app.RunAsync();
+
+
+
+
