@@ -15,9 +15,9 @@ namespace BeautySpa.Contract.Repositories.Entity
         public TimeSpan? OpenTime { get; set; }
         public TimeSpan? CloseTime { get; set; }
 
-        public int? ProvinceId { get; set; }
+        public Guid? ProvinceId { get; set; }
         public string? ProvinceName { get; set; }
-        public int? DistrictId { get; set; }
+        public Guid? DistrictId { get; set; }
         public string? DistrictName { get; set; }
         public string? AddressDetail { get; set; }
 
