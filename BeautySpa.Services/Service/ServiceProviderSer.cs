@@ -35,6 +35,8 @@ namespace BeautySpa.Services.Service
                 .Entities
                 .AsNoTracking()
                 .Include(sp => sp.ServiceImages)
+                .Include(p => p.ServiceProviderCategories)
+                .ThenInclude(spc => spc.ServiceCategory)
                 .Where(x => x.DeletedTime == null)
                 .OrderByDescending(x => x.CreatedTime);
 
@@ -58,7 +60,9 @@ namespace BeautySpa.Services.Service
             IQueryable<ServiceProvider> query = _unitOfWork.GetRepository<ServiceProvider>()
                 .Entities
                 .AsNoTracking()
-                .Include(x => x.ServiceImages);
+                .Include(x => x.ServiceImages)
+                .Include(p => p.ServiceProviderCategories)
+                .ThenInclude(spc => spc.ServiceCategory);
 
             var entity = await query.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
@@ -156,6 +160,24 @@ namespace BeautySpa.Services.Service
             await _unitOfWork.SaveAsync();
 
             return BaseResponseModel<string>.Success("Service provider deleted successfully.");
+        }
+        public async Task<BaseResponseModel<List<GETServiceProviderModelViews>>> GetByCategory(Guid categoryId)
+        {
+            if (categoryId == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid category ID.");
+
+            var providers = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities
+                .AsNoTracking()
+                .Include(p => p.ServiceImages)
+                .Include(p => p.ServiceProviderCategories)
+                    .ThenInclude(spc => spc.ServiceCategory)
+                .Where(p => p.ServiceProviderCategories.Any(spc => spc.ServiceCategoryId == categoryId)
+                            && p.DeletedTime == null)
+                .ToListAsync();
+
+            var mapped = _mapper.Map<List<GETServiceProviderModelViews>>(providers);
+            return BaseResponseModel<List<GETServiceProviderModelViews>>.Success(mapped);
         }
     }
 }

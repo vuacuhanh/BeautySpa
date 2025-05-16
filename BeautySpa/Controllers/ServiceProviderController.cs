@@ -51,5 +51,12 @@ namespace BeautySpa.API.Controllers
         {
             return Ok(await _providerService.DeleteAsync(id));
         }
+        [HttpGet("by-category/{categoryId}")]
+        [SwaggerOperation(Summary = "Lấy danh sách nhà cung cấp theo danh mục")]
+        public async Task<IActionResult> GetByCategory([FromRoute] Guid categoryId)
+        {
+            var result = await _providerService.GetByCategory(categoryId);
+            return Ok(result);
+        }
     }
 }

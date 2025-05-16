@@ -9,7 +9,9 @@ namespace BeautySpa.Services.Mapper
         public ServiceProviderMapping()
         {
             CreateMap<ServiceProvider, GETServiceProviderModelViews>()
-                .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.ServiceImages));
+                .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.ServiceImages))
+                .ForMember(dest => dest.Categories, opt => opt.MapFrom(src =>
+                    src.ServiceProviderCategories.Select(spc => spc.ServiceCategory.CategoryName).ToList()));
 
             CreateMap<POSTServiceProviderModelViews, ServiceProvider>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
