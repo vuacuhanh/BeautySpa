@@ -3,14 +3,14 @@ using FluentValidation;
 
 namespace BeautySpa.Services.Validations.AppoitmentValidator
 {
-    public class POSTAppointmentModelViewsValidator : AbstractValidator<POSTAppointmentModelViews>
+    public class POSTAppointmentModelViewValidator : AbstractValidator<POSTAppointmentModelView>
     {
-        public POSTAppointmentModelViewsValidator()
+        public POSTAppointmentModelViewValidator()
         {
-            RuleFor(x => x.CustomerId).NotEmpty();
-            RuleFor(x => x.ProviderId).NotEmpty();
-            RuleFor(x => x.ServiceId).NotEmpty();
+            RuleFor(x => x.AppointmentDate).NotEmpty();
+            RuleFor(x => x.StartTime).NotEmpty();
+            RuleFor(x => x.SpaBranchLocationId).NotEmpty();
+            RuleFor(x => x.Services).NotEmpty().WithMessage("At least one service must be selected.");
         }
     }
-
 }

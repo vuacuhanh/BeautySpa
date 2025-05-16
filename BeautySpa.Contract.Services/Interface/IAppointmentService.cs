@@ -5,10 +5,11 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface IAppointmentService
     {
-        Task<BaseResponseModel<BasePaginatedList<GETAppointmentModelViews>>> GetAllAsync(int pageNumber, int pageSize);
-        Task<BaseResponseModel<GETAppointmentModelViews>> GetByIdAsync(Guid id);
-        Task<BaseResponseModel<Guid>> CreateAsync(POSTAppointmentModelViews model);
-        Task<BaseResponseModel<string>> UpdateAsync(PUTAppointmentModelViews model);
+        Task<BaseResponseModel<Guid>> CreateAsync(POSTAppointmentModelView model);
+        Task<BaseResponseModel<string>> UpdateAsync(PUTAppointmentModelView model);
+        Task<BaseResponseModel<string>> UpdateStatusAsync(Guid appointmentId, string status);
         Task<BaseResponseModel<string>> DeleteAsync(Guid id);
+        Task<BaseResponseModel<BasePaginatedList<GETAppointmentModelView>>> GetAllAsync(int pageNumber, int pageSize);
+        Task<BaseResponseModel<GETAppointmentModelView>> GetByIdAsync(Guid id);
     }
 }

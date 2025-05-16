@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
-using BeautySpa.ModelViews.FavoriteModelViews;
+using BeautySpa.ModelViews.MemberShipModelViews.FavoriteModelViews;
 
 namespace BeautySpa.Services.Mapper
 {

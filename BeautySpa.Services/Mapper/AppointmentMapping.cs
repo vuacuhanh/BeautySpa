@@ -2,23 +2,20 @@
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.AppointmentModelViews;
 
-namespace BeautySpa.Services.Mapper
+namespace BeautySpa.API.Mapping
 {
     public class AppointmentMapping : Profile
     {
         public AppointmentMapping()
         {
-            CreateMap<Appointment, GETAppointmentModelViews>();
+            CreateMap<Appointment, GETAppointmentModelView>()
+                .ForMember(dest => dest.Services, opt => opt.MapFrom(src => src.AppointmentServices));
 
-            CreateMap<POSTAppointmentModelViews, Appointment>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
+            CreateMap<AppointmentService, AppointmentServiceDetail>()
+                .ForMember(dest => dest.ServiceName, opt => opt.MapFrom(src => src.Service!.ServiceName));
 
-            CreateMap<PUTAppointmentModelViews, Appointment>()
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
+            CreateMap<POSTAppointmentModelView, Appointment>();
+            CreateMap<PUTAppointmentModelView, Appointment>();
         }
     }
 }

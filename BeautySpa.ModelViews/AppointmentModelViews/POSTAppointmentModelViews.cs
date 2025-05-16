@@ -1,18 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace BeautySpa.ModelViews.AppointmentModelViews
+﻿namespace BeautySpa.ModelViews.AppointmentModelViews
 {
-    public class POSTAppointmentModelViews
+    public class POSTAppointmentModelView
     {
-
         public DateTime AppointmentDate { get; set; }
         public TimeSpan StartTime { get; set; }
-        public string Status { get; set; } = "Pending";
+        public Guid SpaBranchLocationId { get; set; }
         public string? Notes { get; set; }
-
-        public Guid CustomerId { get; set; }
-        public Guid ProviderId { get; set; }
-        public Guid ServiceId { get; set; }
-        public Guid LocationSpaId { get; set; }
+        public List<AppointmentServiceModel> Services { get; set; } = new();
+        public Guid? PromotionId { get; set; }
+        public Guid? PromotionAdminId { get; set; }
     }
 }

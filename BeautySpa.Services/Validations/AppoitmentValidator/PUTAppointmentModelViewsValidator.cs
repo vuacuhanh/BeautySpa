@@ -1,15 +1,14 @@
 ﻿using BeautySpa.ModelViews.AppointmentModelViews;
 using FluentValidation;
 
-
 namespace BeautySpa.Services.Validations.AppoitmentValidator
 {
-    public class PUTAppointmentModelViewsValidator : AbstractValidator<PUTAppointmentModelViews>
+    public class PUTAppointmentModelViewValidator : AbstractValidator<PUTAppointmentModelView>
     {
-        public PUTAppointmentModelViewsValidator()
+        public PUTAppointmentModelViewValidator()
         {
+            Include(new POSTAppointmentModelViewValidator());
             RuleFor(x => x.Id).NotEmpty();
         }
     }
-
 }

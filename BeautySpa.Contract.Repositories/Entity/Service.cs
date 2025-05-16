@@ -5,16 +5,19 @@ namespace BeautySpa.Contract.Repositories.Entity
     public class Service : BaseEntity
     {
         public string ServiceName { get; set; } = string.Empty;
-        public string? Description { get; set; }
         public decimal Price { get; set; }
-        public int Duration { get; set; }
-        public bool IsAvailable { get; set; } = true;
+        public string? Description { get; set; }
+
+        public int DurationMinutes { get; set; } = 30;
 
         public Guid ProviderId { get; set; }
-        public virtual ApplicationUsers? Provider { get; set; }
+        public ServiceProvider? Provider { get; set; }
 
-        public Guid CategoryId { get; set; }
+        public Guid ServiceCategoryId { get; set; }
+        public ServiceCategory? ServiceCategory { get; set; }
 
-        public virtual ServiceCategory? Category { get; set; }
+        public ICollection<ServiceImage> ServiceImages { get; set; } = new List<ServiceImage>();
+        public ICollection<AppointmentService> AppointmentServices { get; set; } = new List<AppointmentService>();
+        public ICollection<ServicePromotion> ServicePromotions { get; set; } = new List<ServicePromotion>();
     }
 }

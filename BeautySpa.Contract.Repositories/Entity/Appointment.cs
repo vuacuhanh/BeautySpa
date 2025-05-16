@@ -23,9 +23,9 @@ namespace BeautySpa.Contract.Repositories.Entity
 
         public Guid ProviderId { get; set; }
         public virtual ApplicationUsers? Provider { get; set; }
-
-        public Guid LocationSpaId { get; set; }
-        public virtual LocationSpa? LocationSpa { get; set; }
+        
+        public Guid SpaBranchLocationId { get; set; }
+        public virtual SpaBranchLocation? BranchLocation { get; set; }
 
         public Guid? PromotionId { get; set; }
         public virtual Promotion? Promotion { get; set; }
@@ -36,7 +36,6 @@ namespace BeautySpa.Contract.Repositories.Entity
         public virtual Payment? Payment { get; set; }
         public virtual Review? Review { get; set; }
 
-        // Danh sách dịch vụ
         public virtual ICollection<AppointmentService> AppointmentServices { get; set; } = new List<AppointmentService>();
     }
 }
