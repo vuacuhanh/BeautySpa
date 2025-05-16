@@ -37,6 +37,10 @@ jobs:
     needs: build
     environment:
       name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Download artifact from build job
@@ -45,9 +49,17 @@ jobs:
           name: .net-app
           path: publish
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
-          app-name: 'BeautySpaAPI20250516125713'  # <== ĐỔI TÊN nếu app của bạn
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_4A260F873A304AFBA85F1325B7C38091 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_644A5575E05B4F8A9372519500C649CE }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E372BB516DC64F8B991302DD9661A6FA }}
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'BeautySpa'
+          slot-name: 'Production'
           package: publish
-          publish-profile: ${{ secrets.AZURE_CREDENTIALS }}
