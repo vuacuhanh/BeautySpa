@@ -222,9 +222,6 @@ namespace BeautySpa.Repositories.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("BranchLocationSpaId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime?>("ConfirmationTime")
                         .HasColumnType("datetime2");
 
@@ -258,9 +255,6 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<DateTimeOffset?>("LastUpdatedTime")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<Guid>("LocationSpaId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
@@ -279,22 +273,23 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<int>("SlotUsed")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("SpaBranchLocationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("time");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchLocationSpaId");
-
                     b.HasIndex("CustomerId");
-
-                    b.HasIndex("LocationSpaId");
 
                     b.HasIndex("PromotionAdminId");
 
                     b.HasIndex("PromotionId");
 
                     b.HasIndex("ProviderId");
+
+                    b.HasIndex("SpaBranchLocationId");
 
                     b.ToTable("Appointments");
                 });
@@ -335,16 +330,21 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<Guid>("ServiceId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ServiceId1")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AppointmentId");
 
                     b.HasIndex("ServiceId");
 
+                    b.HasIndex("ServiceId1");
+
                     b.ToTable("AppointmentServices");
                 });
 
-            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.BranchLocationSpa", b =>
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.DepositPolicy", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -356,27 +356,14 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<DateTimeOffset>("CreatedTime")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<string>("DeactivatedNote")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTimeOffset?>("DeletedTime")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset?>("DisabledTime")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                    b.Property<decimal>("DepositPercent")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("LastUpdatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -384,17 +371,15 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<DateTimeOffset?>("LastUpdatedTime")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal>("MaxPrice")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal>("MinPrice")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("BranchLocationSpas");
+                    b.ToTable("DepositPolicys");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Favorite", b =>
@@ -434,74 +419,6 @@ namespace BeautySpa.Repositories.Migrations
                     b.HasIndex("ProviderId");
 
                     b.ToTable("Favorites");
-                });
-
-            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.LocationSpa", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("BranchId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Country")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset>("CreatedTime")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset?>("DeletedTime")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("DistrictId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("LastUpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset?>("LastUpdatedTime")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("float");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("float");
-
-                    b.Property<string>("PostalCode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ProvinceId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Street")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
-
-                    b.ToTable("LocationSpas");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.MemberShip", b =>
@@ -873,6 +790,46 @@ namespace BeautySpa.Repositories.Migrations
                     b.ToTable("PromotionAdminRanks");
                 });
 
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ProviderFeePolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("DeletedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastUpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("LastUpdatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("PlatformFeePercentOnCanceled")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PlatformFeePercentOnCompleted")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ProviderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderId");
+
+                    b.ToTable("ProviderFeePolicys");
+                });
+
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Rank", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1065,7 +1022,7 @@ namespace BeautySpa.Repositories.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("CategoryId")
+                    b.Property<Guid?>("ApplicationUsersId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("CreatedBy")
@@ -1083,11 +1040,8 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Duration")
+                    b.Property<int>("DurationMinutes")
                         .HasColumnType("int");
-
-                    b.Property<bool>("IsAvailable")
-                        .HasColumnType("bit");
 
                     b.Property<string>("LastUpdatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -1102,20 +1056,20 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("ServiceCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("ServiceName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("ServiceProviderId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("CategoryId");
+                    b.HasIndex("ApplicationUsersId");
 
                     b.HasIndex("ProviderId");
 
-                    b.HasIndex("ServiceProviderId");
+                    b.HasIndex("ServiceCategoryId");
 
                     b.ToTable("Services");
                 });
@@ -1333,6 +1287,76 @@ namespace BeautySpa.Repositories.Migrations
                     b.HasIndex("ServiceProviderId");
 
                     b.ToTable("ServiceProviderCategories");
+                });
+
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.SpaBranchLocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BranchName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("DeletedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("LastUpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("LastUpdatedTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("PostalCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ProvinceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ServiceProviderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Street")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceProviderId");
+
+                    b.ToTable("SpaBranchLocations");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.UserInfor", b =>
@@ -1569,10 +1593,15 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<DateTimeOffset?>("LastUpdatedTime")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("ServiceId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("ServiceProviderId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ServiceId");
 
                     b.HasIndex("ServiceProviderId");
 
@@ -1830,20 +1859,10 @@ namespace BeautySpa.Repositories.Migrations
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Appointment", b =>
                 {
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.BranchLocationSpa", null)
-                        .WithMany("Appointments")
-                        .HasForeignKey("BranchLocationSpaId");
-
                     b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "Customer")
                         .WithMany("CustomerAppointments")
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.LocationSpa", "LocationSpa")
-                        .WithMany("Appointments")
-                        .HasForeignKey("LocationSpaId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("BeautySpa.Contract.Repositories.Entity.PromotionAdmin", "PromotionAdmin")
@@ -1860,9 +1879,15 @@ namespace BeautySpa.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Customer");
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.SpaBranchLocation", "BranchLocation")
+                        .WithMany()
+                        .HasForeignKey("SpaBranchLocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Navigation("LocationSpa");
+                    b.Navigation("BranchLocation");
+
+                    b.Navigation("Customer");
 
                     b.Navigation("Promotion");
 
@@ -1884,6 +1909,10 @@ namespace BeautySpa.Repositories.Migrations
                         .HasForeignKey("ServiceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.Service", null)
+                        .WithMany("AppointmentServices")
+                        .HasForeignKey("ServiceId1");
 
                     b.Navigation("Appointment");
 
@@ -1907,17 +1936,6 @@ namespace BeautySpa.Repositories.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.LocationSpa", b =>
-                {
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.BranchLocationSpa", "Branch")
-                        .WithMany("LocationSpas")
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Branch");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.MemberShip", b =>
@@ -2010,6 +2028,17 @@ namespace BeautySpa.Repositories.Migrations
                     b.Navigation("Rank");
                 });
 
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ProviderFeePolicy", b =>
+                {
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.RequestBecomeProvider", b =>
                 {
                     b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "User")
@@ -2050,31 +2079,31 @@ namespace BeautySpa.Repositories.Migrations
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Service", b =>
                 {
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceCategory", "Category")
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", null)
                         .WithMany("Services")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ApplicationUsersId");
 
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ApplicationUsers", "Provider")
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceProvider", "Provider")
                         .WithMany("Services")
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceProvider", null)
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceCategory", "ServiceCategory")
                         .WithMany("Services")
-                        .HasForeignKey("ServiceProviderId");
-
-                    b.Navigation("Category");
+                        .HasForeignKey("ServiceCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Provider");
+
+                    b.Navigation("ServiceCategory");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServicePromotion", b =>
                 {
                     b.HasOne("BeautySpa.Contract.Repositories.Entity.Service", "Service")
-                        .WithMany()
+                        .WithMany("ServicePromotions")
                         .HasForeignKey("ServiceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2114,6 +2143,17 @@ namespace BeautySpa.Repositories.Migrations
                     b.Navigation("ServiceCategory");
 
                     b.Navigation("ServiceProvider");
+                });
+
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.SpaBranchLocation", b =>
+                {
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceProvider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ServiceProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.UserInfor", b =>
@@ -2180,6 +2220,10 @@ namespace BeautySpa.Repositories.Migrations
 
             modelBuilder.Entity("ServiceImage", b =>
                 {
+                    b.HasOne("BeautySpa.Contract.Repositories.Entity.Service", null)
+                        .WithMany("ServiceImages")
+                        .HasForeignKey("ServiceId");
+
                     b.HasOne("BeautySpa.Contract.Repositories.Entity.ServiceProvider", "ServiceProvider")
                         .WithMany("ServiceImages")
                         .HasForeignKey("ServiceProviderId")
@@ -2267,18 +2311,6 @@ namespace BeautySpa.Repositories.Migrations
                     b.Navigation("Review");
                 });
 
-            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.BranchLocationSpa", b =>
-                {
-                    b.Navigation("Appointments");
-
-                    b.Navigation("LocationSpas");
-                });
-
-            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.LocationSpa", b =>
-                {
-                    b.Navigation("Appointments");
-                });
-
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Promotion", b =>
                 {
                     b.Navigation("Appointments");
@@ -2296,6 +2328,15 @@ namespace BeautySpa.Repositories.Migrations
                     b.Navigation("MemberShips");
 
                     b.Navigation("PromotionAdminRanks");
+                });
+
+            modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.Service", b =>
+                {
+                    b.Navigation("AppointmentServices");
+
+                    b.Navigation("ServiceImages");
+
+                    b.Navigation("ServicePromotions");
                 });
 
             modelBuilder.Entity("BeautySpa.Contract.Repositories.Entity.ServiceCategory", b =>

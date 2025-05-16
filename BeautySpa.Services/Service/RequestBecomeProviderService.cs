@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-// ✅ Alias để tránh trùng với Microsoft.Extensions.DependencyInjection.ServiceProvider
 using EntityServiceProvider = BeautySpa.Contract.Repositories.Entity.ServiceProvider;
 
 namespace BeautySpa.Services.Service

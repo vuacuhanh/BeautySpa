@@ -1,5 +1,5 @@
 ﻿using BeautySpa.Core.Base;
-using BeautySpa.ModelViews.FavoriteModelViews;
+using BeautySpa.ModelViews.MemberShipModelViews.FavoriteModelViews;
 
 namespace BeautySpa.Contract.Services.Interface
 {

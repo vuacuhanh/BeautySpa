@@ -39,7 +39,7 @@ namespace BeautySpa.Services.Service
             var provider = await _unitOfWork.GetRepository<ServiceProvider>().GetByIdAsync(model.ServiceProviderId)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Provider not found");
 
-            if (provider.CreatedBy != CurrentUserId)
+            if (provider.ProviderId.ToString() != CurrentUserId)
                 throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "You can't modify this provider's images.");
             foreach (var imageUrl in model.ImageUrls)
             {

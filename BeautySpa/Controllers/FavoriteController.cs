@@ -1,5 +1,5 @@
 ﻿using BeautySpa.Contract.Services.Interface;
-using BeautySpa.ModelViews.FavoriteModelViews;
+using BeautySpa.ModelViews.MemberShipModelViews.FavoriteModelViews;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 

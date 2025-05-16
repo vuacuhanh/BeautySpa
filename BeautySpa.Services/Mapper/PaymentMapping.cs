@@ -8,17 +8,8 @@ namespace BeautySpa.Services.Mapper
     {
         public PaymentMapping()
         {
-            CreateMap<Payment, GETPaymentModelViews>();
-
-            CreateMap<POSTPaymentModelViews, Payment>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
-
-            CreateMap<PUTPaymentModelViews, Payment>()
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
+            CreateMap<Payment, GETPaymentModelView>();
+            CreateMap<POSTPaymentModelView, Payment>();
         }
     }
 }
