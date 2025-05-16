@@ -1,5 +1,6 @@
 ﻿using BeautySpa.API.Middleware;
 using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Core.Settings;
 using BeautySpa.Core.SignalR;
 using BeautySpa.Repositories.Context;
 using BeautySpa.Services;
@@ -12,7 +13,24 @@ using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = Directory.GetCurrentDirectory(),
+    EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
+});
+
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
+
+builder.Services.Configure<GoogleMapSettings>(builder.Configuration.GetSection("GoogleMaps"));
+
+/*builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
+builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("MoMo"));*/
+
 
 // 1. Database
 builder.Services.AddDbContext<DatabaseContext>(options =>
@@ -36,6 +54,7 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 .AddDefaultTokenProviders();
 
 // 4. DI services
+builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure();
 
 // 5. Session

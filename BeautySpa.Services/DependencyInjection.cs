@@ -46,7 +46,7 @@ namespace BeautySpa.Services
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<ITokenService, TokenService>();
-            services.AddScoped<ILocationService, LocationService>();
+            services.AddScoped<ISpaBranchLocationService, SpaBranchLocationService>();
             services.AddScoped<IRankService, RankService>();
             services.AddScoped<IMemberShipService, MemberShipService>();
             services.AddScoped<IStaff, StaffService>();
@@ -54,6 +54,8 @@ namespace BeautySpa.Services
             services.AddScoped<IPromotionAdminService, PromotionAdminService>();
             services.AddScoped<IRequestBecomeProvider, RequestBecomeProviderService>();
             services.AddScoped<IServicePromotionService, ServicePromotionService>();
+            services.AddScoped<IMomoService, MomoService>();
+            services.AddScoped<IVnpayService, VnpayService>();
         }
     }
 }

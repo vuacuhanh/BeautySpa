@@ -30,8 +30,7 @@ namespace BeautySpa.Repositories.Context
         public DbSet<Favorite> Favorites => Set<Favorite>();
         public DbSet<Notification> Notifications => Set<Notification>();
         public DbSet<Message> Messages => Set<Message>();
-        public DbSet<LocationSpa> LocationSpas => Set<LocationSpa>();
-        public DbSet<BranchLocationSpa> BranchLocationSpas => Set<BranchLocationSpa>();
+        public DbSet<SpaBranchLocation> SpaBranchLocations => Set<SpaBranchLocation>();
         public DbSet<Rank> Ranks => Set<Rank>();
         public DbSet<MemberShip> Memberships => Set<MemberShip>();
         public DbSet<Promotion> Promotions => Set<Promotion>();
@@ -41,6 +40,8 @@ namespace BeautySpa.Repositories.Context
         public DbSet<Staff> Staffs => Set<Staff>();
         public DbSet<RequestBecomeProvider> RequestBecomeProviders => Set<RequestBecomeProvider>();
         public DbSet<ServiceProviderCategory> ServiceProviderCategories => Set<ServiceProviderCategory>();
+        public DbSet<DepositPolicy> DepositPolicys => Set<DepositPolicy>();
+        public DbSet<ProviderFeePolicy> ProviderFeePolicys => Set<ProviderFeePolicy>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

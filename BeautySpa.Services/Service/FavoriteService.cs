@@ -5,7 +5,7 @@ using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
-using BeautySpa.ModelViews.FavoriteModelViews;
+using BeautySpa.ModelViews.MemberShipModelViews.FavoriteModelViews;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 

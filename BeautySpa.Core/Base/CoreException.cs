@@ -84,6 +84,7 @@ namespace BeautySpa.Core.Base
         public const string InvalidInput = "Invalid input!";
         public const string InternalServerError = "Internal Server Error";
         public const string Duplicate = "Duplicate";
+        public const string Failed = "Failed";
     }
 
     public static class ResponseCodeConstants
