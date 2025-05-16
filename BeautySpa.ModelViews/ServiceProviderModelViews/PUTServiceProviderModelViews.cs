@@ -23,7 +23,8 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public string Status { get; set; } = "pending";
         public string PhoneNumber { get; set; } = string.Empty;
         public string? Email { get; set; }
-        public Guid ProviderId { get; set; }
-        public string ImageUrl { get; set; } = string.Empty; 
+        //public Guid ProviderId { get; set; }
+        public string ImageUrl { get; set; } = string.Empty;
+        public List<Guid>? ServiceCategoryIds { get; set; }
     }
 }

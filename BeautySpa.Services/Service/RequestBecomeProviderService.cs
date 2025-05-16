@@ -98,6 +98,7 @@ namespace BeautySpa.Services.Service
             var providerRepo = _unitOfWork.GetRepository<EntityServiceProvider>();
             var providerCategoryRepo = _unitOfWork.GetRepository<ServiceProviderCategory>();
             var workingHourRepo = _unitOfWork.GetRepository<WorkingHour>();
+            var branchRepo = _unitOfWork.GetRepository<SpaBranchLocation>();
             var imageRepo = _unitOfWork.GetRepository<ServiceImage>();
 
             var request = await requestRepo.Entities
@@ -151,6 +152,31 @@ namespace BeautySpa.Services.Service
             };
             await providerRepo.InsertAsync(provider);
 
+            if (request.ProvinceId.HasValue && request.DistrictId.HasValue && !string.IsNullOrWhiteSpace(request.AddressDetail))
+            {
+                var branch = new SpaBranchLocation
+                {
+                    Id = Guid.NewGuid(),
+                    ServiceProviderId = provider.Id,
+                    BranchName = "Cơ sở chính",
+                    Street = request.AddressDetail ?? "",
+                    District = request.DistrictName ?? "",
+                    City = request.ProvinceName ?? "",
+                    Country = "Vietnam",
+                    ProvinceId = request.ProvinceId.Value,
+                    DistrictId = request.DistrictId.Value,
+                    Latitude = 0,
+                    Longitude = 0,
+                    CreatedBy = CurrentUserId,
+                    CreatedTime = CoreHelper.SystemTimeNow
+                };
+
+                // ✅ Nếu cần geocode: sử dụng dịch vụ bên ngoài để cập nhật tọa độ
+                // (branch.Latitude, branch.Longitude) = await GeocodeAddressAsync(...);
+
+                await branchRepo.InsertAsync(branch);
+            }
+
             var categoryIds = request.ServiceCategoryIds?.Split('|', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToList() ?? new();
             foreach (var catId in categoryIds)
             {
@@ -196,7 +222,7 @@ namespace BeautySpa.Services.Service
             await requestRepo.UpdateAsync(request);
             await _unitOfWork.SaveAsync();
 
-            // 📩 Gửi email xác nhận
+            // Gửi email xác nhận
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
                 var subject = "Yêu cầu trở thành nhà cung cấp đã được duyệt";
