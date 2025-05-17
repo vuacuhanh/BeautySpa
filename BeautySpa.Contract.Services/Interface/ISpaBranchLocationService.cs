@@ -9,6 +9,7 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<string>> UpdateAsync(PUTSpaBranchLocationModelView model);
         Task<BaseResponseModel<string>> DeleteAsync(Guid id);
         Task<BaseResponseModel<GETSpaBranchLocationModelView>> GetByIdAsync(Guid id);
+        Task<BaseResponseModel<BasePaginatedList<GETSpaBranchLocationModelView>>> GetAllAsync(int pageNumber, int pageSize);
         Task<BaseResponseModel<List<GETSpaBranchLocationModelView>>> GetByProviderAsync(Guid providerId);
     }
 }

@@ -4,7 +4,7 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class SpaBranchLocation : BaseEntity
     {
-
+        public Guid ServiceProviderId { get; set; }
         public string BranchName { get; set; } = string.Empty;
 
         public string Street { get; set; } = string.Empty;
@@ -13,13 +13,12 @@ namespace BeautySpa.Contract.Repositories.Entity
         public string PostalCode { get; set; } = string.Empty;
         public string Country { get; set; } = "Vietnam";
 
-        public Guid ProvinceId { get; set; }
-        public Guid DistrictId { get; set; }
+        public string? ProvinceId { get; set; }
+        public string? DistrictId { get; set; }
 
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
+        public string ProvinceName { get; set; } = string.Empty;
+        public string DistrictName { get; set; } = string.Empty;
 
-        public Guid ServiceProviderId { get; set; }
         public virtual ServiceProvider? Provider { get; set; }
     }
 }

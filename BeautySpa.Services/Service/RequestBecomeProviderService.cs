@@ -115,7 +115,7 @@ namespace BeautySpa.Services.Service
             var roleManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<RoleManager<ApplicationRoles>>();
             var userManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<UserManager<ApplicationUsers>>();
 
-            var currentRoles = await userManager.GetRolesAsync(user);
+            var currentRoles = await userManager!.GetRolesAsync(user);
             // Xoá Customer nếu có
             if (currentRoles.Contains("Customer"))
             {
@@ -124,7 +124,7 @@ namespace BeautySpa.Services.Service
             // Thêm Provider nếu chưa có
             if (!currentRoles.Contains("Provider"))
             {
-                var roleExists = await roleManager.RoleExistsAsync("Provider");
+                var roleExists = await roleManager!.RoleExistsAsync("Provider");
                 if (!roleExists)
                 {
                     var newRole = new ApplicationRoles { Name = "Provider" };
@@ -163,10 +163,8 @@ namespace BeautySpa.Services.Service
                     District = request.DistrictName ?? "",
                     City = request.ProvinceName ?? "",
                     Country = "Vietnam",
-                    ProvinceId = request.ProvinceId.Value,
-                    DistrictId = request.DistrictId.Value,
-                    Latitude = 0,
-                    Longitude = 0,
+                    ProvinceId = request.ProvinceId.Value.ToString(),
+                    DistrictId = request.DistrictId.Value.ToString(),
                     CreatedBy = CurrentUserId,
                     CreatedTime = CoreHelper.SystemTimeNow
                 };

@@ -8,10 +8,7 @@ namespace BeautySpa.Services.Mapper
     {
         public SpaBranchLocationMapping()
         {
-            CreateMap<SpaBranchLocation, GETSpaBranchLocationModelView>()
-                .ForMember(dest => dest.FullAddress,
-                    opt => opt.MapFrom(src => $"{src.Street}, {src.District}, {src.City}, {src.Country}"));
-
+            CreateMap<SpaBranchLocation, GETSpaBranchLocationModelView>();
             CreateMap<POSTSpaBranchLocationModelView, SpaBranchLocation>();
             CreateMap<PUTSpaBranchLocationModelView, SpaBranchLocation>();
         }

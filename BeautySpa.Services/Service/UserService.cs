@@ -323,7 +323,7 @@ namespace BeautySpa.Services.Service
                 if (!roleExists)
                 {
                     var roleManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<RoleManager<ApplicationRoles>>();
-                    await roleManager.CreateAsync(new ApplicationRoles { Name = "Provider" });
+                    await roleManager!.CreateAsync(new ApplicationRoles { Name = "Provider" });
                 }
 
                 await _userManager.AddToRoleAsync(user, "Provider");

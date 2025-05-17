@@ -26,10 +26,11 @@ namespace BeautySpa.Services.Service
         {
             var claims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new(ClaimTypes.Email, user.Email ?? string.Empty),
-                new("ip", ipAddress),
-                new("device", deviceInfo)
+                new Claim("id", user.Id.ToString()), // custom claim
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // standard claim
+                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
+                new Claim("ip", ipAddress),
+                new Claim("device", deviceInfo)
             };
 
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
@@ -85,7 +86,8 @@ namespace BeautySpa.Services.Service
 
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadJwtToken(accessToken);
-            var userId = token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            var userId = token.Claims.FirstOrDefault(c =>
+                c.Type == ClaimTypes.NameIdentifier || c.Type == "id")?.Value ?? string.Empty;
 
             return Task.FromResult(userId);
         }

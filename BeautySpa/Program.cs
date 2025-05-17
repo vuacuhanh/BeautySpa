@@ -25,8 +25,9 @@ builder.Configuration
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
 
+builder.Services.Configure<EsgooSettings>(builder.Configuration.GetSection("Esgoo"));
+builder.Services.AddHttpClient("EsgooClient");
 
-builder.Services.Configure<GoogleMapSettings>(builder.Configuration.GetSection("GoogleMaps"));
 
 /*builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
 builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("MoMo"));*/
@@ -116,7 +117,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(".")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials(); // cần cho SignalR

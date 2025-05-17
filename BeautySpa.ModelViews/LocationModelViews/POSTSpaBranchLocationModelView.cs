@@ -9,7 +9,7 @@
         public string City { get; set; } = string.Empty;
         public string PostalCode { get; set; } = string.Empty;
         public string Country { get; set; } = "Vietnam";
-        public Guid ProvinceId { get; set; }
-        public Guid DistrictId { get; set; }
+        public string? ProvinceId { get; set; }
+        public string? DistrictId { get; set; }
     }
 }
