@@ -10,6 +10,7 @@ using BeautySpa.ModelViews.LocationModelViews;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace BeautySpa.Services.Service
 {
@@ -32,16 +33,25 @@ namespace BeautySpa.Services.Service
         {
             var http = _httpClientFactory.CreateClient();
             var url = $"https://maps.googleapis.com/maps/api/geocode/json?address={Uri.EscapeDataString(address)}&key={_mapSettings.ApiKey}";
-            var response = await http.GetFromJsonAsync<dynamic>(url);
 
-            if (response?.results?[0]?.geometry?.location != null)
+            var response = await http.GetAsync(url);
+            var json = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine("🌐 Geocoding URL: " + url);
+            Console.WriteLine("📦 Geocoding response: " + json);
+
+            var data = JsonSerializer.Deserialize<GoogleGeocodeResponse>(json);
+
+            if (data?.Results != null && data.Results.Count > 0)
             {
-                return ((double)response.results[0].geometry.location.lat,
-                        (double)response.results[0].geometry.location.lng);
+                var location = data.Results[0].Geometry.Location;
+                return (location.Lat, location.Lng);
             }
 
-            throw new ErrorException(400, ErrorCode.Failed, "Unable to geocode address.");
+            // In rõ lý do thất bại
+            throw new ErrorException(400, ErrorCode.Failed, $"Unable to geocode address. Status: {data?.Status ?? "null"}, Raw: {json}");
         }
+
 
         public async Task<BaseResponseModel<Guid>> CreateAsync(POSTSpaBranchLocationModelView model)
         {
