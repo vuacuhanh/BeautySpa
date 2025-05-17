@@ -35,6 +35,8 @@ namespace BeautySpa.Services.Service
                 .Entities
                 .AsNoTracking()
                 .Include(sp => sp.ServiceImages)
+                .Include(p => p.ServiceProviderCategories)
+                .ThenInclude(spc => spc.ServiceCategory)
                 .Where(x => x.DeletedTime == null)
                 .OrderByDescending(x => x.CreatedTime);
 
@@ -58,7 +60,9 @@ namespace BeautySpa.Services.Service
             IQueryable<ServiceProvider> query = _unitOfWork.GetRepository<ServiceProvider>()
                 .Entities
                 .AsNoTracking()
-                .Include(x => x.ServiceImages);
+                .Include(x => x.ServiceImages)
+                .Include(p => p.ServiceProviderCategories)
+                .ThenInclude(spc => spc.ServiceCategory);
 
             var entity = await query.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
@@ -115,28 +119,61 @@ namespace BeautySpa.Services.Service
             var validator = new PUTServiceProviderModelViewsValidator();
             var validationResult = await validator.ValidateAsync(model);
             if (!validationResult.IsValid)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput,
+                    string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
 
+            // Lấy ServiceProvider hiện tại
             var entity = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.FirstOrDefaultAsync(x => x.Id == model.Id && x.DeletedTime == null)
+                .Entities
+                .Include(sp => sp.ServiceProviderCategories)
+                .FirstOrDefaultAsync(sp => sp.Id == model.Id && sp.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
 
-            var user = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(model.ProviderId)
+            // Lấy thông tin người dùng hiện tại từ token
+            var userId = Guid.Parse(CurrentUserId);
+            var user = await _unitOfWork.GetRepository<ApplicationUsers>().GetByIdAsync(userId)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
+            // Cập nhật user info
             user.PhoneNumber = model.PhoneNumber;
             user.Email = model.Email;
             await _unitOfWork.GetRepository<ApplicationUsers>().UpdateAsync(user);
 
+            // Cập nhật thông tin provider
             _mapper.Map(model, entity);
             entity.LastUpdatedTime = CoreHelper.SystemTimeNow;
             entity.LastUpdatedBy = CurrentUserId;
 
             await _unitOfWork.GetRepository<ServiceProvider>().UpdateAsync(entity);
-            await _unitOfWork.SaveAsync();
 
+            // Cập nhật danh mục dịch vụ
+            var categoryRepo = _unitOfWork.GetRepository<ServiceProviderCategory>();
+            var oldCategories = await categoryRepo.Entities
+                .Where(c => c.ServiceProviderId == entity.Id)
+                .ToListAsync();
+
+            foreach (var cat in oldCategories)
+            {
+                await categoryRepo.DeleteAsync(cat.Id);
+            }
+
+            if (model.ServiceCategoryIds != null && model.ServiceCategoryIds.Any())
+            {
+                foreach (var categoryId in model.ServiceCategoryIds.Distinct())
+                {
+                    await categoryRepo.InsertAsync(new ServiceProviderCategory
+                    {
+                        Id = Guid.NewGuid(),
+                        ServiceProviderId = entity.Id,
+                        ServiceCategoryId = categoryId
+                    });
+                }
+            }
+
+            await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("Service provider updated successfully.");
         }
+
 
         public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
@@ -156,6 +193,24 @@ namespace BeautySpa.Services.Service
             await _unitOfWork.SaveAsync();
 
             return BaseResponseModel<string>.Success("Service provider deleted successfully.");
+        }
+        public async Task<BaseResponseModel<List<GETServiceProviderModelViews>>> GetByCategory(Guid categoryId)
+        {
+            if (categoryId == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid category ID.");
+
+            var providers = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities
+                .AsNoTracking()
+                .Include(p => p.ServiceImages)
+                .Include(p => p.ServiceProviderCategories)
+                    .ThenInclude(spc => spc.ServiceCategory)
+                .Where(p => p.ServiceProviderCategories.Any(spc => spc.ServiceCategoryId == categoryId)
+                            && p.DeletedTime == null)
+                .ToListAsync();
+
+            var mapped = _mapper.Map<List<GETServiceProviderModelViews>>(providers);
+            return BaseResponseModel<List<GETServiceProviderModelViews>>.Success(mapped);
         }
     }
 }
