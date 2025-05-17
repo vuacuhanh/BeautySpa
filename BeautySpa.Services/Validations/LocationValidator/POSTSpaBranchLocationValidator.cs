@@ -7,10 +7,14 @@ namespace BeautySpa.Services.Validations.LocationValidator
     {
         public POSTSpaBranchLocationValidator()
         {
-            RuleFor(x => x.BranchName).NotEmpty();
-            RuleFor(x => x.Street).NotEmpty();
-            RuleFor(x => x.City).NotEmpty();
-            RuleFor(x => x.District).NotEmpty();
+            RuleFor(x => x.ServiceProviderId).NotEmpty();
+            RuleFor(x => x.BranchName).NotEmpty().MaximumLength(100);
+            RuleFor(x => x.Street).NotEmpty().MaximumLength(200);
+            RuleFor(x => x.District).NotEmpty().MaximumLength(100);
+            RuleFor(x => x.City).NotEmpty().MaximumLength(100);
+            RuleFor(x => x.Country).NotEmpty().MaximumLength(100);
+            RuleFor(x => x.ProvinceId).NotEmpty();
+            RuleFor(x => x.DistrictId).NotEmpty();
         }
     }
 }

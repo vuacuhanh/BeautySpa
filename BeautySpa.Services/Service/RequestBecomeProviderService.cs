@@ -163,10 +163,8 @@ namespace BeautySpa.Services.Service
                     District = request.DistrictName ?? "",
                     City = request.ProvinceName ?? "",
                     Country = "Vietnam",
-                    ProvinceId = request.ProvinceId.Value,
-                    DistrictId = request.DistrictId.Value,
-                    Latitude = 0,
-                    Longitude = 0,
+                    ProvinceId = request.ProvinceId.Value.ToString(),
+                    DistrictId = request.DistrictId.Value.ToString(),
                     CreatedBy = CurrentUserId,
                     CreatedTime = CoreHelper.SystemTimeNow
                 };

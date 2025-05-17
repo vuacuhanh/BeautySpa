@@ -910,8 +910,8 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<string>("DescriptionImages")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("DistrictId")
-                        .HasColumnType("int");
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("DistrictName")
                         .HasColumnType("nvarchar(max)");
@@ -932,8 +932,8 @@ namespace BeautySpa.Repositories.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("ProvinceId")
-                        .HasColumnType("int");
+                    b.Property<Guid?>("ProvinceId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ProvinceName")
                         .HasColumnType("nvarchar(max)");
@@ -1323,8 +1323,12 @@ namespace BeautySpa.Repositories.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("DistrictId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("DistrictId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DistrictName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LastUpdatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -1332,18 +1336,16 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<DateTimeOffset?>("LastUpdatedTime")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<double>("Latitude")
-                        .HasColumnType("float");
-
-                    b.Property<double>("Longitude")
-                        .HasColumnType("float");
-
                     b.Property<string>("PostalCode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("ProvinceId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("ProvinceId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProvinceName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("ServiceProviderId")
                         .HasColumnType("uniqueidentifier");

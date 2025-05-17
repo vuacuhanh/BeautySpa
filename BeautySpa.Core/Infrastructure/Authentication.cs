@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text.Json;
 
 namespace BeautySpa.Core.Infrastructure
 {
@@ -12,7 +11,9 @@ namespace BeautySpa.Core.Infrastructure
             if (httpContextAccessor?.HttpContext == null)
                 throw new UnauthorizedException("HttpContext is null");
 
-            var userId = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userId = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                      ?? httpContextAccessor.HttpContext.User.FindFirst("id")?.Value;
+
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedException("User Id not found in the token.");
 
@@ -24,7 +25,8 @@ namespace BeautySpa.Core.Infrastructure
             if (httpContext == null)
                 throw new ArgumentNullException(nameof(httpContext), "HttpContext cannot be null");
 
-            return ExtractClaimFromAuthorizationHeader(httpContext.Request.Headers["Authorization"].ToString(), "id");
+            var header = httpContext.Request.Headers["Authorization"].ToString();
+            return ExtractUserIdFromAuthorizationHeader(header);
         }
 
         public static string GetUserRoleFromHttpContext(HttpContext httpContext)
@@ -45,6 +47,28 @@ namespace BeautySpa.Core.Infrastructure
 
             var claimsIdentity = httpContextAccessor.HttpContext.User.Identity as ClaimsIdentity;
             return claimsIdentity?.FindFirst("fullName")?.Value ?? string.Empty;
+        }
+
+        public static string ExtractUserIdFromAuthorizationHeader(string authorizationHeader)
+        {
+            if (string.IsNullOrWhiteSpace(authorizationHeader) || !authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedException("Authorization header is missing or not a Bearer token.");
+
+            string jwtToken = authorizationHeader.Substring("Bearer ".Length).Trim();
+            var tokenHandler = new JwtSecurityTokenHandler();
+
+            if (!tokenHandler.CanReadToken(jwtToken))
+                throw new UnauthorizedException("Invalid token format.");
+
+            var token = tokenHandler.ReadJwtToken(jwtToken);
+
+            var userId = token.Claims.FirstOrDefault(c =>
+                c.Type == ClaimTypes.NameIdentifier || c.Type == "sub" || c.Type == "id")?.Value;
+
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new UnauthorizedException("User ID not found in token.");
+
+            return userId;
         }
 
         private static string ExtractClaimFromAuthorizationHeader(string authorizationHeader, string claimType)

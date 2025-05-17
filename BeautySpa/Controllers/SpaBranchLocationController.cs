@@ -1,5 +1,6 @@
 ﻿using BeautySpa.Contract.Services.Interface;
 using BeautySpa.ModelViews.LocationModelViews;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -7,42 +8,57 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
+    [SwaggerTag("Quản lý chi nhánh spa (SpaBranchLocation)")]
     public class SpaBranchLocationController : ControllerBase
     {
-        private readonly ISpaBranchLocationService _service;
-        public SpaBranchLocationController(ISpaBranchLocationService service)
+        private readonly ISpaBranchLocationService _branchService;
+
+        public SpaBranchLocationController(ISpaBranchLocationService branchService)
         {
-            _service = service;
+            _branchService = branchService;
         }
 
         [HttpPost("create")]
         [SwaggerOperation(Summary = "Tạo chi nhánh spa mới")]
         public async Task<IActionResult> Create([FromBody] POSTSpaBranchLocationModelView model)
-            => Ok(await _service.CreateAsync(model));
+        {
+            return Ok(await _branchService.CreateAsync(model));
+        }
 
         [HttpPut("update")]
-        [SwaggerOperation(Summary = "Cập nhật chi nhánh spa")]
+        [SwaggerOperation(Summary = "Cập nhật thông tin chi nhánh spa")]
         public async Task<IActionResult> Update([FromBody] PUTSpaBranchLocationModelView model)
-            => Ok(await _service.UpdateAsync(model));
+        {
+            return Ok(await _branchService.UpdateAsync(model));
+        }
 
-        [HttpDelete("{id}")]
-        [SwaggerOperation(Summary = "Xóa mềm chi nhánh spa")]
+        [HttpDelete("delete/{id}")]
+        [SwaggerOperation(Summary = "Xoá (soft delete) chi nhánh spa")]
         public async Task<IActionResult> Delete(Guid id)
-            => Ok(await _service.DeleteAsync(id));
+        {
+            return Ok(await _branchService.DeleteAsync(id));
+        }
 
-        [HttpGet("{id}")]
+        [HttpGet("get/{id}")]
         [SwaggerOperation(Summary = "Lấy chi tiết chi nhánh spa theo ID")]
         public async Task<IActionResult> GetById(Guid id)
-            => Ok(await _service.GetByIdAsync(id));
+        {
+            return Ok(await _branchService.GetByIdAsync(id));
+        }
 
-        [HttpGet("getby-provider")]
-        [SwaggerOperation(Summary = "Lấy danh sách các chi nhánh spa theo ID Provider")]
-        public async Task<IActionResult> GetAllByProviderQuery([FromQuery] Guid providerId)
-            => Ok(await _service.GetByProviderAsync(providerId));
+        [HttpGet("get-all")]
+        [SwaggerOperation(Summary = "Lấy danh sách chi nhánh spa (phân trang)")]
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            return Ok(await _branchService.GetAllAsync(pageNumber, pageSize));
+        }
 
         [HttpGet("by-provider/{providerId}")]
-        [SwaggerOperation(Summary = "Lấy danh sách các chi nhánh spa theo ID Provider (route)")]
-        public async Task<IActionResult> GetAllByProvider(Guid providerId)
-            => Ok(await _service.GetByProviderAsync(providerId));
+        [SwaggerOperation(Summary = "Lấy danh sách chi nhánh spa theo ProviderId")]
+        public async Task<IActionResult> GetByProvider(Guid providerId)
+        {
+            return Ok(await _branchService.GetByProviderAsync(providerId));
+        }
     }
 }
