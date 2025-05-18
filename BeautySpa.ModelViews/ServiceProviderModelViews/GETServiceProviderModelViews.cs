@@ -11,8 +11,6 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
     {
         public Guid Id { get; set; }
         public string BusinessName { get; set; } = string.Empty;
-        public string BusinessAddress { get; set; } = string.Empty;
-        public string WebsiteOrSocialLink { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty; 
         public string BusinessType { get; set; } = string.Empty;
         public string? Description { get; set; }
@@ -24,6 +22,8 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public bool IsApproved { get; set; }
         public string Status { get; set; } = "pending";
         public Guid ProviderId { get; set; }
+        public TimeSpan? OpenTime { get; set; }
+        public TimeSpan? CloseTime { get; set; }
         public DateTimeOffset CreatedTime { get; set; }
         public DateTimeOffset LastUpdatedTime { get; set; }
         public DateTimeOffset? DeletedTime { get; set; }

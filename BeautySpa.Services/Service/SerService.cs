@@ -93,6 +93,26 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<BasePaginatedList<GETServiceModelViews>>.Success(result);
         }
 
+        public async Task<BaseResponseModel<List<GETServiceModelViews>>> GetByProviderIdAsync(Guid providerId)
+        {
+            if (providerId == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "ProviderId không hợp lệ.");
+
+            var exists = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.AnyAsync(x => x.Id == providerId && x.DeletedTime == null);
+
+            if (!exists)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Nhà cung cấp không tồn tại.");
+
+            var services = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
+                .Entities
+                .Where(s => s.ProviderId == providerId && s.DeletedTime == null)
+                .OrderByDescending(s => s.CreatedTime)
+                .ToListAsync();
+
+            var result = _mapper.Map<List<GETServiceModelViews>>(services);
+            return BaseResponseModel<List<GETServiceModelViews>>.Success(result);
+        }
 
         public async Task<BaseResponseModel<GETServiceModelViews>> GetByIdAsync(Guid id)
         {

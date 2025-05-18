@@ -111,28 +111,25 @@ namespace BeautySpa.Services.Service
             if (user.ServiceProvider != null)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "User is already a provider.");
 
-            // ✅ Thêm role Provider nếu chưa có
+            // ✅ Cập nhật role
             var roleManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<RoleManager<ApplicationRoles>>();
             var userManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<UserManager<ApplicationUsers>>();
 
             var currentRoles = await userManager!.GetRolesAsync(user);
-            // Xoá Customer nếu có
             if (currentRoles.Contains("Customer"))
             {
                 await userManager.RemoveFromRoleAsync(user, "Customer");
             }
-            // Thêm Provider nếu chưa có
             if (!currentRoles.Contains("Provider"))
             {
                 var roleExists = await roleManager!.RoleExistsAsync("Provider");
                 if (!roleExists)
                 {
-                    var newRole = new ApplicationRoles { Name = "Provider" };
-                    await roleManager.CreateAsync(newRole);
+                    await roleManager.CreateAsync(new ApplicationRoles { Name = "Provider" });
                 }
-
                 await userManager.AddToRoleAsync(user, "Provider");
             }
+
             // ✅ Tạo ServiceProvider
             var provider = new EntityServiceProvider
             {
@@ -149,32 +146,48 @@ namespace BeautySpa.Services.Service
                 IsApproved = true,
                 AverageRating = 0,
                 TotalReviews = 0,
+                OpenTime = request.OpenTime,
+                CloseTime = request.CloseTime,
+                MaxAppointmentsPerSlot = 5
             };
             await providerRepo.InsertAsync(provider);
 
-            if (request.ProvinceId.HasValue && request.DistrictId.HasValue && !string.IsNullOrWhiteSpace(request.AddressDetail))
+            // ✅ Tạo chi nhánh chính nếu đủ thông tin
+            if (!string.IsNullOrWhiteSpace(request.ProvinceId) &&
+                !string.IsNullOrWhiteSpace(request.DistrictId) &&
+                !string.IsNullOrWhiteSpace(request.AddressDetail))
             {
+                // ✅ Gọi Esgoo API để xác thực và lấy tên
+                var esgoo = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<IEsgooService>();
+
+                var province = await esgoo!.GetProvinceByIdAsync(request.ProvinceId)
+                    ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Province not found");
+
+                var district = await esgoo.GetDistrictByIdAsync(request.DistrictId, request.ProvinceId)
+                    ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "District not found");
+
                 var branch = new SpaBranchLocation
                 {
                     Id = Guid.NewGuid(),
                     ServiceProviderId = provider.Id,
                     BranchName = "Cơ sở chính",
                     Street = request.AddressDetail ?? "",
-                    District = request.DistrictName ?? "",
-                    City = request.ProvinceName ?? "",
+                    District = district.name,
+                    City = province.name,
                     Country = "Vietnam",
-                    ProvinceId = request.ProvinceId.Value.ToString(),
-                    DistrictId = request.DistrictId.Value.ToString(),
+                    ProvinceId = request.ProvinceId,
+                    DistrictId = request.DistrictId,
+                    ProvinceName = province.name,
+                    DistrictName = district.name,
+                    PostalCode = request.PostalCode ?? "700000",
                     CreatedBy = CurrentUserId,
                     CreatedTime = CoreHelper.SystemTimeNow
                 };
 
-                // ✅ Nếu cần geocode: sử dụng dịch vụ bên ngoài để cập nhật tọa độ
-                // (branch.Latitude, branch.Longitude) = await GeocodeAddressAsync(...);
-
                 await branchRepo.InsertAsync(branch);
             }
 
+            // ✅ Gắn các danh mục
             var categoryIds = request.ServiceCategoryIds?.Split('|', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToList() ?? new();
             foreach (var catId in categoryIds)
             {
@@ -186,6 +199,7 @@ namespace BeautySpa.Services.Service
                 });
             }
 
+            // ✅ Giờ làm việc mặc định
             if (request.OpenTime.HasValue && request.CloseTime.HasValue)
             {
                 await workingHourRepo.InsertAsync(new WorkingHour
@@ -199,6 +213,7 @@ namespace BeautySpa.Services.Service
                 });
             }
 
+            // ✅ Ảnh mô tả
             var descImages = request.DescriptionImages?.Split('|', StringSplitOptions.RemoveEmptyEntries);
             if (descImages != null)
             {
@@ -213,6 +228,7 @@ namespace BeautySpa.Services.Service
                 }
             }
 
+            // ✅ Cập nhật trạng thái yêu cầu
             request.RequestStatus = "approved";
             request.LastUpdatedBy = CurrentUserId;
             request.LastUpdatedTime = CoreHelper.SystemTimeNow;
@@ -220,7 +236,7 @@ namespace BeautySpa.Services.Service
             await requestRepo.UpdateAsync(request);
             await _unitOfWork.SaveAsync();
 
-            // Gửi email xác nhận
+            // ✅ Gửi email xác nhận
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
                 var subject = "Yêu cầu trở thành nhà cung cấp đã được duyệt";
@@ -229,13 +245,15 @@ namespace BeautySpa.Services.Service
                 <p>Chúc mừng! Yêu cầu trở thành nhà cung cấp của bạn trên hệ thống <strong>ZENORA</strong> đã được <strong>phê duyệt</strong>.</p>
                 <p>Bạn đã có thể đăng nhập và cập nhật thêm thông tin về dịch vụ, lịch làm việc, hình ảnh,... trong trang quản lý.</p>
                 <p>Nếu có bất kỳ thắc mắc nào, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi.</p>
-                <p>Trân trọng,<br/>Đội ngũ ZENORA ( An Ngu ask)</p>";
+                <p>Trân trọng,<br/>Đội ngũ ZENORA (An Ngu nè)</p>";
 
-                await _emailService.SendEmailAsync(user.Email, subject, body);
-            }
+                    await _emailService.SendEmailAsync(user.Email, subject, body);
+                }
 
-            return BaseResponseModel<string>.Success("Đã duyệt yêu cầu, cấp quyền Provider và gửi email thông báo.");
+            return BaseResponseModel<string>.Success("Đã duyệt yêu cầu, cấp quyền Provider, tạo chi nhánh và gửi email thông báo.");
         }
+
+
 
         public async Task<BaseResponseModel<string>> RejectRequestAsync(Guid requestId, string reason)
         {

@@ -34,6 +34,14 @@ namespace BeautySpa.API.Controllers
             return Ok(await _serviceService.GetByIdAsync(id));
         }
 
+        [HttpGet("by-provider/{providerId:guid}")]
+        [SwaggerOperation(Summary = "Lấy tất cả dịch vụ theo ProviderId")]
+        public async Task<IActionResult> GetByProviderId([FromRoute] Guid providerId)
+        {
+            var result = await _serviceService.GetByProviderIdAsync(providerId);
+            return Ok(result);
+        }
+
         [HttpPost("create")]
         [SwaggerOperation(Summary = "Tạo mới dịch vụ")]
         public async Task<IActionResult> Create([FromBody] POSTServiceModelViews model)

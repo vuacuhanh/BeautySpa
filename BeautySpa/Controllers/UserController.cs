@@ -58,7 +58,7 @@ namespace BeautySpa.API.Controllers
         // PUT: api/user
         [HttpPut("update")]
         [SwaggerOperation(Summary = "Cập nhật thông tin người dùng")]
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update([FromBody] PUTUserModelViews model)
         {
             return Ok(await _userService.UpdateAsync(model));
@@ -76,7 +76,7 @@ namespace BeautySpa.API.Controllers
         // DELETE: api/user/{id}
         [HttpDelete("{id}")]
         [SwaggerOperation(Summary = "Xóa mềm người dùng theo ID")]
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
             return Ok(await _userService.DeleteAsync(id));

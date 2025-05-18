@@ -17,6 +17,9 @@ namespace BeautySpa.Contract.Repositories.Entity
         public string Status { get; set; } = "pending";
         public string PhoneNumber { get; set; } = string.Empty;
         public string? Email { get; set; }
+
+        public TimeSpan? OpenTime { get; set; }
+        public TimeSpan? CloseTime { get; set; }
         public int MaxAppointmentsPerSlot { get; set; } = 5;
 
         public Guid ProviderId { get; set; }
