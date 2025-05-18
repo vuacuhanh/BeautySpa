@@ -144,8 +144,12 @@ namespace BeautySpa.Services.Service
             if (nameExists)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name already exists.");
 
-            if (entity.ProviderId != Guid.Parse(CurrentUserId))
-                throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "You don't have permission service");
+            var currentUserId = Guid.Parse(CurrentUserId);
+            var provider = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.FirstOrDefaultAsync(p => p.Id == entity.ProviderId && p.ProviderId == currentUserId && p.DeletedTime == null);
+
+            if (provider == null)
+                throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "You don't have permission to update this service");
 
 
             _mapper.Map(model, entity);
