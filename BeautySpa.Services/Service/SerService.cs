@@ -49,7 +49,7 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Service name already exists.");
 
             var entity = _mapper.Map<BeautySpa.Contract.Repositories.Entity.Service>(model);
-            entity.ProviderId = provider.ProviderId;
+            entity.ProviderId = provider.Id;
             entity.Id = Guid.NewGuid();
             entity.CreatedBy = CurrentUserId;
             entity.CreatedTime = CoreHelper.SystemTimeNow;
