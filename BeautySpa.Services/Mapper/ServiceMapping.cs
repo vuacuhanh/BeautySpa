@@ -18,12 +18,14 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
+                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
+                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId)); 
 
             CreateMap<PUTServiceModelViews, BeautySpa.Contract.Repositories.Entity.Service>()
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
+                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
+                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId)); 
 
             CreateMap<ServiceImage, GETServiceImageModelViews>();
 
