@@ -15,8 +15,9 @@ namespace BeautySpa.ModelViews.RequestBecomeProviderModelView
         public TimeSpan? CloseTime { get; set; }
 
         public string? AddressDetail { get; set; }
-        public Guid? ProvinceId { get; set; }
-        public Guid? DistrictId { get; set; }
+        public string PostalCode { get; set; } = string.Empty;
+        public string? ProvinceId { get; set; }
+        public string? DistrictId { get; set; }
 
         public List<Guid> ServiceCategoryIds { get; set; } = new();
     }

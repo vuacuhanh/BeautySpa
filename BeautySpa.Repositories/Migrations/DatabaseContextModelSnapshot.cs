@@ -910,8 +910,8 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<string>("DescriptionImages")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("DistrictId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("DistrictId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DistrictName")
                         .HasColumnType("nvarchar(max)");
@@ -932,8 +932,11 @@ namespace BeautySpa.Repositories.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("ProvinceId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("PostalCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProvinceId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ProvinceName")
                         .HasColumnType("nvarchar(max)");
@@ -1174,6 +1177,9 @@ namespace BeautySpa.Repositories.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<TimeSpan?>("CloseTime")
+                        .HasColumnType("time");
+
                     b.Property<string>("ContactFullName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1215,6 +1221,9 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.Property<int>("MaxAppointmentsPerSlot")
                         .HasColumnType("int");
+
+                    b.Property<TimeSpan?>("OpenTime")
+                        .HasColumnType("time");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
@@ -1367,8 +1376,7 @@ namespace BeautySpa.Repositories.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Address")
-                        .IsRequired()
+                    b.Property<string>("AddressDetail")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AvatarUrl")
@@ -1389,6 +1397,12 @@ namespace BeautySpa.Repositories.Migrations
                     b.Property<DateTimeOffset?>("DeletedTime")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("DistrictId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DistrictName")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1402,6 +1416,12 @@ namespace BeautySpa.Repositories.Migrations
 
                     b.Property<DateTimeOffset?>("LastUpdatedTime")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ProvinceId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProvinceName")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("Salary")
                         .HasPrecision(15, 2)

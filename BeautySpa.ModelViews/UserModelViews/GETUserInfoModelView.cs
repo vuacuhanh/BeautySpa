@@ -10,7 +10,11 @@ namespace BeautySpa.ModelViews.UserModelViews
     {
         public string FullName { get; set; } = string.Empty;
         public DateTime? DayofBirth { get; set; }
-        public string? Address { get; set; }
+        public string? AddressDetail { get; set; }
+        public string? ProvinceId { get; set; }
+        public string? ProvinceName { get; set; }
+        public string? DistrictId { get; set; }
+        public string? DistrictName { get; set; }
         public string? AvatarUrl { get; set; }
         public string? Gender { get; set; }
         public decimal? Salary { get; set; }

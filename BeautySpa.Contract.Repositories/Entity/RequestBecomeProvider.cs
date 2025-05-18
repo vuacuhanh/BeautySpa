@@ -15,9 +15,9 @@ namespace BeautySpa.Contract.Repositories.Entity
         public TimeSpan? OpenTime { get; set; }
         public TimeSpan? CloseTime { get; set; }
 
-        public Guid? ProvinceId { get; set; }
+        public string? ProvinceId { get; set; }
         public string? ProvinceName { get; set; }
-        public Guid? DistrictId { get; set; }
+        public string? DistrictId { get; set; }
         public string? DistrictName { get; set; }
         public string? AddressDetail { get; set; }
 
@@ -25,6 +25,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public string? RejectedReason { get; set; }
 
         public Guid UserId { get; set; }
+        public string? PostalCode { get; set; } = "700000";
         public string RequestStatus { get; set; } = "pending";
 
         public virtual ApplicationUsers? User { get; set; }
