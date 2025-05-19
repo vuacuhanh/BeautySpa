@@ -38,8 +38,17 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
 // 2. Redis
-builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var configuration = builder.Configuration;
+    var redisConnString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING")
+                         ?? configuration.GetConnectionString("Redis");
+
+    if (string.IsNullOrEmpty(redisConnString))
+        throw new Exception("Redis connection string is missing.");
+
+    return ConnectionMultiplexer.Connect(redisConnString);
+});
 
 // 3. Identity
 builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
