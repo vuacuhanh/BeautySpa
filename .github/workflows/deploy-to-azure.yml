@@ -1,4 +1,4 @@
-name: Build and deploy ASP.NET Core app to Azure Web App - BeautySpa
+name: 🚀 Deploy ASP.NET Core app to Azure Web App
 
 on:
   push:
@@ -6,58 +6,31 @@ on:
       - master
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
-  build:
+  build-and-deploy:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
+      - name: ✅ Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: ⚙️ Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore dependencies
+      - name: 📦 Restore dependencies
         run: dotnet restore "BeautySpa/BeautySpa.API.csproj"
 
-      - name: Build
+      - name: 🛠 Build project
         run: dotnet build "BeautySpa/BeautySpa.API.csproj" --configuration Release --no-restore
 
-      - name: Publish
+      - name: 📤 Publish to folder
         run: dotnet publish "BeautySpa/BeautySpa.API.csproj" --configuration Release --output ./publish
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app
-          path: ./publish
-
-  deploy:
-    runs-on: windows-latest
-    needs: build
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app
-          path: ./publish
-
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-
-      - name: Deploy to Azure Web App
+      - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: BeautySpaAPI20250516125713
+          publish-profile: ${{ secrets.AZURE_CREDENTIALS }}
           package: ./publish
