@@ -84,6 +84,14 @@ namespace BeautySpa.Controllers
             return Ok(result);
         }
 
+        [SwaggerOperation(Summary = "Xác minh OTP trước khi đặt lại mật khẩu")]
+        [HttpPost("verify-reset-password-otp")]
+        public async Task<IActionResult> VerifyResetPasswordOtp([FromBody] OtpVerifyModelView model)
+        {
+            var result = await _authService.VerifyResetPasswordOtpAsync(model);
+            return Ok(result);
+        }
+
         [SwaggerOperation(Summary = "Đặt lại mật khẩu bằng OTP")]
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordAuthModelView model)
