@@ -16,8 +16,10 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<string>> ForgotPasswordAsync(ForgotPasswordAuthModelView model);
         Task<BaseResponseModel<string>> ResetPasswordAsync(ResetPasswordAuthModelView model);
         Task<BaseResponseModel<string>> ChangePasswordAsync(ChangePasswordAuthModelView model);
+        Task<BaseResponseModel<string>> VerifyResetPasswordOtpAsync(OtpVerifyModelView model);
         Task<BaseResponseModel<string>> ResendConfirmEmailAsync(string email);
         Task<BaseResponseModel<string>> ConfirmEmailAsync(string userId, string token);
         Task<BaseResponseModel<TokenResponseModelView>> RefreshTokenAsync(RefreshTokenRequestModelView model);
+
     }
 }
