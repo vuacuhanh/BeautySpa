@@ -184,22 +184,26 @@ namespace BeautySpa.Services.Service
         {
             var db = _redis.GetDatabase();
 
-            //Kiểm tra OTP đã được xác thực trước đó
+            // Kiểm tra OTP đã được xác thực trước đó
             var isVerified = await db.StringGetAsync($"otp:verified:reset-password:{model.Email}");
             if (isVerified.IsNullOrEmpty || isVerified != "true")
                 throw new BadRequestException(ErrorCode.InvalidInput, "OTP not verified or expired.");
 
-            //Tiếp tục xử lý reset mật khẩu
+            // Kiểm tra xác nhận mật khẩu trùng khớp
+            if (model.NewPassword != model.ConfirmNewPassword)
+                throw new BadRequestException(ErrorCode.InvalidInput, "Passwords do not match.");
+
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
                 throw new BadRequestException(ErrorCode.NotFound, "User not found.");
 
+            // Reset mật khẩu
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var result = await _userManager.ResetPasswordAsync(user, token, model.NewPassword);
             if (!result.Succeeded)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join(", ", result.Errors.Select(x => x.Description)));
 
-            // Xoá OTP sau khi reset thành công
+            // Xoá OTP sau khi thành công
             await db.KeyDeleteAsync($"otp:reset-password:{model.Email}");
             await db.KeyDeleteAsync($"otp:verified:reset-password:{model.Email}");
 
