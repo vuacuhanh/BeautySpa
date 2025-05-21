@@ -12,7 +12,6 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public Guid Id { get; set; }
         public string BusinessName { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty; 
-        public string BusinessType { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string ContactFullName { get; set; } = string.Empty;
         public string ContactPosition { get; set; } = string.Empty;

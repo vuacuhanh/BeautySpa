@@ -10,7 +10,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         // Chỉ dùng 1 loại giảm giá: phần trăm hoặc số tiền
         public decimal? DiscountPercent { get; set; }   // Giảm theo %
         public decimal? DiscountAmount { get; set; }    // Giảm theo số tiền
-
+        public int Quantity { get; set; } = 0;
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 

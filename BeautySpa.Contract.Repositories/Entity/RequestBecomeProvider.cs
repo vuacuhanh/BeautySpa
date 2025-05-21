@@ -6,11 +6,9 @@ namespace BeautySpa.Contract.Repositories.Entity
     {
         public string BusinessName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
-        public string WebsiteOrSocialLink { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? ImageUrl { get; set; }
         public string? DescriptionImages { get; set; } // chuỗi "url1|url2"
-        public decimal? BasePrice { get; set; }
 
         public TimeSpan? OpenTime { get; set; }
         public TimeSpan? CloseTime { get; set; }
