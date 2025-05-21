@@ -5,7 +5,6 @@ namespace BeautySpa.Contract.Repositories.Entity
     public class ServiceProvider : BaseEntity
     {
         public string BusinessName { get; set; } = string.Empty;
-        public string WebsiteOrSocialLink { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string ContactFullName { get; set; } = string.Empty;

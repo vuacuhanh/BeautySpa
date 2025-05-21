@@ -136,7 +136,6 @@ namespace BeautySpa.Services.Service
                 Id = Guid.NewGuid(),
                 BusinessName = request.BusinessName,
                 PhoneNumber = request.PhoneNumber,
-                WebsiteOrSocialLink = request.WebsiteOrSocialLink ?? "",
                 Description = request.Description,
                 ImageUrl = request.ImageUrl ?? "",
                 ProviderId = user.Id,
