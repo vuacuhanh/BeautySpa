@@ -40,15 +40,23 @@ namespace BeautySpa.Services.Service
             if (id == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id.");
 
-            var userInfor = await _unitOfWork.GetRepository<UserInfor>()
+            var user = await _unitOfWork.GetRepository<ApplicationUsers>()
                 .Entities
-                .Include(u => u.User)
-                .FirstOrDefaultAsync(u => u.UserId == id);
+                .Include(u => u.UserInfor)
+                .FirstOrDefaultAsync(u => u.Id == id && !u.DeletedTime.HasValue);
 
-            if (userInfor == null)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User information not found.");
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
-            return BaseResponseModel<GETUserModelViews>.Success(_mapper.Map<GETUserModelViews>(userInfor));
+            // Ánh xạ sang model view
+            var model = _mapper.Map<GETUserModelViews>(user);
+
+            // Lấy role
+            var roles = await _userManager.GetRolesAsync(user);
+            model.Roles = roles.ToList();
+            model.RoleName = roles.FirstOrDefault() ?? string.Empty;
+
+            return BaseResponseModel<GETUserModelViews>.Success(model);
         }
 
         public async Task<BaseResponseModel<BasePaginatedList<GETUserModelViews>>> GetAllAsync(int pageNumber, int pageSize)
