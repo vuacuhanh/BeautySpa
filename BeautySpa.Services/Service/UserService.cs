@@ -149,21 +149,21 @@ namespace BeautySpa.Services.Service
                        ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
             var userInforRepo = _unitOfWork.GetRepository<UserInfor>();
-            var userInfor = await userInforRepo.Entities
-                .FirstOrDefaultAsync(u => u.UserId == user.Id);
+            var userInfor = await userInforRepo.Entities.FirstOrDefaultAsync(u => u.UserId == user.Id);
 
             if (userInfor == null)
             {
-                // Nếu chưa có UserInfor thì tạo mới
                 userInfor = new UserInfor
                 {
                     UserId = user.Id,
                     CreatedBy = CurrentUserId,
-                    CreatedTime = DateTimeOffset.UtcNow
+                    CreatedTime = CoreHelper.SystemTimeNow
                 };
                 _mapper.Map(model, userInfor);
+                userInfor.LastUpdatedBy = CurrentUserId;
+                userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-                // ✅ Lấy tên tỉnh/thành và quận/huyện từ Esgoo
+                // Lấy tên tỉnh và huyện
                 if (!string.IsNullOrWhiteSpace(model.ProvinceId))
                 {
                     var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
@@ -178,15 +178,14 @@ namespace BeautySpa.Services.Service
                         userInfor.DistrictName = district.name;
                 }
 
-                userInfor.LastUpdatedBy = CurrentUserId;
-                userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
                 await userInforRepo.InsertAsync(userInfor);
             }
             else
             {
                 _mapper.Map(model, userInfor);
+                userInfor.LastUpdatedBy = CurrentUserId;
+                userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-                // ✅ Lấy lại tên địa chỉ nếu thay đổi ID
                 if (!string.IsNullOrWhiteSpace(model.ProvinceId))
                 {
                     var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
@@ -201,17 +200,13 @@ namespace BeautySpa.Services.Service
                         userInfor.DistrictName = district.name;
                 }
 
-                userInfor.LastUpdatedBy = CurrentUserId;
-                userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
                 await userInforRepo.UpdateAsync(userInfor);
             }
 
-            // ✅ Cập nhật user chính (Phone)
+            // Cập nhật thông tin từ ApplicationUsers nếu cần (PhoneNumber)
             user.PhoneNumber = model.PhoneNumber;
-            userInfor.AvatarUrl = model.AvatarUrl;
-            userInfor.Gender = model.Gender ?? "";
             user.LastUpdatedBy = CurrentUserId;
-            user.LastUpdatedTime = DateTimeOffset.UtcNow;
+            user.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
