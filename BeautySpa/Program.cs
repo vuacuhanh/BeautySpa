@@ -127,15 +127,11 @@ builder.Services.AddAuthentication(options =>
 // 7. CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowSpecificOrigins", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:3000", // local React dev
-            "https://beautyspafrontend2025.azurewebsites.net" // 👈 domain frontend thật của bạn (bạn cần thay đúng tên frontend ở Azure nếu khác)
-        )
-        .AllowAnyMethod()
-        .AllowAnyHeader()
-        .AllowCredentials();
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
     });
 });
 
@@ -198,7 +194,7 @@ app.UseMiddleware<LoggingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseSession();
-app.UseCors("AllowSpecificOrigins");
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
