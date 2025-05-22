@@ -129,10 +129,13 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.WithOrigins(".")
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials(); // cần cho SignalR
+        policy.WithOrigins(
+            "http://localhost:3000", // local React dev
+            "https://beautyspafrontend2025.azurewebsites.net" // 👈 domain frontend thật của bạn (bạn cần thay đúng tên frontend ở Azure nếu khác)
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials();
     });
 });
 
