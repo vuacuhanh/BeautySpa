@@ -11,6 +11,7 @@ namespace BeautySpa.ModelViews.UserModelViews
     {
         public Guid Id { get; set; }
         public string? AvatarUrl { get; set; }
+        public string? Gender { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string? AddressDetail { get; set; }
         public string? ProvinceId { get; set; }

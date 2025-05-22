@@ -9,6 +9,8 @@ namespace BeautySpa.ModelViews.UserModelViews
     public class GETUserInfoModelView
     {
         public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
         public DateTime? DayofBirth { get; set; }
         public string? AddressDetail { get; set; }
         public string? ProvinceId { get; set; }
@@ -17,9 +19,15 @@ namespace BeautySpa.ModelViews.UserModelViews
         public string? DistrictName { get; set; }
         public string? AvatarUrl { get; set; }
         public string? Gender { get; set; }
-        public decimal? Salary { get; set; }
-        public string? BankAccount { get; set; }
-        public string? BankAccountName { get; set; }
-        public string? Bank { get; set; }
+        public string? CreatedBy { get; set; }
+        public string? LastUpdatedBy { get; set; }
+        public string? DeletedBy { get; set; }
+        public DateTimeOffset CreatedTime { get; set; }
+        public DateTimeOffset LastUpdatedTime { get; set; }
+        public DateTimeOffset? DeletedTime { get; set; }
+        //public decimal? Salary { get; set; }
+        //public string? BankAccount { get; set; }
+        //public string? BankAccountName { get; set; }
+        //public string? Bank { get; set; }
     }
 }
