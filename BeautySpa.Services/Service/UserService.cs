@@ -208,6 +208,8 @@ namespace BeautySpa.Services.Service
 
             // ✅ Cập nhật user chính (Phone)
             user.PhoneNumber = model.PhoneNumber;
+            userInfor.AvatarUrl = model.AvatarUrl;
+            userInfor.Gender = model.Gender ?? "";
             user.LastUpdatedBy = CurrentUserId;
             user.LastUpdatedTime = DateTimeOffset.UtcNow;
 
