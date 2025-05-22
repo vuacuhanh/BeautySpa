@@ -127,14 +127,16 @@ builder.Services.AddAuthentication(options =>
 // 7. CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+            "http://localhost:8081" // 👈 đây là domain frontend đang gọi API
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials(); // Cần nếu bạn dùng JWT, cookie, hoặc SignalR
     });
 });
-
 // 8. MVC + SignalR
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
@@ -194,7 +196,7 @@ app.UseMiddleware<LoggingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseSession();
-app.UseCors("AllowAll");
+app.UseCors("AllowSpecificOrigins");
 
 app.UseAuthentication();
 app.UseAuthorization();
