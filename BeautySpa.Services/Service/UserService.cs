@@ -35,7 +35,7 @@ namespace BeautySpa.Services.Service
             _esgoo = esgoo; 
         }
 
-        public async Task<BaseResponseModel<GETUserInfoModelView>> GetByIdAsync(Guid id)
+        public async Task<BaseResponseModel<GETUserModelViews>> GetByIdAsync(Guid id)
         {
             if (id == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id.");
@@ -48,7 +48,7 @@ namespace BeautySpa.Services.Service
             if (userInfor == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User information not found.");
 
-            return BaseResponseModel<GETUserInfoModelView>.Success(_mapper.Map<GETUserInfoModelView>(userInfor));
+            return BaseResponseModel<GETUserModelViews>.Success(_mapper.Map<GETUserModelViews>(userInfor));
         }
 
         public async Task<BaseResponseModel<BasePaginatedList<GETUserModelViews>>> GetAllAsync(int pageNumber, int pageSize)
