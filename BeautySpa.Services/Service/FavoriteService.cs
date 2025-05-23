@@ -26,11 +26,13 @@ namespace BeautySpa.Services.Service
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
-        public async Task<BaseResponseModel<string>> LikeOrUnlikeAsync(Guid customerId, Guid providerId)
+        public async Task<BaseResponseModel<string>> LikeOrUnlikeAsync(Guid providerId)
         {
+            var currentUserId = Guid.Parse(CurrentUserId);
+
             IQueryable<Favorite> query = _unitOfWork.GetRepository<Favorite>().Entities
                 .IgnoreQueryFilters()
-                .Where(f => f.CustomerId == customerId && f.ProviderId == providerId);
+                .Where(f => f.CustomerId == currentUserId && f.ProviderId == providerId);
 
             Favorite? existing = await query.FirstOrDefaultAsync();
 
@@ -39,7 +41,7 @@ namespace BeautySpa.Services.Service
                 var favorite = new Favorite
                 {
                     Id = Guid.NewGuid(),
-                    CustomerId = customerId,
+                    CustomerId = currentUserId,
                     ProviderId = providerId,
                     CreatedTime = CoreHelper.SystemTimeNow,
                     CreatedBy = CurrentUserId
