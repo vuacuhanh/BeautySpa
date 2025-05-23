@@ -26,10 +26,8 @@ namespace BeautySpa.Services.Service
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
-        public async Task<BaseResponseModel<string>> LikeOrUnlikeAsync(Guid providerId)
+        public async Task<BaseResponseModel<string>> LikeOrUnlikeAsync(Guid customerId, Guid providerId)
         {
-            Guid customerId = Guid.Parse(CurrentUserId); // ✅ Lấy từ token
-
             IQueryable<Favorite> query = _unitOfWork.GetRepository<Favorite>().Entities
                 .IgnoreQueryFilters()
                 .Where(f => f.CustomerId == customerId && f.ProviderId == providerId);
@@ -75,10 +73,8 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<string>.Success("Relike Success");
         }
 
-        public async Task<BaseResponseModel<bool>> IsFavoriteAsync(Guid providerId)
+        public async Task<BaseResponseModel<bool>> IsFavoriteAsync(Guid customerId, Guid providerId)
         {
-            Guid customerId = Guid.Parse(CurrentUserId); // ✅ Lấy từ token
-
             IQueryable<Favorite> query = _unitOfWork.GetRepository<Favorite>().Entities
                 .Where(f => f.CustomerId == customerId && f.ProviderId == providerId && f.DeletedTime == null);
 
