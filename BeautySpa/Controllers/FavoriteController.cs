@@ -21,15 +21,14 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Like hoặc Unlike nhà cung cấp")]
         public async Task<IActionResult> LikeOrUnlike([FromBody] ToggleFavoriteRequest model)
         {
-            return Ok(await _favoriteService.LikeOrUnlikeAsync(model.ProviderId));
+            return Ok(await _favoriteService.LikeOrUnlikeAsync(model.CustomerId, model.ProviderId));
         }
 
         [HttpGet("check")]
         [SwaggerOperation(Summary = "Kiểm tra người dùng đã like nhà cung cấp chưa")]
-        [HttpGet("check")]
-        public async Task<IActionResult> IsLiked([FromQuery] Guid providerId)
+        public async Task<IActionResult> IsLiked([FromQuery] Guid customerId, [FromQuery] Guid providerId)
         {
-            return Ok(await _favoriteService.IsFavoriteAsync(providerId));
+            return Ok(await _favoriteService.IsFavoriteAsync(customerId, providerId));
         }
 
         [HttpGet("list/{providerId}")]
