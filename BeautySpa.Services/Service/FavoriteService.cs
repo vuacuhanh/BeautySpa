@@ -28,23 +28,23 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<string>> LikeOrUnlikeAsync(Guid providerId)
         {
-            var currentUserId = Guid.Parse(CurrentUserId);
+            var customerId = Guid.Parse(Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor));
 
-            IQueryable<Favorite> query = _unitOfWork.GetRepository<Favorite>().Entities
+            var query = _unitOfWork.GetRepository<Favorite>().Entities
                 .IgnoreQueryFilters()
-                .Where(f => f.CustomerId == currentUserId && f.ProviderId == providerId);
+                .Where(f => f.CustomerId == customerId && f.ProviderId == providerId);
 
-            Favorite? existing = await query.FirstOrDefaultAsync();
+            var existing = await query.FirstOrDefaultAsync();
 
             if (existing == null)
             {
                 var favorite = new Favorite
                 {
                     Id = Guid.NewGuid(),
-                    CustomerId = currentUserId,
+                    CustomerId = customerId,
                     ProviderId = providerId,
                     CreatedTime = CoreHelper.SystemTimeNow,
-                    CreatedBy = CurrentUserId
+                    CreatedBy = customerId.ToString()
                 };
 
                 await _unitOfWork.GetRepository<Favorite>().InsertAsync(favorite);
@@ -56,7 +56,7 @@ namespace BeautySpa.Services.Service
             if (existing.DeletedTime == null)
             {
                 existing.DeletedTime = CoreHelper.SystemTimeNow;
-                existing.DeletedBy = CurrentUserId;
+                existing.DeletedBy = customerId.ToString();
 
                 await _unitOfWork.GetRepository<Favorite>().UpdateAsync(existing);
                 await _unitOfWork.SaveAsync();
@@ -67,7 +67,7 @@ namespace BeautySpa.Services.Service
             existing.DeletedTime = null;
             existing.DeletedBy = null;
             existing.LastUpdatedTime = CoreHelper.SystemTimeNow;
-            existing.LastUpdatedBy = CurrentUserId;
+            existing.LastUpdatedBy = customerId.ToString();
 
             await _unitOfWork.GetRepository<Favorite>().UpdateAsync(existing);
             await _unitOfWork.SaveAsync();
