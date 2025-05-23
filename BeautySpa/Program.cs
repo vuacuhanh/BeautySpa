@@ -69,7 +69,7 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 // 4. DI services
 builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure();
-
+builder.Services.AddHttpContextAccessor();
 // 5. Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
