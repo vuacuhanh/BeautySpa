@@ -1,5 +1,4 @@
 ﻿using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Core.Infrastructure;
 using BeautySpa.ModelViews.MemberShipModelViews.FavoriteModelViews;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -22,7 +21,7 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Like hoặc Unlike nhà cung cấp")]
         public async Task<IActionResult> LikeOrUnlike([FromBody] ToggleFavoriteRequest model)
         {
-            return Ok(await _favoriteService.LikeOrUnlikeAsync(model.ProviderId));
+            return Ok(await _favoriteService.LikeOrUnlikeAsync(model.CustomerId, model.ProviderId));
         }
 
         [HttpGet("check")]
