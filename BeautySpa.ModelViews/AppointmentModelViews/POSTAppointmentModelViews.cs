@@ -9,5 +9,7 @@
         public List<AppointmentServiceModel> Services { get; set; } = new();
         public Guid? PromotionId { get; set; }
         public Guid? PromotionAdminId { get; set; }
+        public string? PaymentMethod { get; set; } = "momo";
+
     }
 }

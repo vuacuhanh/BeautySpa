@@ -12,6 +12,10 @@ using BeautySpa.Services.Validations.PaymentValidator;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using FluentValidation;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using System.Text;
+using Microsoft.Extensions.Configuration;
 
 namespace BeautySpa.Services.Service
 {
@@ -22,26 +26,33 @@ namespace BeautySpa.Services.Service
         private readonly IHttpContextAccessor _httpContext;
         private readonly IMomoService _momoService;
         private readonly IVnpayService _vnpayService;
+        private readonly IConfiguration _config;
+        private readonly IHttpClientFactory _httpClientFactory;
 
         public PaymentService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             IHttpContextAccessor httpContext,
             IMomoService momoService,
-            IVnpayService vnpayService)
+            IVnpayService vnpayService,
+            IConfiguration config,
+            IHttpClientFactory httpClientFactory)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _httpContext = httpContext;
             _momoService = momoService;
             _vnpayService = vnpayService;
+            _config = config;
+            _httpClientFactory = httpClientFactory;
         }
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_httpContext);
 
-        public async Task<BaseResponseModel<string>> CreateDepositAsync(POSTPaymentModelView model)
+        public async Task<BaseResponseModel<PaymentResponse>> CreateDepositAsync(POSTPaymentModelView model)
         {
             await new POSTPaymentValidator().ValidateAndThrowAsync(model);
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             var appointment = await _unitOfWork.GetRepository<Appointment>()
                 .Entities.Include(x => x.Payment)
@@ -59,8 +70,7 @@ namespace BeautySpa.Services.Service
             payment.Status = "deposit_paid";
             payment.TransactionType = "Deposit";
 
-            BaseResponseModel<CreatePaymentResponse>? momoResp = null;
-            BaseResponseModel<CreateVnPayResponse>? vnpayResp = null;
+            PaymentResponse response = new();
 
             if (model.PaymentMethod.ToLower() == "momo")
             {
@@ -70,8 +80,10 @@ namespace BeautySpa.Services.Service
                     OrderId = $"appointment_{appointment.Id}",
                     OrderInfo = $"Deposit payment for appointment #{appointment.Id}"
                 };
-                momoResp = await _momoService.CreatePaymentAsync(request);
+                var momoResp = await _momoService.CreatePaymentAsync(request);
                 payment.TransactionId = momoResp.Data?.RequestId;
+                response.PayUrl = momoResp.Data?.PayUrl!;
+                response.QrCodeUrl = momoResp.Data?.DeeplinkQr!;
             }
             else if (model.PaymentMethod.ToLower() == "vnpay")
             {
@@ -80,23 +92,27 @@ namespace BeautySpa.Services.Service
                     AppointmentId = appointment.Id,
                     Amount = model.Amount,
                     OrderInfo = $"Deposit payment for appointment #{appointment.Id}",
-                    ReturnUrl = "https://spa-client.com/payment-callback"
+                    ReturnUrl = "https://spa-api.com/api/Payment/vnpay-callback"
                 };
-                vnpayResp = await _vnpayService.CreatePaymentAsync(request);
+                var vnpayResp = await _vnpayService.CreatePaymentAsync(request);
                 payment.TransactionId = vnpayResp.Data?.TransactionId;
+                response.PayUrl = vnpayResp.Data?.PayUrl!;
+                response.QrCodeUrl = vnpayResp.Data?.PayUrl!;
             }
             else
-                throw new ErrorException(400, ErrorCode.InvalidInput, "Invalid payment method   ");
+                throw new ErrorException(400, ErrorCode.InvalidInput, "Invalid payment method");
 
             await _unitOfWork.GetRepository<Payment>().InsertAsync(payment);
             await _unitOfWork.SaveAsync();
+            await transaction.CommitAsync();
 
-            return BaseResponseModel<string>.Success(model.PaymentMethod.ToLower() == "momo" ? momoResp?.Data?.PayUrl : vnpayResp?.Data?.PayUrl);
+            return BaseResponseModel<PaymentResponse>.Success(response);
         }
 
         public async Task<BaseResponseModel<string>> RefundDepositAsync(RefundPaymentModelView model)
         {
             await new RefundPaymentValidator().ValidateAndThrowAsync(model);
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             var payment = await _unitOfWork.GetRepository<Payment>()
                 .Entities.FirstOrDefaultAsync(p => p.AppointmentId == model.AppointmentId && p.DeletedTime == null)
@@ -121,17 +137,22 @@ namespace BeautySpa.Services.Service
                     OrderId = $"appointment_{model.AppointmentId}",
                     RequestId = Guid.NewGuid().ToString(),
                     Amount = (long)refundAmount,
-                    TransId = long.TryParse(payment.TransactionId, out var tid) ? tid : 0,
+                    TransId = long.TryParse(payment.TransactionId, out var tid) ? tid : throw new ErrorException(400, ErrorCode.InvalidInput, "Invalid MoMo TransactionId"),
                     Description = model.Reason
                 };
-
                 var result = await _momoService.RefundPaymentAsync(request);
                 if (result.Data?.ResultCode != "0")
                     throw new ErrorException(400, ErrorCode.Failed, result.Data?.Message ?? "Refund failed");
             }
             else if (payment.PaymentMethod.ToLower() == "vnpay")
             {
-                var request = new RefundVnPayRequest(); // TODO: Bổ sung dữ liệu đầy đủ khi model không rỗng
+                var request = new RefundVnPayRequest
+                {
+                    TransactionId = payment.TransactionId!,
+                    Amount = refundAmount,
+                    Reason = model.Reason,
+                    TransactionDate = payment.PaymentDate
+                };
                 var result = await _vnpayService.RefundPaymentAsync(request);
                 if (result.Data?.ResponseCode != 0)
                     throw new ErrorException(400, ErrorCode.Failed, result.Data?.Message ?? "Refund failed");
@@ -145,6 +166,7 @@ namespace BeautySpa.Services.Service
 
             await _unitOfWork.GetRepository<Payment>().UpdateAsync(payment);
             await _unitOfWork.SaveAsync();
+            await transaction.CommitAsync();
 
             return BaseResponseModel<string>.Success("Refund successful");
         }
@@ -153,13 +175,163 @@ namespace BeautySpa.Services.Service
         {
             var payment = await _unitOfWork.GetRepository<Payment>()
                 .Entities.AsNoTracking()
-                .FirstOrDefaultAsync(p => p.AppointmentId == appointmentId && p.DeletedTime == null);
-
-            if (payment == null)
-                throw new ErrorException(404, ErrorCode.NotFound, "Payment not found");
+                .FirstOrDefaultAsync(p => p.AppointmentId == appointmentId && p.DeletedTime == null)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Payment not found");
 
             var result = _mapper.Map<GETPaymentModelView>(payment);
             return BaseResponseModel<GETPaymentModelView>.Success(result);
+        }
+
+        public async Task<BasePaginatedList<GETPaymentModelView>> GetPaymentHistoryAsync(int pageIndex, int pageSize)
+        {
+            var query = _unitOfWork.GetRepository<Payment>()
+                .Entities.AsNoTracking()
+                .Where(p => p.CreatedBy == CurrentUserId && p.DeletedTime == null)
+                .OrderByDescending(p => p.CreatedTime);
+
+            var paginatedList = await _unitOfWork.GetRepository<Payment>().GetPagging(query, pageIndex, pageSize);
+            var result = new BasePaginatedList<GETPaymentModelView>(
+                paginatedList.Items.Select(p => _mapper.Map<GETPaymentModelView>(p)).ToList(),
+                paginatedList.TotalItems, paginatedList.CurrentPage, paginatedList.PageSize);
+
+            return result;
+        }
+
+        public async Task<BaseResponseModel<string>> HandleVnpayIpnAsync(Dictionary<string, string> query)
+        {
+            string? receivedSecureHash = query.GetValueOrDefault("vnp_SecureHash");
+            string? txnRef = query.GetValueOrDefault("vnp_TxnRef");
+            string? responseCode = query.GetValueOrDefault("vnp_ResponseCode");
+
+            if (string.IsNullOrEmpty(receivedSecureHash) || string.IsNullOrEmpty(txnRef))
+                throw new ErrorException(400, ErrorCode.InvalidInput, "Missing required parameters");
+
+            var hashSecret = _config["VnPay:HashSecret"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "VNPAY HashSecret missing");
+
+            var signData = string.Join("&", query
+                .Where(x => x.Key != "vnp_SecureHash" && x.Key != "vnp_SecureHashType")
+                .OrderBy(x => x.Key)
+                .Select(x => $"{x.Key}={x.Value}"));
+
+            var computedHash = VnpayService.ComputeSha256(signData + hashSecret);
+            if (!string.Equals(computedHash, receivedSecureHash, StringComparison.OrdinalIgnoreCase))
+                throw new ErrorException(400, ErrorCode.InvalidInput, "Invalid VNPAY signature");
+
+            var payment = await _unitOfWork.GetRepository<Payment>()
+                .Entities.FirstOrDefaultAsync(p => p.TransactionId == txnRef && p.DeletedTime == null)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Payment not found");
+
+            if (responseCode == "00")
+            {
+                payment.Status = "completed";
+                payment.PaymentDate = CoreHelper.SystemTimeNow.UtcDateTime;
+                payment.LastUpdatedTime = CoreHelper.SystemTimeNow;
+                await _unitOfWork.SaveAsync();
+                return BaseResponseModel<string>.Success("VNPAY payment confirmed");
+            }
+
+            throw new ErrorException(400, ErrorCode.Failed, "VNPAY transaction failed");
+        }
+
+        public async Task<BaseResponseModel<string>> HandleMomoIpnAsync(JObject payload)
+        {
+            string? orderId = payload["orderId"]?.ToString();
+            string? resultCode = payload["resultCode"]?.ToString();
+            string? transIdStr = payload["transId"]?.ToString();
+
+            if (string.IsNullOrEmpty(orderId) || string.IsNullOrEmpty(resultCode))
+                throw new ErrorException(400, ErrorCode.InvalidInput, "Invalid MoMo payload");
+
+            var appointmentId = ExtractAppointmentId(orderId);
+            var payment = await _unitOfWork.GetRepository<Payment>()
+                .Entities.FirstOrDefaultAsync(p => p.AppointmentId == appointmentId && p.DeletedTime == null)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Payment not found");
+
+            if (resultCode == "0")
+            {
+                payment.Status = "completed";
+                payment.TransactionId = transIdStr;
+                payment.PaymentDate = CoreHelper.SystemTimeNow.UtcDateTime;
+                payment.LastUpdatedTime = CoreHelper.SystemTimeNow;
+                await _unitOfWork.SaveAsync();
+                return BaseResponseModel<string>.Success("MoMo payment confirmed");
+            }
+
+            throw new ErrorException(400, ErrorCode.Failed, "MoMo transaction failed");
+        }
+
+        private Guid ExtractAppointmentId(string orderId)
+        {
+            var parts = orderId.Split('_');
+            if (parts.Length == 2 && Guid.TryParse(parts[1], out var id)) return id;
+            throw new ErrorException(400, ErrorCode.InvalidInput, "Invalid appointment ID format in OrderId");
+        }
+
+        public async Task<BaseResponseModel<string>> QueryMoMoStatusAsync(QueryMoMoModel model)
+        {
+            string endpoint = _config["MoMo:QueryUrl"] ?? "https://test-payment.momo.vn/v2/gateway/api/query";
+            string partnerCode = _config["MoMo:PartnerCode"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo PartnerCode missing");
+            string accessKey = _config["MoMo:AccessKey"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo AccessKey missing");
+            string secretKey = _config["MoMo:SecretKey"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo SecretKey missing");
+
+            string rawHash = $"accessKey={accessKey}&orderId={model.OrderId}&partnerCode={partnerCode}&requestId={model.RequestId}";
+            string signature = MoMoService.ComputeHmacSha256(rawHash, secretKey);
+
+            var body = new { partnerCode, requestId = model.RequestId, orderId = model.OrderId, lang = "vi", signature };
+            var client = _httpClientFactory.CreateClient();
+            var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+            var response = await client.PostAsync(endpoint, content);
+
+            if (!response.IsSuccessStatusCode)
+                throw new ErrorException(500, ErrorCode.InternalServerError, $"MoMo Query API failed with status {response.StatusCode}");
+
+            var json = JsonConvert.DeserializeObject<dynamic>(await response.Content.ReadAsStringAsync());
+            string resultCode = json!.resultCode ?? "unknown";
+            string message = json.message ?? "No message";
+
+            return BaseResponseModel<string>.Success($"MoMo resultCode: {resultCode} - {message}");
+        }
+
+        public async Task<BaseResponseModel<string>> QueryVnPayStatusAsync(QueryVnPayModel model)
+        {
+            string endpoint = _config["VnPay:RefundUrl"] ?? "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
+            string tmnCode = _config["VnPay:TmnCode"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "VNPAY TmnCode missing");
+            string hashSecret = _config["VnPay:HashSecret"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "VNPAY HashSecret missing");
+
+            var requestId = Guid.NewGuid().ToString("N");
+            var transDate = model.TransactionDate.ToString("yyyyMMddHHmmss");
+
+            var inputData = new Dictionary<string, string>
+            {
+                { "vnp_RequestId", requestId },
+                { "vnp_Command", "querydr" },
+                { "vnp_TmnCode", tmnCode },
+                { "vnp_TxnRef", model.TransactionId },
+                { "vnp_OrderInfo", "Query transaction status" },
+                { "vnp_TransactionDate", transDate },
+                { "vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss") },
+                { "vnp_Version", "2.1.0" },
+                { "vnp_IpAddr", "127.0.0.1" }
+            };
+
+            string signData = string.Join("&", inputData.OrderBy(x => x.Key).Select(x => $"{x.Key}={x.Value}"));
+            string secureHash = VnpayService.ComputeSha256(signData + hashSecret);
+            inputData.Add("vnp_SecureHashType", "SHA256");
+            inputData.Add("vnp_SecureHash", secureHash);
+
+            var client = _httpClientFactory.CreateClient();
+            var content = new FormUrlEncodedContent(inputData);
+            var response = await client.PostAsync(endpoint, content);
+
+            if (!response.IsSuccessStatusCode)
+                throw new ErrorException(500, ErrorCode.InternalServerError, $"VNPAY query API failed with {response.StatusCode}");
+
+            var json = JsonConvert.DeserializeObject<dynamic>(await response.Content.ReadAsStringAsync());
+            string respCode = json!.vnp_ResponseCode ?? "unknown";
+            string transStatus = json.vnp_TransactionStatus ?? "unknown";
+            string message = json.vnp_Message ?? "no message";
+
+            return BaseResponseModel<string>.Success($"VNPAY ResponseCode: {respCode}, Status: {transStatus}, Message: {message}");
         }
     }
 }

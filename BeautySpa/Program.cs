@@ -1,8 +1,7 @@
 ﻿using BeautySpa.API.Middleware;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Core.Settings;
-using BeautySpa.Core.SignalR;
-using BeautySpa.Repositories.Context;
+using BeautySpa.Core.SignalR;   
 using BeautySpa.Services;
 using BeautySpa.Services.seeding;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -13,39 +12,33 @@ using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
 
-Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
-
-
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
-    ContentRootPath = Directory.GetCurrentDirectory(),
-    EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
+    ContentRootPath = Directory.GetCurrentDirectory()
 });
 
+// Load configuration
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
 
+// Register configuration sections
 builder.Services.Configure<EsgooSettings>(builder.Configuration.GetSection("Esgoo"));
+builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
+builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("Mono"));
 builder.Services.AddHttpClient("EsgooClient");
 
-
-/*builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
-builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("MoMo"));*/
-
-
-// 1. Database
-builder.Services.AddDbContext<DatabaseContext>(options =>
+// Database
+builder.Services.AddDbContext<DbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
 
-// 2. Redis
+// Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
-    var configuration = builder.Configuration;
     var redisConnString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING")
-                         ?? configuration.GetConnectionString("Redis");
+        ?? builder.Configuration.GetConnectionString("Redis");
 
     if (string.IsNullOrEmpty(redisConnString))
         throw new Exception("Redis connection string is missing.");
@@ -53,7 +46,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     return ConnectionMultiplexer.Connect(redisConnString);
 });
 
-// 3. Identity
+// Identity
 builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
 {
     options.Password.RequireDigit = true;
@@ -63,14 +56,14 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
     options.Password.RequiredLength = 6;
     options.SignIn.RequireConfirmedEmail = true;
 })
-.AddEntityFrameworkStores<DatabaseContext>()
+.AddEntityFrameworkStores<DbContext>()
 .AddDefaultTokenProviders();
 
-// 4. DI services
+// Add application services
 builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure();
 
-// 5. Session
+// Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -80,9 +73,11 @@ builder.Services.AddSession(options =>
     options.Cookie.Name = ".BeautySpa.Session";
 });
 
-// 6. JWT Authentication
+// JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKey = jwtSettings.GetValue<string>("Secret") ?? throw new InvalidOperationException("JWT Secret not configured.");
+var secretKey = jwtSettings.GetValue<string>("Secret")
+    ?? throw new InvalidOperationException("JWT Secret not configured.");
+
 var key = Encoding.ASCII.GetBytes(secretKey);
 
 builder.Services.AddAuthentication(options =>
@@ -106,7 +101,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    // Hỗ trợ access_token qua query (SignalR)
+    // Enable SignalR authentication
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -124,23 +119,23 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// 7. CORS
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.WithOrigins(".")
+        policy.WithOrigins("https://spa-client.com")
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials(); // cần cho SignalR
+              .AllowCredentials();
     });
 });
 
-// 8. MVC + SignalR
+// Controllers and SignalR
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-// 9. Swagger
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -160,11 +155,7 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
@@ -173,7 +164,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 10. Seed dữ liệu
+// Seeding Roles & Ranks
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRoles>>();
@@ -183,16 +174,19 @@ using (var scope = app.Services.CreateScope())
     await RankSeeder.SeedRanksAsync(serviceProvider);
 }
 
+// Swagger UI
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeautySpa API v1");
-    c.RoutePrefix = "swagger"; // truy cập /swagger
+    c.RoutePrefix = "swagger";
 });
 
+// Middleware
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<LoggingMiddleware>();
 
+// HTTPS, Session, CORS, Auth
 app.UseHttpsRedirection();
 app.UseSession();
 app.UseCors("AllowSpecificOrigins");
@@ -200,9 +194,9 @@ app.UseCors("AllowSpecificOrigins");
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Routes
 app.MapControllers();
 app.MapHub<MessageHub>("/hubs/message");
-//fix đây
+
+// Run
 await app.RunAsync();
-
-
