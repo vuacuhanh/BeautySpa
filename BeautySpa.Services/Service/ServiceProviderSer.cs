@@ -47,10 +47,28 @@ namespace BeautySpa.Services.Service
                 .ToListAsync();
 
             var mapped = _mapper.Map<List<GETServiceProviderModelViews>>(items);
-            var result = new BasePaginatedList<GETServiceProviderModelViews>(mapped, totalCount, pageNumber, pageSize);
 
+            // Gán địa chỉ chi nhánh chính
+            var branchRepo = _unitOfWork.GetRepository<SpaBranchLocation>();
+            foreach (var item in mapped)
+            {
+                var mainBranch = await branchRepo.Entities.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.ServiceProviderId == item.Id && x.BranchName == "Cơ sở chính" && x.DeletedTime == null);
+
+                if (mainBranch != null)
+                {
+                    item.AddressDetail = mainBranch.Street;
+                    item.ProvinceId = mainBranch.ProvinceId;
+                    item.DistrictId = mainBranch.DistrictId;
+                    item.ProvinceName = mainBranch.ProvinceName;
+                    item.DistrictName = mainBranch.DistrictName;
+                }
+            }
+
+            var result = new BasePaginatedList<GETServiceProviderModelViews>(mapped, totalCount, pageNumber, pageSize);
             return BaseResponseModel<BasePaginatedList<GETServiceProviderModelViews>>.Success(result);
         }
+
 
         public async Task<BaseResponseModel<GETServiceProviderModelViews>> GetByIdAsync(Guid id)
         {
@@ -67,8 +85,25 @@ namespace BeautySpa.Services.Service
             var entity = await query.FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
 
-            return BaseResponseModel<GETServiceProviderModelViews>.Success(_mapper.Map<GETServiceProviderModelViews>(entity));
+            var mapped = _mapper.Map<GETServiceProviderModelViews>(entity);
+
+            // Gán địa chỉ từ chi nhánh chính
+            var mainBranch = await _unitOfWork.GetRepository<SpaBranchLocation>()
+                .Entities.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ServiceProviderId == entity.Id && x.BranchName == "Cơ sở chính" && x.DeletedTime == null);
+
+            if (mainBranch != null)
+            {
+                mapped.AddressDetail = mainBranch.Street;
+                mapped.ProvinceId = mainBranch.ProvinceId;
+                mapped.DistrictId = mainBranch.DistrictId;
+                mapped.ProvinceName = mainBranch.ProvinceName;
+                mapped.DistrictName = mainBranch.DistrictName;
+            }
+
+            return BaseResponseModel<GETServiceProviderModelViews>.Success(mapped);
         }
+
 
         public async Task<BaseResponseModel<Guid>> CreateAsync(POSTServiceProviderModelViews model)
         {

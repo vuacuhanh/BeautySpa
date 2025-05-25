@@ -130,11 +130,11 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
         policy.WithOrigins(
-            "http://localhost:8081" // 👈 đây là domain frontend đang gọi API
+            "http://localhost:8081"
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
-        .AllowCredentials(); // Cần nếu bạn dùng JWT, cookie, hoặc SignalR
+        .AllowCredentials(); 
     });
 });
 // 8. MVC + SignalR

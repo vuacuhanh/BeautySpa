@@ -19,6 +19,11 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public decimal AverageRating { get; set; }
         public int TotalReviews { get; set; }
         public bool IsApproved { get; set; }
+        public string? AddressDetail { get; set; }
+        public string? ProvinceId { get; set; }
+        public string? DistrictId { get; set; }
+        public string? ProvinceName { get; set; }
+        public string? DistrictName { get; set; }
         public string Status { get; set; } = "pending";
         public Guid ProviderId { get; set; }
         public TimeSpan? OpenTime { get; set; }
