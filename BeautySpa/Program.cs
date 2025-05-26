@@ -20,11 +20,11 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 
 // Load configuration
-/*builder.Configuration
+builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
-*/
+
 // Register configuration sections
 builder.Services.Configure<EsgooSettings>(builder.Configuration.GetSection("Esgoo"));
 builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
