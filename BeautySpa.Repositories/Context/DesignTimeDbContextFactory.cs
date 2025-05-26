@@ -11,7 +11,7 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<DatabaseCo
     {
         var config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json") // appsettings.Production.json nếu bạn đang dùng môi trường dev
+            .AddJsonFile(" appsettings.Production.json") // appsettings.Production.json nếu bạn đang dùng môi trường dev
             .Build();
 
         var optionsBuilder = new DbContextOptionsBuilder<DatabaseContext>();
