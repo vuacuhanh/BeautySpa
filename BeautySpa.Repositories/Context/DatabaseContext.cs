@@ -133,10 +133,10 @@ namespace BeautySpa.Repositories.Context
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<AppointmentService>()
-                .HasOne(x => x.Service)
-                .WithMany()
-                .HasForeignKey(x => x.ServiceId)
-                .OnDelete(DeleteBehavior.Restrict);
+             .HasOne(x => x.Service)
+             .WithMany(s => s.AppointmentServices) // ✅ fix lỗi shadow property
+             .HasForeignKey(x => x.ServiceId)
+             .OnDelete(DeleteBehavior.Restrict);
 
             // RequestBecomeProvider → User
             builder.Entity<RequestBecomeProvider>()

@@ -13,8 +13,8 @@ using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
 
-Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
-
+//Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
