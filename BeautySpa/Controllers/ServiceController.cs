@@ -1,4 +1,5 @@
-﻿using BeautySpa.Contract.Services.Interface;
+﻿using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.ServiceModelViews;
 using Microsoft.AspNetCore.Authorization;
@@ -22,9 +23,10 @@ namespace BeautySpa.API.Controllers
 
         [HttpGet("get-all")]
         [SwaggerOperation(Summary = "Lấy danh sách dịch vụ (phân trang)")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize, bool isMineOnly)
+        public async Task<IActionResult> GetAllAsync(int pageNumber, int pageSize, Guid? providerId = null)
         {
-            return Ok(await _serviceService.GetAllAsync(pageNumber, pageSize, isMineOnly));
+            var result = await _serviceService.GetAllAsync(pageNumber, pageSize, providerId);
+            return Ok(result);
         }
 
         [HttpGet("{id:guid}")]

@@ -15,6 +15,7 @@ namespace BeautySpa.ModelViews.ServiceModelViews
         public decimal Price { get; set; }
         public int Duration { get; set; }
         public bool IsAvailable { get; set; }
+        public string? CategoryName { get; set; }
         public Guid ProviderId { get; set; }
         public Guid CategoryId { get; set; }
         public DateTimeOffset CreatedTime { get; set; }
