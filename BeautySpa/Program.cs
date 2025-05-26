@@ -31,8 +31,8 @@ builder.Configuration
 
 // Register configuration sections
 builder.Services.Configure<EsgooSettings>(builder.Configuration.GetSection("Esgoo"));
-builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
-builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("Momo"));
+//builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
+//builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("Momo"));
 builder.Services.AddHttpClient("EsgooClient");
 
 // Database
@@ -133,7 +133,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:8081", "https://spa-client.com")
+        policy.WithOrigins("http://localhost:8081", "https://spa-client.com", "https://zenora-frontend.vercel.app")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
