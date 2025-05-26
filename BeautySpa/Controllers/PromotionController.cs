@@ -49,5 +49,12 @@ public class PromotionController : ControllerBase
     {
         return Ok(await _service.DeleteAsync(id));
     }
+
+    [HttpGet("by-provider/{providerId}")]
+    [SwaggerOperation(Summary = "Get all promotions by ProviderId")]
+    public async Task<IActionResult> GetByProvider(Guid providerId)
+    {
+        return Ok(await _service.GetByProviderIdAsync(providerId));
+    }
 }
 

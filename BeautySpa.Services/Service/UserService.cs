@@ -35,20 +35,28 @@ namespace BeautySpa.Services.Service
             _esgoo = esgoo; 
         }
 
-        public async Task<BaseResponseModel<GETUserInfoModelView>> GetByIdAsync(Guid id)
+        public async Task<BaseResponseModel<GETUserModelViews>> GetByIdAsync(Guid id)
         {
             if (id == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id.");
 
-            var userInfor = await _unitOfWork.GetRepository<UserInfor>()
+            var user = await _unitOfWork.GetRepository<ApplicationUsers>()
                 .Entities
-                .Include(u => u.User)
-                .FirstOrDefaultAsync(u => u.UserId == id);
+                .Include(u => u.UserInfor)
+                .FirstOrDefaultAsync(u => u.Id == id && !u.DeletedTime.HasValue);
 
-            if (userInfor == null)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User information not found.");
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
-            return BaseResponseModel<GETUserInfoModelView>.Success(_mapper.Map<GETUserInfoModelView>(userInfor));
+            // Ánh xạ sang model view
+            var model = _mapper.Map<GETUserModelViews>(user);
+
+            // Lấy role
+            var roles = await _userManager.GetRolesAsync(user);
+            model.Roles = roles.ToList();
+            model.RoleName = roles.FirstOrDefault() ?? string.Empty;
+
+            return BaseResponseModel<GETUserModelViews>.Success(model);
         }
 
         public async Task<BaseResponseModel<BasePaginatedList<GETUserModelViews>>> GetAllAsync(int pageNumber, int pageSize)
@@ -149,21 +157,21 @@ namespace BeautySpa.Services.Service
                        ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
 
             var userInforRepo = _unitOfWork.GetRepository<UserInfor>();
-            var userInfor = await userInforRepo.Entities
-                .FirstOrDefaultAsync(u => u.UserId == user.Id);
+            var userInfor = await userInforRepo.Entities.FirstOrDefaultAsync(u => u.UserId == user.Id);
 
             if (userInfor == null)
             {
-                // Nếu chưa có UserInfor thì tạo mới
                 userInfor = new UserInfor
                 {
                     UserId = user.Id,
                     CreatedBy = CurrentUserId,
-                    CreatedTime = DateTimeOffset.UtcNow
+                    CreatedTime = CoreHelper.SystemTimeNow
                 };
                 _mapper.Map(model, userInfor);
+                userInfor.LastUpdatedBy = CurrentUserId;
+                userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-                // ✅ Lấy tên tỉnh/thành và quận/huyện từ Esgoo
+                // Lấy tên tỉnh và huyện
                 if (!string.IsNullOrWhiteSpace(model.ProvinceId))
                 {
                     var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
@@ -178,15 +186,14 @@ namespace BeautySpa.Services.Service
                         userInfor.DistrictName = district.name;
                 }
 
-                userInfor.LastUpdatedBy = CurrentUserId;
-                userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
                 await userInforRepo.InsertAsync(userInfor);
             }
             else
             {
                 _mapper.Map(model, userInfor);
+                userInfor.LastUpdatedBy = CurrentUserId;
+                userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-                // ✅ Lấy lại tên địa chỉ nếu thay đổi ID
                 if (!string.IsNullOrWhiteSpace(model.ProvinceId))
                 {
                     var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
@@ -201,15 +208,13 @@ namespace BeautySpa.Services.Service
                         userInfor.DistrictName = district.name;
                 }
 
-                userInfor.LastUpdatedBy = CurrentUserId;
-                userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
                 await userInforRepo.UpdateAsync(userInfor);
             }
 
-            // ✅ Cập nhật user chính (Phone)
+            // Cập nhật thông tin từ ApplicationUsers nếu cần (PhoneNumber)
             user.PhoneNumber = model.PhoneNumber;
             user.LastUpdatedBy = CurrentUserId;
-            user.LastUpdatedTime = DateTimeOffset.UtcNow;
+            user.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)

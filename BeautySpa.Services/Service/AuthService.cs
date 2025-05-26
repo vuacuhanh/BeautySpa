@@ -183,26 +183,47 @@ namespace BeautySpa.Services.Service
         public async Task<BaseResponseModel<string>> ResetPasswordAsync(ResetPasswordAuthModelView model)
         {
             var db = _redis.GetDatabase();
-            var cache = await db.StringGetAsync($"otp:reset-password:{model.Email}");
-            if (cache.IsNullOrEmpty)
-                throw new BadRequestException(ErrorCode.InvalidInput, "OTP expired.");
 
-            var payload = JsonConvert.DeserializeObject<OtpVerifyModelView>(cache!);
-            if (payload == null || payload.OtpCode != model.OtpCode || payload.IpAddress != CurrentIp || payload.DeviceInfo != CurrentDevice)
-                throw new BadRequestException(ErrorCode.InvalidInput, "OTP validation failed.");
+            // Kiểm tra OTP đã được xác thực trước đó
+            var isVerified = await db.StringGetAsync($"otp:verified:reset-password:{model.Email}");
+            if (isVerified.IsNullOrEmpty || isVerified != "true")
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP not verified or expired.");
+
+            // Kiểm tra xác nhận mật khẩu trùng khớp
+            if (model.NewPassword != model.ConfirmNewPassword)
+                throw new BadRequestException(ErrorCode.InvalidInput, "Passwords do not match.");
 
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
                 throw new BadRequestException(ErrorCode.NotFound, "User not found.");
 
+            // Reset mật khẩu
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var result = await _userManager.ResetPasswordAsync(user, token, model.NewPassword);
             if (!result.Succeeded)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.BadRequest, string.Join(", ", result.Errors.Select(x => x.Description)));
 
+            // Xoá OTP sau khi thành công
             await db.KeyDeleteAsync($"otp:reset-password:{model.Email}");
+            await db.KeyDeleteAsync($"otp:verified:reset-password:{model.Email}");
 
             return BaseResponseModel<string>.Success("Password reset successfully.");
+        }
+
+        //================================================================================================================================================================
+        public async Task<BaseResponseModel<string>> VerifyResetPasswordOtpAsync(OtpVerifyModelView model)
+        {
+            var db = _redis.GetDatabase();
+            var cache = await db.StringGetAsync($"otp:reset-password:{model.Email}");
+            if (cache.IsNullOrEmpty)
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP expired or not found.");
+
+            var payload = JsonConvert.DeserializeObject<OtpVerifyModelView>(cache!);
+            if (payload == null || payload.OtpCode != model.OtpCode || payload.IpAddress != CurrentIp || payload.DeviceInfo != CurrentDevice)
+                throw new BadRequestException(ErrorCode.InvalidInput, "OTP validation failed.");
+
+            await db.StringSetAsync($"otp:verified:reset-password:{model.Email}", "true", TimeSpan.FromMinutes(10));
+            return BaseResponseModel<string>.Success("Reset password OTP verified successfully.");
         }
         //==================================================================================================================================================================
         public async Task<BaseResponseModel<string>> VerifyOtpAsync(OtpVerifyModelView model)

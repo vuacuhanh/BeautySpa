@@ -81,6 +81,18 @@ public class PromotionService : IPromotionService
         return BaseResponseModel<string>.Success("Promotion created successfully");
     }
 
+    public async Task<BaseResponseModel<List<GETPromotionModelView>>> GetByProviderIdAsync(Guid providerId)
+    {
+        var promotions = await _unitOfWork.GetRepository<Promotion>().Entities
+            .Include(p => p.Provider)
+            .Where(p => p.ProviderId == providerId && p.DeletedTime == null)
+            .OrderByDescending(p => p.CreatedTime)
+            .ToListAsync();
+
+        var result = _mapper.Map<List<GETPromotionModelView>>(promotions);
+        return BaseResponseModel<List<GETPromotionModelView>>.Success(result);
+    }
+
     public async Task<BaseResponseModel<string>> UpdateAsync(PUTPromotionModelView model)
     {
         await new PUTPromotionValidator().ValidateAndThrowAsync(model);

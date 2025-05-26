@@ -120,6 +120,6 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Notification deleted");
         }
-
+        
     }
 }

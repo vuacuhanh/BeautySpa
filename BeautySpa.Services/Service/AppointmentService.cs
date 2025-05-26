@@ -40,23 +40,6 @@ namespace BeautySpa.Services.Service
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_context);
 
-        private async Task SendNotificationAsync(Guid userId, string title, string message)
-        {
-            await _notificationService.CreateAsync(new POSTNotificationModelView
-            {
-                UserId = userId,
-                Title = title,
-                Message = message
-            });
-
-            await _notificationService.SendSocketAsync(userId, new
-            {
-                Type = "appointment",
-                Title = title,
-                Message = message
-            });
-        }
-
         public async Task<BaseResponseModel<Guid>> CreateAsync(POSTAppointmentModelView model)
         {
             await new POSTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
@@ -118,7 +101,7 @@ namespace BeautySpa.Services.Service
                 if (flash != null)
                 {
                     price -= flash.DiscountPercent > 0 ? price * flash.DiscountPercent.Value / 100 : flash.DiscountAmount ?? 0;
-                    flash.UsedCount++;
+                    flash.Quantity++;
                 }
 
                 appointmentServices.Add(new Entity.AppointmentService
@@ -141,7 +124,7 @@ namespace BeautySpa.Services.Service
                     discount = promo.DiscountPercent > 0
                         ? originalTotal * promo.DiscountPercent.Value / 100
                         : promo.DiscountAmount ?? 0;
-                    promo.TotalUsed++;
+                    promo.Quantity++;
                 }
             }
 
@@ -158,7 +141,7 @@ namespace BeautySpa.Services.Service
                     discount += promoAdmin.DiscountPercent > 0
                         ? originalTotal * promoAdmin.DiscountPercent.Value / 100
                         : promoAdmin.DiscountAmount ?? 0;
-                    promoAdmin.TotalUsed++;
+                    promoAdmin.Quantity++;
                 }
             }
 
@@ -201,8 +184,12 @@ namespace BeautySpa.Services.Service
                 PaymentMethod = model.PaymentMethod ?? "momo"
             });
 
-            await SendNotificationAsync(userId, "Đặt lịch thành công",
-                $"Bạn đã đặt lịch lúc {model.StartTime:hh\\:mm dd/MM/yyyy}. Vui lòng thanh toán tiền cọc.");
+            await _notificationService.CreateAsync(new POSTNotificationModelView
+            {
+                UserId = userId,
+                Title = "Đặt lịch thành công",
+                Message = $"Bạn đã đặt lịch lúc {model.StartTime:hh\\:mm dd/MM/yyyy}. Vui lòng thanh toán tiền cọc."
+            });
 
             return BaseResponseModel<Guid>.Success(appointment.Id);
         }
@@ -233,13 +220,18 @@ namespace BeautySpa.Services.Service
 
                 await ReturnPromotionsAsync(appointment);
 
-                await SendNotificationAsync(appointment.CustomerId, "Lịch hẹn bị hủy",
-                    "Bạn chưa thanh toán cọc, lịch đã bị hủy sau 10 phút.");
+                await _notificationService.CreateAsync(new POSTNotificationModelView
+                {
+                    UserId = appointment.CustomerId,
+                    Title = "Lịch hẹn bị hủy",
+                    Message = "Bạn chưa thanh toán cọc, lịch đã bị hủy sau 10 phút."
+                });
             }
 
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("Đã hủy các lịch quá hạn chưa thanh toán.");
         }
+
         public async Task<BaseResponseModel<string>> UpdateStatusAsync(Guid appointmentId, string status)
         {
             var appointment = await _unitOfWork.GetRepository<Appointment>()
@@ -270,8 +262,12 @@ namespace BeautySpa.Services.Service
                     member.AccumulatedPoints += (int)(appointment.FinalPrice / 1000);
                 }
 
-                await SendNotificationAsync(appointment.CustomerId, "Lịch đã hoàn tất",
-                    "Cảm ơn bạn! Spa rất vui khi được phục vụ bạn.");
+                await _notificationService.CreateAsync(new POSTNotificationModelView
+                {
+                    UserId = appointment.CustomerId,
+                    Title = "Lịch đã hoàn tất",
+                    Message = "Cảm ơn bạn! Spa rất vui khi được phục vụ bạn."
+                });
             }
             else if (status.Equals("canceled", StringComparison.OrdinalIgnoreCase))
             {
@@ -287,10 +283,14 @@ namespace BeautySpa.Services.Service
 
                 await ReturnPromotionsAsync(appointment);
 
-                await SendNotificationAsync(appointment.CustomerId, "Lịch hẹn đã hủy",
-                    isLate
+                await _notificationService.CreateAsync(new POSTNotificationModelView
+                {
+                    UserId = appointment.CustomerId,
+                    Title = "Lịch hẹn đã hủy",
+                    Message = isLate
                         ? "Bạn đã hủy trễ – hệ thống đã trừ phí và hoàn lại tiền cọc."
-                        : "Bạn đã hủy lịch – tiền cọc đã được hoàn lại đầy đủ.");
+                        : "Bạn đã hủy lịch – tiền cọc đã được hoàn lại đầy đủ."
+                });
             }
             else if (status.Equals("no_show", StringComparison.OrdinalIgnoreCase))
             {
@@ -306,15 +306,23 @@ namespace BeautySpa.Services.Service
 
                 await ReturnPromotionsAsync(appointment);
 
-                await SendNotificationAsync(appointment.CustomerId, "Bạn đã không đến",
-                    "Lịch hẹn của bạn đã bị hủy. Hệ thống đã hoàn lại cọc sau khi trừ phí.");
+                await _notificationService.CreateAsync(new POSTNotificationModelView
+                {
+                    UserId = appointment.CustomerId,
+                    Title = "Bạn đã không đến",
+                    Message = "Lịch hẹn của bạn đã bị hủy. Hệ thống đã hoàn lại cọc sau khi trừ phí."
+                });
             }
             else if (status.Equals("checked_in", StringComparison.OrdinalIgnoreCase))
             {
                 appointment.BookingStatus = "checked_in";
 
-                await SendNotificationAsync(appointment.CustomerId, "Check-in thành công",
-                    "Chúc bạn có trải nghiệm làm đẹp tuyệt vời tại Spa.");
+                await _notificationService.CreateAsync(new POSTNotificationModelView
+                {
+                    UserId = appointment.CustomerId,
+                    Title = "Check-in thành công",
+                    Message = "Chúc bạn có trải nghiệm làm đẹp tuyệt vời tại Spa."
+                });
             }
             else if (status.Equals("confirmed", StringComparison.OrdinalIgnoreCase))
             {
@@ -322,8 +330,12 @@ namespace BeautySpa.Services.Service
                 appointment.IsConfirmedBySpa = true;
                 appointment.ConfirmationTime = now.DateTime;
 
-                await SendNotificationAsync(appointment.CustomerId, "Lịch hẹn được xác nhận",
-                    "Lịch hẹn của bạn đã được spa xác nhận thành công.");
+                await _notificationService.CreateAsync(new POSTNotificationModelView
+                {
+                    UserId = appointment.CustomerId,
+                    Title = "Lịch hẹn được xác nhận",
+                    Message = "Lịch hẹn của bạn đã được spa xác nhận thành công."
+                });
             }
             else
             {
@@ -363,13 +375,18 @@ namespace BeautySpa.Services.Service
 
                 await ReturnPromotionsAsync(appointment);
 
-                await SendNotificationAsync(appointment.CustomerId, "Bạn đã không đến",
-                    "Hệ thống đã tự động hủy lịch sau 12 giờ kể từ giờ hẹn. Tiền cọc đã được hoàn lại sau khi trừ phí.");
+                await _notificationService.CreateAsync(new POSTNotificationModelView
+                {
+                    UserId = appointment.CustomerId,
+                    Title = "Bạn đã không đến",
+                    Message = "Hệ thống đã tự động hủy lịch sau 12 giờ kể từ giờ hẹn. Tiền cọc đã được hoàn lại sau khi trừ phí."
+                });
             }
 
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("Đã tự động xử lý no_show cho các lịch quá hạn.");
         }
+
         public async Task<BaseResponseModel<string>> UpdateAsync(PUTAppointmentModelView model)
         {
             await new PUTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
@@ -410,11 +427,12 @@ namespace BeautySpa.Services.Service
             }
 
             appointment.OriginalTotalPrice = total;
-            appointment.FinalPrice = total; // Nếu muốn tính lại khuyến mãi có thể thêm logic ở đây
+            appointment.FinalPrice = total;
 
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("Cập nhật lịch hẹn thành công.");
         }
+
         public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
             var appointment = await _unitOfWork.GetRepository<Appointment>()
@@ -427,6 +445,7 @@ namespace BeautySpa.Services.Service
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("Đã xóa lịch hẹn.");
         }
+
         public async Task<BaseResponseModel<BasePaginatedList<GETAppointmentModelView>>> GetAllAsync(int pageNumber, int pageSize)
         {
             var query = _unitOfWork.GetRepository<Appointment>()
@@ -441,6 +460,7 @@ namespace BeautySpa.Services.Service
             var paged = new BasePaginatedList<GETAppointmentModelView>(mapped, result.TotalItems, pageNumber, pageSize);
             return BaseResponseModel<BasePaginatedList<GETAppointmentModelView>>.Success(paged);
         }
+
         public async Task<BaseResponseModel<GETAppointmentModelView>> GetByIdAsync(Guid id)
         {
             var appointment = await _unitOfWork.GetRepository<Appointment>()
@@ -451,6 +471,33 @@ namespace BeautySpa.Services.Service
 
             var result = _mapper.Map<GETAppointmentModelView>(appointment);
             return BaseResponseModel<GETAppointmentModelView>.Success(result);
+        }
+
+        private async Task ReturnPromotionsAsync(Appointment appointment)
+        {
+            if (appointment.PromotionId.HasValue)
+            {
+                var promo = await _unitOfWork.GetRepository<Promotion>()
+                    .GetByIdAsync(appointment.PromotionId.Value);
+                if (promo != null) promo.Quantity--;
+            }
+
+            if (appointment.PromotionAdminId.HasValue)
+            {
+                var promoAdmin = await _unitOfWork.GetRepository<PromotionAdmin>()
+                    .GetByIdAsync(appointment.PromotionAdminId.Value);
+                if (promoAdmin != null) promoAdmin.Quantity--;
+            }
+
+            foreach (var aps in appointment.AppointmentServices)
+            {
+                var flash = await _unitOfWork.GetRepository<ServicePromotion>()
+                    .Entities.FirstOrDefaultAsync(f =>
+                        f.ServiceId == aps.ServiceId &&
+                        f.StartDate <= CoreHelper.SystemTimeNow &&
+                        f.EndDate >= CoreHelper.SystemTimeNow);
+                if (flash != null) flash.Quantity--;
+            }
         }
     }
 }

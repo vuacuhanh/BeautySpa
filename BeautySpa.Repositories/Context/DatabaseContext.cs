@@ -199,6 +199,27 @@ namespace BeautySpa.Repositories.Context
                 .Property(si => si.ImageUrl)
                 .IsRequired()
                 .HasMaxLength(1000);
+
+            // Appointment – decimal fields
+            builder.Entity<Appointment>().Property(a => a.FinalPrice).HasPrecision(10, 2);
+            builder.Entity<Appointment>().Property(a => a.OriginalTotalPrice).HasPrecision(10, 2);
+            builder.Entity<Appointment>().Property(a => a.DiscountAmount).HasPrecision(10, 2);
+
+            // AppointmentService – PriceAtBooking
+            builder.Entity<AppointmentService>().Property(a => a.PriceAtBooking).HasPrecision(10, 2);
+
+            // DepositPolicy – decimal fields
+            builder.Entity<DepositPolicy>().Property(d => d.DepositPercent).HasPrecision(5, 2);
+            builder.Entity<DepositPolicy>().Property(d => d.MinPrice).HasPrecision(10, 2);
+            builder.Entity<DepositPolicy>().Property(d => d.MaxPrice).HasPrecision(10, 2);
+
+            // ProviderFeePolicy – decimal fields
+            builder.Entity<ProviderFeePolicy>().Property(p => p.PlatformFeePercentOnCanceled).HasPrecision(5, 2);
+            builder.Entity<ProviderFeePolicy>().Property(p => p.PlatformFeePercentOnCompleted).HasPrecision(5, 2);
+
+            // ServiceProvider – average rating
+            builder.Entity<ServiceProvider>().Property(p => p.AverageRating).HasPrecision(3, 2);
+
         }
     }
 }

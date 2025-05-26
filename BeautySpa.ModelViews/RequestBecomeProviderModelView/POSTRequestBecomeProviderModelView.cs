@@ -5,7 +5,6 @@ namespace BeautySpa.ModelViews.RequestBecomeProviderModelView
     {
         public string? BusinessName { get; set; }
         public string? PhoneNumber { get; set; }
-        public string? WebsiteOrSocialLink { get; set; }
         public string? Description { get; set; }
         public string? ImageUrl { get; set; }
         public List<string>? DescriptionImages { get; set; }

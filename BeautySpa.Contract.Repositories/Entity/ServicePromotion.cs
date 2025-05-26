@@ -6,6 +6,8 @@ namespace BeautySpa.Contract.Repositories.Entity
     {
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
+        public int Quantity { get; set; } = 0;  
+
         public Guid ServiceId { get; set; }
         public virtual Service? Service { get; set; }
 

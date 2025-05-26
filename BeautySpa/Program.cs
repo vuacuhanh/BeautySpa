@@ -1,7 +1,8 @@
 ﻿using BeautySpa.API.Middleware;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Core.Settings;
-using BeautySpa.Core.SignalR;   
+using BeautySpa.Core.SignalR;
+using BeautySpa.Repositories.Context;
 using BeautySpa.Services;
 using BeautySpa.Services.seeding;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,11 +20,11 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 
 // Load configuration
-builder.Configuration
+/*builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
-
+*/
 // Register configuration sections
 builder.Services.Configure<EsgooSettings>(builder.Configuration.GetSection("Esgoo"));
 builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
@@ -31,8 +32,16 @@ builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("Mono"
 builder.Services.AddHttpClient("EsgooClient");
 
 // Database
-builder.Services.AddDbContext<DbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("BeautySpa")));
+builder.Services.AddDbContext<DatabaseContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("BeautySpa"),
+        sql => sql.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null
+        )));
+
+
 
 // Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -56,7 +65,7 @@ builder.Services.AddIdentity<ApplicationUsers, ApplicationRoles>(options =>
     options.Password.RequiredLength = 6;
     options.SignIn.RequireConfirmedEmail = true;
 })
-.AddEntityFrameworkStores<DbContext>()
+.AddEntityFrameworkStores<DatabaseContext>()
 .AddDefaultTokenProviders();
 
 // Add application services
@@ -119,6 +128,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+
 // CORS
 builder.Services.AddCors(options =>
 {
@@ -132,6 +142,20 @@ builder.Services.AddCors(options =>
 });
 
 // Controllers and SignalR
+// 7. CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigins", policy =>
+    {
+        policy.WithOrigins(
+            "http://localhost:8081" // 👈 đây là domain frontend đang gọi API
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials(); // Cần nếu bạn dùng JWT, cookie, hoặc SignalR
+    });
+});
+// 8. MVC + SignalR
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
