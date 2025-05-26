@@ -11,14 +11,14 @@ namespace BeautySpa.Services.Mapper
             // ApplicationUsers => GETUserModelViews
             CreateMap<ApplicationUsers, GETUserModelViews>()
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.UserInfor != null ? src.UserInfor.FullName : string.Empty))
-                .ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.UserInfor.AddressDetail))
-                .ForMember(dest => dest.ProvinceId, opt => opt.MapFrom(src => src.UserInfor.ProvinceId))
-                .ForMember(dest => dest.ProvinceName, opt => opt.MapFrom(src => src.UserInfor.ProvinceName))
-                .ForMember(dest => dest.DistrictId, opt => opt.MapFrom(src => src.UserInfor.DistrictId))
-                .ForMember(dest => dest.DistrictName, opt => opt.MapFrom(src => src.UserInfor.DistrictName))
+                .ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.UserInfor!.AddressDetail))
+                .ForMember(dest => dest.ProvinceId, opt => opt.MapFrom(src => src.UserInfor!.ProvinceId))
+                .ForMember(dest => dest.ProvinceName, opt => opt.MapFrom(src => src.UserInfor!.ProvinceName))
+                .ForMember(dest => dest.DistrictId, opt => opt.MapFrom(src => src.UserInfor!.DistrictId))
+                .ForMember(dest => dest.DistrictName, opt => opt.MapFrom(src => src.UserInfor!.DistrictName))
                 .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.UserInfor != null ? src.UserInfor.DayofBirth : DateTime.MinValue))
-                .ForMember(dest => dest.AvatarUrl, opt => opt.MapFrom(src => src.UserInfor.AvatarUrl))
-                .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.UserInfor.Gender))
+                .ForMember(dest => dest.AvatarUrl, opt => opt.MapFrom(src => src.UserInfor!.AvatarUrl))
+                .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.UserInfor!.Gender))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.Status == "active"))
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 

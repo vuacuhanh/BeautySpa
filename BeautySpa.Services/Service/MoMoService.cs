@@ -7,15 +7,15 @@ using BeautySpa.Services.Validations.MomoValidator;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using Polly;
 
 namespace BeautySpa.Services.Service
 {
-    public class MomoService : IMomoService
+    public class MoMoService : IMomoService
     {
-        private readonly IConfiguration _config;
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _config; private readonly IHttpClientFactory _httpClientFactory;
 
-        public MomoService(IConfiguration config, IHttpClientFactory httpClientFactory)
+        public MoMoService(IConfiguration config, IHttpClientFactory httpClientFactory)
         {
             _config = config;
             _httpClientFactory = httpClientFactory;
@@ -29,41 +29,56 @@ namespace BeautySpa.Services.Service
             string partnerCode = GetConfig("MoMo:PartnerCode");
             string accessKey = GetConfig("MoMo:AccessKey");
             string secretKey = GetConfig("MoMo:SecretKey");
-            string redirectUrl = _config["MoMo:RedirectUrl"] ?? "";
-            string ipnUrl = _config["MoMo:IpnUrl"] ?? "";
+            string redirectUrl = _config["MoMo:RedirectUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo RedirectUrl is missing");
+            string ipnUrl = _config["MoMo:IpnUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo IpnUrl is missing");
 
             string requestId = Guid.NewGuid().ToString();
-            string rawHash = $"accessKey={accessKey}&amount={model.Amount}&extraData=&ipnUrl={ipnUrl}&orderId={model.OrderId}&orderInfo={model.OrderInfo}&partnerCode={partnerCode}&redirectUrl={redirectUrl}&requestId={requestId}&requestType=captureWallet";
-
+            string extraData = Convert.ToBase64String(Encoding.UTF8.GetBytes(""));
+            string rawHash = $"accessKey={accessKey}&amount={model.Amount}&extraData={extraData}&ipnUrl={ipnUrl}&orderId={model.OrderId}&orderInfo={model.OrderInfo}&partnerCode={partnerCode}&redirectUrl={redirectUrl}&requestId={requestId}&requestType=captureWallet";
             string signature = ComputeHmacSha256(rawHash, secretKey);
 
             var body = new
             {
                 partnerCode,
-                accessKey,
+                partnerName = "BeautySpa",
+                storeId = "BeautySpaStore",
                 requestId,
-                amount = model.Amount.ToString(),
+                amount = model.Amount,
                 orderId = model.OrderId,
                 orderInfo = model.OrderInfo,
                 redirectUrl,
                 ipnUrl,
-                extraData = "",
+                extraData,
                 requestType = "captureWallet",
                 signature,
                 lang = "vi"
             };
 
             var client = _httpClientFactory.CreateClient();
-            var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
-            var response = await client.PostAsync(endpoint, content);
-            string result = await response.Content.ReadAsStringAsync();
+            var retryPolicy = Policy
+                .Handle<HttpRequestException>()
+                .OrResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 
+            var response = await retryPolicy.ExecuteAsync(async () =>
+            {
+                var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+                return await client.PostAsync(endpoint, content);
+            });
+
+            if (!response.IsSuccessStatusCode)
+                throw new ErrorException(500, ErrorCode.InternalServerError, $"MoMo API returned {response.StatusCode}");
+
+            string result = await response.Content.ReadAsStringAsync();
             dynamic json = JsonConvert.DeserializeObject(result)
                 ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo response is null");
 
+            if (json.resultCode != 0)
+                throw new ErrorException(400, ErrorCode.Failed, json.message ?? "MoMo payment creation failed");
+
             var responseModel = new CreatePaymentResponse
             {
-                DeeplinkQr = json.deeplink ?? "",
+                DeeplinkQr = json.qrCodeUrl ?? "",
                 PayUrl = json.payUrl ?? "",
                 RequestId = requestId
             };
@@ -86,21 +101,31 @@ namespace BeautySpa.Services.Service
             var body = new
             {
                 partnerCode,
-                accessKey,
                 requestId = model.RequestId,
-                amount = model.Amount.ToString(),
                 orderId = model.OrderId,
-                transId = model.TransId.ToString(),
+                amount = model.Amount,
+                transId = model.TransId,
                 lang = "vi",
                 description = model.Description,
                 signature
             };
 
             var client = _httpClientFactory.CreateClient();
-            var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
-            var response = await client.PostAsync(endpoint, content);
-            string result = await response.Content.ReadAsStringAsync();
+            var retryPolicy = Policy
+                .Handle<HttpRequestException>()
+                .OrResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 
+            var response = await retryPolicy.ExecuteAsync(async () =>
+            {
+                var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+                return await client.PostAsync(endpoint, content);
+            });
+
+            if (!response.IsSuccessStatusCode)
+                throw new ErrorException(500, ErrorCode.InternalServerError, $"MoMo API returned {response.StatusCode}");
+
+            string result = await response.Content.ReadAsStringAsync();
             dynamic json = JsonConvert.DeserializeObject(result)
                 ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo refund response is null");
 
@@ -110,6 +135,9 @@ namespace BeautySpa.Services.Service
                 ResultCode = json.resultCode ?? ""
             };
 
+            if (responseModel.ResultCode != "0")
+                throw new ErrorException(400, ErrorCode.Failed, responseModel.Message);
+
             return BaseResponseModel<RefundResponse>.Success(responseModel);
         }
 
@@ -118,7 +146,7 @@ namespace BeautySpa.Services.Service
             return _config[key] ?? throw new ErrorException(500, ErrorCode.InternalServerError, $"Missing config key: {key}");
         }
 
-        private static string ComputeHmacSha256(string rawData, string secretKey)
+        public static string ComputeHmacSha256(string rawData, string secretKey)
         {
             if (string.IsNullOrEmpty(secretKey))
                 throw new ErrorException(500, ErrorCode.InternalServerError, "Secret key is empty");
@@ -128,4 +156,5 @@ namespace BeautySpa.Services.Service
             return BitConverter.ToString(hash).Replace("-", "").ToLower();
         }
     }
+
 }

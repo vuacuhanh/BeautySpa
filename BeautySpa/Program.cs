@@ -1,4 +1,4 @@
-﻿using BeautySpa.API.Middleware;
+using BeautySpa.API.Middleware;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Core.Settings;
 using BeautySpa.Core.SignalR;

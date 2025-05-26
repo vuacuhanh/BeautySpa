@@ -13,5 +13,4 @@ namespace BeautySpa.Contract.Repositories.Entity
         public decimal PriceAtBooking { get; set; } 
         public int Quantity { get; set; } = 1;
     }
-
 }
