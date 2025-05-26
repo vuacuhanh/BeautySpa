@@ -133,7 +133,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:8081", "https://spa-client.com", "https://zenora-frontend.vercel.app")
+        policy.WithOrigins("http://localhost:8081", "http://localhost:5173", "https://spa-client.com", "https://zenora-frontend.vercel.app")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
