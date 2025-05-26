@@ -13,8 +13,8 @@ using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
 
-Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
-//Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+//Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -130,7 +130,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
         policy.WithOrigins(
-            "http://localhost:8081"
+            "http://localhost:8081",
+            "https://zenora-frontend.vercel.app"
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
