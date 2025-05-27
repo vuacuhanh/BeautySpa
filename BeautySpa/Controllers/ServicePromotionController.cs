@@ -64,5 +64,13 @@ namespace BeautySpa.API.Controllers
             var result = await _servicePromotionService.DeleteAsync(id);
             return Ok(result);
         }
+
+        [HttpGet("my-promotions")]
+        [Authorize(Roles = "Provider")]
+        public async Task<IActionResult> GetMyPromotions()
+        {
+            return Ok(await _servicePromotionService.GetAllByCurrentUserAsync());
+        }
+
     }
 }
