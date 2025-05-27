@@ -65,15 +65,17 @@ namespace BeautySpa.Services.Service
         }
         public async Task<BaseResponseModel<Guid>> RegisterByGuestAsync(RegisterRequestBecomeProviderModelView model)
         {
+            // ✅ Kiểm tra bắt buộc
             if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.FullName))
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Email và họ tên là bắt buộc.");
 
-            // Kiểm tra email đã tồn tại trong hệ thống chưa
+            // ✅ Kiểm tra email đã tồn tại
             bool exists = await _unitOfWork.GetRepository<ApplicationUsers>()
                 .Entities.AnyAsync(u => u.Email == model.Email && u.DeletedTime == null);
             if (exists)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Email đã tồn tại trong hệ thống.");
 
+            // ✅ Kiểm tra danh mục có tồn tại
             foreach (var catId in model.ServiceCategoryIds)
             {
                 var categoryExists = await _unitOfWork.GetRepository<ServiceCategory>().GetByIdAsync(catId);
@@ -81,20 +83,20 @@ namespace BeautySpa.Services.Service
                     throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Danh mục {catId} không tồn tại.");
             }
 
+            // ✅ Mapping dữ liệu
             var request = _mapper.Map<RequestBecomeProvider>(model);
             request.Id = Guid.NewGuid();
             request.RequestStatus = "pending";
             request.CreatedTime = CoreHelper.SystemTimeNow;
             request.LastUpdatedTime = request.CreatedTime;
 
-            // Lưu tạm email và fullname vào Description (hoặc bạn có thể mở rộng entity)
-            request.Description ??= $"GUEST_REGISTER: {model.FullName} - {model.Email}";
-
+            // ✅ Lưu DB
             await _unitOfWork.GetRepository<RequestBecomeProvider>().InsertAsync(request);
             await _unitOfWork.SaveAsync();
 
             return BaseResponseModel<Guid>.Success(request.Id);
         }
+
 
         public async Task<BaseResponseModel<BasePaginatedList<GETRequestBecomeProviderModelView>>> GetAllAsync(string? requestStatus, int pageNumber, int pageSize)
         {
