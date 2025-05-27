@@ -166,6 +166,13 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(wh => wh.ServiceProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // WorkingHour → SpaBranchLocation
+            builder.Entity<WorkingHour>()
+                .HasOne(wh => wh.SpaBranchLocation)
+                .WithMany(sp => sp.WorkingHours)
+                .HasForeignKey(wh => wh.SpaBranchLocationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // ServiceProviderCategory many-to-many
             builder.Entity<ServiceProviderCategory>()
                 .HasOne(spc => spc.ServiceProvider)

@@ -1,24 +1,18 @@
 ﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
-using BeautySpa.ModelViews.WorkingHourModelViews;
+using BeautySpa.ModelViews.LocationModelViews;
 
-namespace BeautySpa.Services.Mapper
+namespace BeautySpa.Services.Mappings
 {
-    public class WorkingHourMapping : Profile
+    public class SpaBranchLocationMapping : Profile
     {
-        public WorkingHourMapping()
+        public SpaBranchLocationMapping()
         {
-            CreateMap<WorkingHour, GETWorkingHourModelViews>();
+            CreateMap<SpaBranchLocation, GETSpaBranchLocationModelView>()
+                .ForMember(dest => dest.WorkingHours, opt => opt.MapFrom(src => src.WorkingHours));
 
-            CreateMap<POSTWorkingHourModelViews, WorkingHour>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
-
-            CreateMap<PUTWorkingHourModelViews, WorkingHour>()
-                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedTime, opt => opt.Ignore());
+            CreateMap<POSTSpaBranchLocationModelView, SpaBranchLocation>();
+            CreateMap<PUTSpaBranchLocationModelView, SpaBranchLocation>();
         }
     }
 }
