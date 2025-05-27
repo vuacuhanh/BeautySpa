@@ -21,43 +21,64 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Tạo lịch hẹn mới")]
         public async Task<IActionResult> Create([FromBody] POSTAppointmentModelView model)
         {
-            return Ok(await _service.CreateAsync(model));
+            var result = await _service.CreateAsync(model);
+            return Ok(result);
         }
 
         [HttpPut]
         [SwaggerOperation(Summary = "Cập nhật thông tin lịch hẹn")]
         public async Task<IActionResult> Update([FromBody] PUTAppointmentModelView model)
         {
-            return Ok(await _service.UpdateAsync(model));
+            var result = await _service.UpdateAsync(model);
+            return Ok(result);
         }
 
         [HttpPatch("status/{id}")]
         [SwaggerOperation(Summary = "Cập nhật trạng thái lịch hẹn (confirmed, checked_in, completed, canceled, no_show)")]
         public async Task<IActionResult> UpdateStatus(Guid id, [FromQuery] string status)
         {
-            return Ok(await _service.UpdateStatusAsync(id, status));
+            var result = await _service.UpdateStatusAsync(id, status);
+            return Ok(result);
         }
 
         [HttpDelete("{id}")]
         [SwaggerOperation(Summary = "Xóa mềm lịch hẹn")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            return Ok(await _service.DeleteAsync(id));
+            var result = await _service.DeleteAsync(id);
+            return Ok(result);
         }
 
         [HttpGet]
         [SwaggerOperation(Summary = "Lấy danh sách lịch hẹn (có phân trang)")]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
-            return Ok(await _service.GetAllAsync(pageNumber, pageSize));
+            var result = await _service.GetAllAsync(pageNumber, pageSize);
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
         [SwaggerOperation(Summary = "Lấy chi tiết lịch hẹn theo ID")]
         public async Task<IActionResult> GetById(Guid id)
         {
-            return Ok(await _service.GetByIdAsync(id));
+            var result = await _service.GetByIdAsync(id);
+            return Ok(result);
         }
 
+        [HttpPost("auto-cancel")]
+        [SwaggerOperation(Summary = "Tự động hủy các lịch chưa thanh toán sau 10 phút")]
+        public async Task<IActionResult> AutoCancelUnpaid()
+        {
+            var result = await _service.AutoCancelUnpaidAppointmentsAsync();
+            return Ok(result);
+        }
+
+        [HttpPost("auto-no-show")]
+        [SwaggerOperation(Summary = "Tự động đánh dấu no_show các lịch quá 12 tiếng chưa xử lý")]
+        public async Task<IActionResult> AutoNoShow()
+        {
+            var result = await _service.AutoNoShowAfter12HoursAsync();
+            return Ok(result);
+        }
     }
 }
