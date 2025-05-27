@@ -286,26 +286,23 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<string>.Success("Đã duyệt yêu cầu, cấp quyền Provider, tạo chi nhánh và gửi email thông báo.");
         }
 
-        // ✅ Thêm phương thức riêng cho guest để duyệt request và tạo tài khoản provider mới
         public async Task<BaseResponseModel<string>> ApproveGuestRequestAsync(Guid requestId)
         {
             var requestRepo = _unitOfWork.GetRepository<RequestBecomeProvider>();
             var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
             var providerRepo = _unitOfWork.GetRepository<EntityServiceProvider>();
             var providerCategoryRepo = _unitOfWork.GetRepository<ServiceProviderCategory>();
-            var workingHourRepo = _unitOfWork.GetRepository<WorkingHour>();
             var branchRepo = _unitOfWork.GetRepository<SpaBranchLocation>();
-            var imageRepo = _unitOfWork.GetRepository<ServiceImage>();
 
             var request = await requestRepo.Entities
                 .FirstOrDefaultAsync(r => r.Id == requestId && r.RequestStatus == "pending" && r.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Request Not Found.");
 
-            // Nếu request đã có UserId thì dùng phương thức ApproveRequestAsync gốc
+            // Nếu đã có UserId, thì xử lý bằng hàm approve cũ
             if (request.UserId != Guid.Empty)
                 return await ApproveRequestAsync(requestId);
 
-            // ✅ Tạo tài khoản mới
+            // ✅ Tạo tài khoản mới cho guest
             var userManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<UserManager<ApplicationUsers>>();
             var roleManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<RoleManager<ApplicationRoles>>();
 
@@ -326,11 +323,15 @@ namespace BeautySpa.Services.Service
 
             if (!await roleManager.RoleExistsAsync("Provider"))
                 await roleManager.CreateAsync(new ApplicationRoles { Name = "Provider" });
+
             await userManager.AddToRoleAsync(newUser, "Provider");
 
+            // ✅ Gán lại UserId cho request và lưu lại
             request.UserId = newUser.Id;
+            await requestRepo.UpdateAsync(request);
+            await _unitOfWork.SaveAsync();
 
-            // ✅ Tạo provider
+            // ✅ Tạo ServiceProvider mới
             var provider = new EntityServiceProvider
             {
                 Id = Guid.NewGuid(),
@@ -351,7 +352,7 @@ namespace BeautySpa.Services.Service
             };
             await providerRepo.InsertAsync(provider);
 
-            // ✅ Tạo chi nhánh
+            // ✅ Tạo chi nhánh chính
             if (!string.IsNullOrWhiteSpace(request.ProvinceId) &&
                 !string.IsNullOrWhiteSpace(request.DistrictId) &&
                 !string.IsNullOrWhiteSpace(request.AddressDetail))
@@ -393,7 +394,7 @@ namespace BeautySpa.Services.Service
                 });
             }
 
-            // ✅ Cập nhật trạng thái
+            // ✅ Cập nhật trạng thái duyệt
             request.RequestStatus = "approved";
             request.LastUpdatedBy = CurrentUserId;
             request.LastUpdatedTime = CoreHelper.SystemTimeNow;
