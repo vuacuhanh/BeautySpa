@@ -7,6 +7,8 @@ namespace BeautySpa.Contract.Services.Interface
     {
         Task<BaseResponseModel<Guid>> CreateRequestAsync(POSTRequestBecomeProviderModelView model);
         Task<BaseResponseModel<BasePaginatedList<GETRequestBecomeProviderModelView>>> GetAllAsync(string? requestStatus, int pageNumber, int pageSize);
+        Task<BaseResponseModel<string>> ApproveGuestRequestAsync(Guid requestId);
+        Task<BaseResponseModel<Guid>> RegisterByGuestAsync(RegisterRequestBecomeProviderModelView model);
         Task<BaseResponseModel<string>> ApproveRequestAsync(Guid requestId);
         Task<BaseResponseModel<string>> RejectRequestAsync(Guid requestId, string reason);
     }

@@ -25,6 +25,13 @@ namespace BeautySpa.API.Controllers
             return Ok(await _service.CreateRequestAsync(model));
         }
 
+        [HttpPost("register-guest")]
+        [SwaggerOperation(Summary = "Đăng ký trở thành provider dành cho khách (không cần tài khoản)")]
+        public async Task<IActionResult> RegisterGuest([FromBody] RegisterRequestBecomeProviderModelView model)
+        {
+            return Ok(await _service.RegisterByGuestAsync(model));
+        }
+
         [HttpGet("get")]
         [SwaggerOperation(Summary = "lấy ra những đơn đăng ký theo trạng thái ( pending, approved, rejected")]
         //[Authorize(Roles = "Admin")]
@@ -48,6 +55,13 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> Reject(Guid id, [FromBody] string reason)
         {
             return Ok(await _service.RejectRequestAsync(id, reason));
+        }
+
+        [HttpPost("approve-guest/{id}")]
+        [SwaggerOperation(Summary = "Duyệt đơn đăng ký provider từ khách (chưa có tài khoản)")]
+        public async Task<IActionResult> ApproveGuest(Guid id)
+        {
+            return Ok(await _service.ApproveGuestRequestAsync(id));
         }
     }
 }

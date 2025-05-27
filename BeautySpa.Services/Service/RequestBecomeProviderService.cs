@@ -63,6 +63,38 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<Guid>.Success(request.Id);
         }
+        public async Task<BaseResponseModel<Guid>> RegisterByGuestAsync(RegisterRequestBecomeProviderModelView model)
+        {
+            if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.FullName))
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Email và họ tên là bắt buộc.");
+
+            // Kiểm tra email đã tồn tại trong hệ thống chưa
+            bool exists = await _unitOfWork.GetRepository<ApplicationUsers>()
+                .Entities.AnyAsync(u => u.Email == model.Email && u.DeletedTime == null);
+            if (exists)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Email đã tồn tại trong hệ thống.");
+
+            foreach (var catId in model.ServiceCategoryIds)
+            {
+                var categoryExists = await _unitOfWork.GetRepository<ServiceCategory>().GetByIdAsync(catId);
+                if (categoryExists == null)
+                    throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, $"Danh mục {catId} không tồn tại.");
+            }
+
+            var request = _mapper.Map<RequestBecomeProvider>(model);
+            request.Id = Guid.NewGuid();
+            request.RequestStatus = "pending";
+            request.CreatedTime = CoreHelper.SystemTimeNow;
+            request.LastUpdatedTime = request.CreatedTime;
+
+            // Lưu tạm email và fullname vào Description (hoặc bạn có thể mở rộng entity)
+            request.Description ??= $"GUEST_REGISTER: {model.FullName} - {model.Email}";
+
+            await _unitOfWork.GetRepository<RequestBecomeProvider>().InsertAsync(request);
+            await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<Guid>.Success(request.Id);
+        }
 
         public async Task<BaseResponseModel<BasePaginatedList<GETRequestBecomeProviderModelView>>> GetAllAsync(string? requestStatus, int pageNumber, int pageSize)
         {
@@ -88,7 +120,7 @@ namespace BeautySpa.Services.Service
 
             var mapped = _mapper.Map<List<GETRequestBecomeProviderModelView>>(items);
             return BaseResponseModel<BasePaginatedList<GETRequestBecomeProviderModelView>>.Success(
-                new BasePaginatedList<GETRequestBecomeProviderModelView>(mapped, total, pageNumber, pageSize));
+            new BasePaginatedList<GETRequestBecomeProviderModelView>(mapped, total, pageNumber, pageSize));
         }
 
         public async Task<BaseResponseModel<string>> ApproveRequestAsync(Guid requestId)
@@ -252,6 +284,133 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<string>.Success("Đã duyệt yêu cầu, cấp quyền Provider, tạo chi nhánh và gửi email thông báo.");
         }
 
+        // ✅ Thêm phương thức riêng cho guest để duyệt request và tạo tài khoản provider mới
+        public async Task<BaseResponseModel<string>> ApproveGuestRequestAsync(Guid requestId)
+        {
+            var requestRepo = _unitOfWork.GetRepository<RequestBecomeProvider>();
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+            var providerRepo = _unitOfWork.GetRepository<EntityServiceProvider>();
+            var providerCategoryRepo = _unitOfWork.GetRepository<ServiceProviderCategory>();
+            var workingHourRepo = _unitOfWork.GetRepository<WorkingHour>();
+            var branchRepo = _unitOfWork.GetRepository<SpaBranchLocation>();
+            var imageRepo = _unitOfWork.GetRepository<ServiceImage>();
+
+            var request = await requestRepo.Entities
+                .FirstOrDefaultAsync(r => r.Id == requestId && r.RequestStatus == "pending" && r.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Request Not Found.");
+
+            // Nếu request đã có UserId thì dùng phương thức ApproveRequestAsync gốc
+            if (request.UserId != Guid.Empty)
+                return await ApproveRequestAsync(requestId);
+
+            // ✅ Tạo tài khoản mới
+            var userManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<UserManager<ApplicationUsers>>();
+            var roleManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<RoleManager<ApplicationRoles>>();
+
+            var newUser = new ApplicationUsers
+            {
+                Id = Guid.NewGuid(),
+                Email = request.Email,
+                UserName = request.Email,
+                Status = "active",
+                CreatedTime = CoreHelper.SystemTimeNow,
+                LastUpdatedTime = CoreHelper.SystemTimeNow
+            };
+
+            var randomPassword = CoreHelper.GenerateRandomPassword(8);
+            var createResult = await userManager.CreateAsync(newUser, randomPassword);
+            if (!createResult.Succeeded)
+                throw new ErrorException(500, ErrorCode.InternalServerError, string.Join("; ", createResult.Errors.Select(e => e.Description)));
+
+            if (!await roleManager.RoleExistsAsync("Provider"))
+                await roleManager.CreateAsync(new ApplicationRoles { Name = "Provider" });
+            await userManager.AddToRoleAsync(newUser, "Provider");
+
+            request.UserId = newUser.Id;
+
+            // ✅ Tạo provider
+            var provider = new EntityServiceProvider
+            {
+                Id = Guid.NewGuid(),
+                BusinessName = request.BusinessName,
+                PhoneNumber = request.PhoneNumber,
+                Description = request.Description,
+                ImageUrl = request.ImageUrl ?? "",
+                ProviderId = newUser.Id,
+                ContactFullName = request.FullName,
+                ContactPosition = "Chủ cơ sở",
+                Status = "approved",
+                IsApproved = true,
+                AverageRating = 0,
+                TotalReviews = 0,
+                OpenTime = request.OpenTime,
+                CloseTime = request.CloseTime,
+                MaxAppointmentsPerSlot = 5
+            };
+            await providerRepo.InsertAsync(provider);
+
+            // ✅ Tạo chi nhánh
+            if (!string.IsNullOrWhiteSpace(request.ProvinceId) &&
+                !string.IsNullOrWhiteSpace(request.DistrictId) &&
+                !string.IsNullOrWhiteSpace(request.AddressDetail))
+            {
+                var esgoo = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<IEsgooService>();
+                var province = await esgoo!.GetProvinceByIdAsync(request.ProvinceId)
+                    ?? throw new ErrorException(404, ErrorCode.NotFound, "Province not found");
+                var district = await esgoo.GetDistrictByIdAsync(request.DistrictId, request.ProvinceId)
+                    ?? throw new ErrorException(404, ErrorCode.NotFound, "District not found");
+
+                await branchRepo.InsertAsync(new SpaBranchLocation
+                {
+                    Id = Guid.NewGuid(),
+                    ServiceProviderId = provider.Id,
+                    BranchName = "Cơ sở chính",
+                    Street = request.AddressDetail ?? "",
+                    ProvinceId = request.ProvinceId,
+                    DistrictId = request.DistrictId,
+                    ProvinceName = province.name,
+                    DistrictName = district.name,
+                    Country = "Vietnam",
+                    City = province.name,
+                    District = district.name,
+                    PostalCode = request.PostalCode ?? "700000",
+                    CreatedBy = CurrentUserId,
+                    CreatedTime = CoreHelper.SystemTimeNow
+                });
+            }
+
+            // ✅ Gắn danh mục
+            var categoryIds = request.ServiceCategoryIds?.Split('|', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToList() ?? new();
+            foreach (var catId in categoryIds)
+            {
+                await providerCategoryRepo.InsertAsync(new ServiceProviderCategory
+                {
+                    Id = Guid.NewGuid(),
+                    ServiceProviderId = provider.Id,
+                    ServiceCategoryId = catId
+                });
+            }
+
+            // ✅ Cập nhật trạng thái
+            request.RequestStatus = "approved";
+            request.LastUpdatedBy = CurrentUserId;
+            request.LastUpdatedTime = CoreHelper.SystemTimeNow;
+            await requestRepo.UpdateAsync(request);
+            await _unitOfWork.SaveAsync();
+
+            // ✅ Gửi email xác nhận
+            await _emailService.SendEmailAsync(newUser.Email, "Tài khoản nhà cung cấp đã được tạo", $"""
+                <p>Chúc mừng {request.FullName}, yêu cầu của bạn đã được duyệt.</p>
+                <p>Bạn đã được cấp tài khoản với thông tin sau:</p>
+                <ul>
+                    <li>Email: <strong>{newUser.Email}</strong></li>
+                    <li>Mật khẩu: <strong>{randomPassword}</strong></li>
+                </ul>
+                <p>Hãy đăng nhập vào hệ thống và cập nhật hồ sơ spa của bạn.</p>
+            """);
+
+            return BaseResponseModel<string>.Success("Đã duyệt yêu cầu và cấp tài khoản mới cho Provider.");
+        }
 
 
         public async Task<BaseResponseModel<string>> RejectRequestAsync(Guid requestId, string reason)
