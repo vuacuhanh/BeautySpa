@@ -27,7 +27,7 @@ namespace BeautySpa.Services.Service
         {
             IQueryable<WorkingHour> query = _unitOfWork.GetRepository<WorkingHour>()
                 .Entities.AsNoTracking()
-                .Include(x => x.SpaBranchLocation)
+                .Include(x => x.SpaBranchLocation!)
                 .Where(x => x.DeletedTime == null)
                 .OrderByDescending(x => x.CreatedTime);
 
@@ -40,7 +40,7 @@ namespace BeautySpa.Services.Service
         public async Task<BaseResponseModel<GETWorkingHourModelViews>> GetByIdAsync(Guid id)
         {
             var entity = await _unitOfWork.GetRepository<WorkingHour>()
-                .Entities.Include(x => x.SpaBranchLocation)
+                .Entities.Include(x => x.SpaBranchLocation!)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(404, ErrorCode.NotFound, "Working hour not found.");
