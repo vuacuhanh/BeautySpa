@@ -11,43 +11,41 @@ using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http;
+using System.Security.Claims;
 
 public class PromotionService : IPromotionService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
-    private readonly IHttpContextAccessor _contextAccessor;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public PromotionService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor contextAccessor)
+    public PromotionService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
-        _contextAccessor = contextAccessor;
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
+    private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_httpContextAccessor);
 
     public async Task<BaseResponseModel<BasePaginatedList<GETPromotionModelView>>> GetAllAsync(int pageNumber, int pageSize)
     {
-        if (pageNumber <= 0 || pageSize <= 0)
-            throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
+        var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(currentUserId))
+            throw new ErrorException(StatusCodes.Status401Unauthorized, ErrorCode.UnAuthorized, "Unauthorized");
 
-        IQueryable<Promotion> query = _unitOfWork.GetRepository<Promotion>().Entities
-            .Include(p => p.Provider)
-            .Where(p => !p.DeletedTime.HasValue)
-            .OrderByDescending(p => p.CreatedTime);
+        Guid providerId = Guid.Parse(currentUserId);
 
-        var page = await query
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        IQueryable<Promotion> query = _unitOfWork.GetRepository<Promotion>()
+            .Entities
+            .AsNoTracking()
+            .Where(x => x.ProviderId == providerId && x.DeletedTime == null)
+            .OrderByDescending(x => x.CreatedTime);
 
-        var result = new BasePaginatedList<GETPromotionModelView>(
-            _mapper.Map<List<GETPromotionModelView>>(page),
-            await query.CountAsync(),
-            pageNumber,
-            pageSize
-        );
+        int totalCount = await query.CountAsync();
+        var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+        var mapped = _mapper.Map<List<GETPromotionModelView>>(items);
+        var result = new BasePaginatedList<GETPromotionModelView>(mapped, totalCount, pageNumber, pageSize);
 
         return BaseResponseModel<BasePaginatedList<GETPromotionModelView>>.Success(result);
     }
@@ -101,6 +99,10 @@ public class PromotionService : IPromotionService
         var entity = await repo.Entities.FirstOrDefaultAsync(p => p.Id == model.Id && p.DeletedTime == null);
         if (entity == null)
             throw new ErrorException(404, ErrorCode.NotFound, "Promotion not found");
+
+        var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(currentUserId) || entity.ProviderId != Guid.Parse(currentUserId))
+            throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "Access denied");
 
         _mapper.Map(model, entity);
         entity.LastUpdatedTime = CoreHelper.SystemTimeNow;

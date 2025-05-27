@@ -12,7 +12,9 @@ namespace BeautySpa.Services.Mapper
             // Mapping Entity -> GET View
             CreateMap<BeautySpa.Contract.Repositories.Entity.Service, GETServiceModelViews>()
                 .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.ServiceCategoryId))
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.ServiceCategory.CategoryName));
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.ServiceCategory.CategoryName))
+                .ForMember(dest => dest.Duration, opt => opt.MapFrom(src => src.DurationMinutes))
+                .ReverseMap();
 
             // Mapping POST View -> Entity
             CreateMap<POSTServiceModelViews, BeautySpa.Contract.Repositories.Entity.Service>()
