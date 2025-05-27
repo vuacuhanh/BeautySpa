@@ -1,7 +1,4 @@
-﻿// ========================
-// ServiceMapping.cs – Clean Mapping Configurations
-// ========================
-using AutoMapper;
+﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.ServiceModelViews;
 using BeautySpa.ModelViews.ServiceImageModelViews;
@@ -12,21 +9,27 @@ namespace BeautySpa.Services.Mapper
     {
         public ServiceMapping()
         {
-            CreateMap<BeautySpa.Contract.Repositories.Entity.Service, GETServiceModelViews>();
+            // Mapping Entity -> GET View
+            CreateMap<BeautySpa.Contract.Repositories.Entity.Service, GETServiceModelViews>()
+                .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.ServiceCategoryId))
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.ServiceCategory.CategoryName));
 
+            // Mapping POST View -> Entity
             CreateMap<POSTServiceModelViews, BeautySpa.Contract.Repositories.Entity.Service>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId)); 
+                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId));
 
+            // Mapping PUT View -> Entity
             CreateMap<PUTServiceModelViews, BeautySpa.Contract.Repositories.Entity.Service>()
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId)); 
 
+            // Mapping ServiceImage
             CreateMap<ServiceImage, GETServiceImageModelViews>();
 
             CreateMap<POSTServiceImageModelViews, ServiceImage>()
