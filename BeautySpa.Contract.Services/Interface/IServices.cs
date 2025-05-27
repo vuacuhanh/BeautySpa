@@ -13,6 +13,7 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<Guid>> CreateAsync(POSTServiceModelViews model);
         Task<BaseResponseModel<BasePaginatedList<GETServiceModelViews>>> GetAllAsync(int pageNumber, int pageSize, Guid? providerId);
         Task<BaseResponseModel<List<GETServiceModelViews>>> GetByProviderIdAsync(Guid providerId);
+        Task<BaseResponseModel<List<GETServiceModelViews>>> GetMyServicesAsync();
         Task<BaseResponseModel<GETServiceModelViews>> GetByIdAsync(Guid id);
         Task<BaseResponseModel<string>> UpdateAsync(PUTServiceModelViews model);
         Task<BaseResponseModel<string>> DeleteAsync(Guid id);

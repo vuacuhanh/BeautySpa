@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.ServiceModelViews;
 using BeautySpa.ModelViews.ServiceImageModelViews;
 
@@ -12,7 +11,9 @@ namespace BeautySpa.Services.Mapper
             // Mapping Entity -> GET View
             CreateMap<BeautySpa.Contract.Repositories.Entity.Service, GETServiceModelViews>()
                 .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.ServiceCategoryId))
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.ServiceCategory!.CategoryName));
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.ServiceCategory!.CategoryName))
+                .ForMember(dest => dest.Duration, opt => opt.MapFrom(src => src.DurationMinutes))
+                .ReverseMap();
 
             // Mapping POST View -> Entity
             CreateMap<POSTServiceModelViews, BeautySpa.Contract.Repositories.Entity.Service>()
@@ -27,7 +28,7 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId)); 
+                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId));
 
             // Mapping ServiceImage
             CreateMap<ServiceImage, GETServiceImageModelViews>();
