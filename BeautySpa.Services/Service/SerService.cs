@@ -88,6 +88,26 @@ namespace BeautySpa.Services.Service
             var result = new BasePaginatedList<GETServiceModelViews>(mappedItems, totalCount, pageNumber, pageSize);
             return BaseResponseModel<BasePaginatedList<GETServiceModelViews>>.Success(result);
         }
+        public async Task<BaseResponseModel<List<GETServiceModelViews>>> GetMyServicesAsync()
+        {
+            var currentUserId = Guid.Parse(CurrentUserId);
+
+            var provider = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.FirstOrDefaultAsync(p => p.ProviderId == currentUserId && p.DeletedTime == null);
+
+            if (provider == null)
+                throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "Bạn không phải là nhà cung cấp dịch vụ.");
+
+            var services = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
+                .Entities
+                .Include(s => s.ServiceCategory)
+                .Where(s => s.ProviderId == provider.Id && s.DeletedTime == null)
+                .OrderByDescending(s => s.CreatedTime)
+                .ToListAsync();
+
+            var result = _mapper.Map<List<GETServiceModelViews>>(services);
+            return BaseResponseModel<List<GETServiceModelViews>>.Success(result);
+        }
 
         public async Task<BaseResponseModel<List<GETServiceModelViews>>> GetByProviderIdAsync(Guid providerId)
         {
