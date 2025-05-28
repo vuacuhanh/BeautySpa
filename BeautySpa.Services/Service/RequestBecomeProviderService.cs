@@ -298,11 +298,11 @@ namespace BeautySpa.Services.Service
                 .FirstOrDefaultAsync(r => r.Id == requestId && r.RequestStatus == "pending" && r.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Request Not Found.");
 
-            // Nếu đã có UserId, thì xử lý bằng hàm approve cũ
-            if (request.UserId != Guid.Empty)
+            // Nếu đã có UserId → xử lý bằng logic cũ
+            if (request.UserId != null && request.UserId != Guid.Empty)
                 return await ApproveRequestAsync(requestId);
 
-            // ✅ Tạo tài khoản mới cho guest
+            // ✅ Tạo tài khoản mới
             var userManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<UserManager<ApplicationUsers>>();
             var roleManager = _contextAccessor.HttpContext?.RequestServices.GetRequiredService<RoleManager<ApplicationRoles>>();
 
@@ -326,12 +326,12 @@ namespace BeautySpa.Services.Service
 
             await userManager.AddToRoleAsync(newUser, "Provider");
 
-            // ✅ Gán lại UserId cho request và lưu lại
+            // Cập nhật lại UserId
             request.UserId = newUser.Id;
             await requestRepo.UpdateAsync(request);
             await _unitOfWork.SaveAsync();
 
-            // ✅ Tạo ServiceProvider mới
+            // ✅ Tạo mới ServiceProvider
             var provider = new EntityServiceProvider
             {
                 Id = Guid.NewGuid(),
@@ -377,13 +377,16 @@ namespace BeautySpa.Services.Service
                     City = province.name,
                     District = district.name,
                     PostalCode = request.PostalCode ?? "700000",
-                    CreatedBy = CurrentUserId,
                     CreatedTime = CoreHelper.SystemTimeNow
                 });
             }
 
-            // ✅ Gắn danh mục
-            var categoryIds = request.ServiceCategoryIds?.Split('|', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToList() ?? new();
+            // ✅ Gắn danh mục dịch vụ
+            var categoryIds = request.ServiceCategoryIds?
+                .Split('|', StringSplitOptions.RemoveEmptyEntries)
+                .Select(Guid.Parse)
+                .ToList() ?? new();
+
             foreach (var catId in categoryIds)
             {
                 await providerCategoryRepo.InsertAsync(new ServiceProviderCategory
@@ -396,7 +399,6 @@ namespace BeautySpa.Services.Service
 
             // ✅ Cập nhật trạng thái duyệt
             request.RequestStatus = "approved";
-            request.LastUpdatedBy = CurrentUserId;
             request.LastUpdatedTime = CoreHelper.SystemTimeNow;
             await requestRepo.UpdateAsync(request);
             await _unitOfWork.SaveAsync();
@@ -414,6 +416,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Đã duyệt yêu cầu và cấp tài khoản mới cho Provider.");
         }
+
 
 
         public async Task<BaseResponseModel<string>> RejectRequestAsync(Guid requestId, string reason)
