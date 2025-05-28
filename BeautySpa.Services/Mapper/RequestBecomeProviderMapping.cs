@@ -28,6 +28,7 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.ServiceCategoryIds, opt => opt.MapFrom(src => string.Join("|", src.ServiceCategoryIds)))
                 .ForMember(dest => dest.ProvinceId, opt => opt.MapFrom(src => src.ProvinceId))
                 .ForMember(dest => dest.DistrictId, opt => opt.MapFrom(src => src.DistrictId));
+
         }
     }
 }
