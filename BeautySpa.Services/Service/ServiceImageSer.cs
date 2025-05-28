@@ -103,7 +103,7 @@ namespace BeautySpa.Services.Service
             .GetByIdAsync(entity.ServiceProviderId)
             ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Provider not found");
 
-            if (provider.CreatedBy != CurrentUserId)
+            if (provider.ProviderId.ToString() != CurrentUserId)
                 throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "You can't delete this provider's images.");
 
             entity.DeletedTime = CoreHelper.SystemTimeNow;
