@@ -428,9 +428,6 @@ namespace BeautySpa.Services.Service
                 .FirstOrDefaultAsync(r => r.Id == requestId && r.RequestStatus == "pending" && r.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Request not found.");
 
-            var user = await userRepo.GetByIdAsync(request.UserId)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
-
             request.RequestStatus = "rejected";
             request.RejectedReason = reason;
             request.LastUpdatedBy = CurrentUserId;
@@ -439,20 +436,38 @@ namespace BeautySpa.Services.Service
             await repo.UpdateAsync(request);
             await _unitOfWork.SaveAsync();
 
-            if (!string.IsNullOrWhiteSpace(user.Email))
+            string recipientEmail = null;
+            string recipientName = null;
+
+            if (request.UserId != Guid.Empty)
+            {
+                var user = await userRepo.GetByIdAsync(request.UserId)
+                    ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+                recipientEmail = user.Email;
+                recipientName = user.UserName;
+            }
+            else if (!string.IsNullOrWhiteSpace(request.Email))
+            {
+                recipientEmail = request.Email;
+                recipientName = request.FullName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(recipientEmail))
             {
                 var subject = "Yêu cầu trở thành nhà cung cấp đã bị từ chối";
                 var body = $@"
-                <p>Xin chào <strong>{user.UserName}</strong>,</p>
-                <p>Chúng tôi rất tiếc phải thông báo rằng yêu cầu trở thành nhà cung cấp của bạn đã bị <strong>từ chối</strong>.</p>
-                <p><strong>Lý do:</strong> {reason}</p>
-                <p>Nếu bạn có thắc mắc, vui lòng liên hệ với bộ phận hỗ trợ của chúng tôi.</p>
-                <p>Trân trọng,<br/>Đội ngũ ZENORA</p>";
+                    <p>Xin chào <strong>{recipientName}</strong>,</p>
+                    <p>Chúng tôi rất tiếc phải thông báo rằng yêu cầu trở thành nhà cung cấp của bạn đã bị <strong>từ chối</strong>.</p>
+                    <p><strong>Lý do:</strong> {reason}</p>
+                    <p>Nếu bạn có thắc mắc, vui lòng liên hệ với bộ phận hỗ trợ của chúng tôi.</p>
+                    <p>Trân trọng,<br/>Đội ngũ ZENORA</p>";
 
-                await _emailService.SendEmailAsync(user.Email, subject, body);
+                await _emailService.SendEmailAsync(recipientEmail, subject, body);
             }
 
             return BaseResponseModel<string>.Success("Request rejected and email sent.");
         }
+
     }
 }
