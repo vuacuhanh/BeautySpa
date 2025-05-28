@@ -282,26 +282,27 @@ namespace BeautySpa.Services.Service
             if (id == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id.");
 
-            var user = await _userManager.FindByIdAsync(id.ToString())
-                       ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+            // Dùng _userManager.Users để query đầy đủ
+            var user = await _userManager.Users
+                .Include(u => u.UserInfor)
+                .FirstOrDefaultAsync(u => u.Id == id && u.DeletedTime == null);
 
-            user.DeletedTime = DateTimeOffset.UtcNow;
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found or already deleted.");
+
+            user.DeletedTime = CoreHelper.SystemTimeNow;
             user.Status = "inactive";
             user.DeletedBy = CurrentUserId;
 
-            var userInforRepo = _unitOfWork.GetRepository<UserInfor>();
-            var userInfor = await userInforRepo.Entities.FirstOrDefaultAsync(u => u.UserId == id);
-
-            if (userInfor != null)
+            if (user.UserInfor != null)
             {
-                userInfor.DeletedTime = DateTimeOffset.UtcNow;
-                userInfor.DeletedBy = CurrentUserId;
-                await userInforRepo.UpdateAsync(userInfor);
+                user.UserInfor.DeletedTime = CoreHelper.SystemTimeNow;
+                user.UserInfor.DeletedBy = CurrentUserId;
             }
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
-                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.BadRequest, "Failed to delete user.");
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to delete user.");
 
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("User deleted successfully.");
