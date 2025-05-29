@@ -4,8 +4,8 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class ServicePromotion : BaseEntity
     {
-        public DateTimeOffset StartDate { get; set; }
-        public DateTimeOffset EndDate { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
         public int Quantity { get; set; } = 0;  
 
         public Guid ServiceId { get; set; }
