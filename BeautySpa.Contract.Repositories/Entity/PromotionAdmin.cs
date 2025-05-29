@@ -9,8 +9,8 @@ namespace BeautySpa.Contract.Repositories.Entity
         public decimal? DiscountPercent { get; set; }
         public decimal? DiscountAmount { get; set; }
         public int Quantity { get; set; } = 0;
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
         public bool IsActive { get; set; } = true;
 
         public virtual ICollection<PromotionAdminRank> PromotionAdminRanks { get; set; } = new List<PromotionAdminRank>();
