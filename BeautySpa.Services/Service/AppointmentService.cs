@@ -54,12 +54,13 @@ namespace BeautySpa.Services.Service
             var providerId = firstService.ProviderId;
             int dayOfWeek = (int)model.AppointmentDate.DayOfWeek;
             var workingHour = await _unitOfWork.GetRepository<WorkingHour>()
-                .Entities.FirstOrDefaultAsync(x =>
-                    x.ServiceProviderId == providerId &&
-                    x.DayOfWeek == dayOfWeek &&
-                    x.IsWorking &&
-                    x.OpeningTime <= model.StartTime &&
-                    x.ClosingTime >= model.StartTime);
+            .Entities.FirstOrDefaultAsync(x =>
+                x.SpaBranchLocationId == model.SpaBranchLocationId &&
+                x.DayOfWeek == dayOfWeek &&
+                x.IsWorking &&
+                x.OpeningTime <= model.StartTime &&
+                x.ClosingTime >= model.StartTime);
+
             if (workingHour == null)
                 throw new ErrorException(400, ErrorCode.Failed, "Outside of working hours.");
 

@@ -5,10 +5,10 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface IWorkingHourService
     {
-        Task<BasePaginatedList<GETWorkingHourModelViews>> GetAllAsync(int pageNumber, int pageSize);
-        Task<GETWorkingHourModelViews> GetByIdAsync(Guid id);
-        Task<Guid> CreateAsync(POSTWorkingHourModelViews model);
-        Task UpdateAsync(PUTWorkingHourModelViews model);
-        Task DeleteAsync(Guid id);
+        Task<BaseResponseModel<BasePaginatedList<GETWorkingHourModelViews>>> GetAllAsync(int pageNumber, int pageSize);
+        Task<BaseResponseModel<GETWorkingHourModelViews>> GetByIdAsync(Guid id);
+        Task<BaseResponseModel<Guid>> CreateAsync(POSTWorkingHourModelViews model);
+        Task<BaseResponseModel<string>> UpdateAsync(PUTWorkingHourModelViews model);
+        Task<BaseResponseModel<string>> DeleteAsync(Guid id);
     }
 }

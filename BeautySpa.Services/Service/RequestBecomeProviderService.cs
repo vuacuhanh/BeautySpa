@@ -232,19 +232,19 @@ namespace BeautySpa.Services.Service
                 });
             }
 
-            // ✅ Giờ làm việc mặc định
-            if (request.OpenTime.HasValue && request.CloseTime.HasValue)
-            {
-                await workingHourRepo.InsertAsync(new WorkingHour
+                // ✅ Giờ làm việc mặc định
+                if (request.OpenTime.HasValue && request.CloseTime.HasValue)
                 {
-                    Id = Guid.NewGuid(),
-                    ServiceProviderId = provider.Id,
-                    DayOfWeek = 1,
-                    OpeningTime = request.OpenTime.Value,
-                    ClosingTime = request.CloseTime.Value,
-                    IsWorking = true
-                });
-            }
+                    await workingHourRepo.InsertAsync(new WorkingHour
+                    {
+                        Id = Guid.NewGuid(),
+                        ServiceProviderId = provider.Id,
+                        DayOfWeek = 1,
+                        OpeningTime = request.OpenTime.Value,
+                        ClosingTime = request.CloseTime.Value,
+                        IsWorking = true
+                    });
+                }
 
             // ✅ Ảnh mô tả
             var descImages = request.DescriptionImages?.Split('|', StringSplitOptions.RemoveEmptyEntries);

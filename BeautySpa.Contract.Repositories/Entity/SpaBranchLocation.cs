@@ -20,5 +20,6 @@ namespace BeautySpa.Contract.Repositories.Entity
         public string DistrictName { get; set; } = string.Empty;
 
         public virtual ServiceProvider? Provider { get; set; }
+        public virtual ICollection<WorkingHour>? WorkingHours { get; set; }
     }
 }

@@ -1,80 +1,90 @@
 ﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
+using BeautySpa.Core.Infrastructure;
+using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.WorkingHourModelViews;
-using BeautySpa.Repositories.Context;
+using BeautySpa.Services.Validations.WorkingHourValidator;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeautySpa.Services.Service
 {
     public class WorkingHourService : IWorkingHourService
     {
-        private readonly DatabaseContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
-        public WorkingHourService(DatabaseContext context, IMapper mapper)
+        public WorkingHourService(IUnitOfWork unitOfWork, IMapper mapper)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
 
-        public async Task<BasePaginatedList<GETWorkingHourModelViews>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<BaseResponseModel<BasePaginatedList<GETWorkingHourModelViews>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _context.WorkingHours
-                .AsNoTracking()
-                .Where(w => w.DeletedTime == null)
-                .OrderBy(w => w.DayOfWeek);
+            IQueryable<WorkingHour> query = _unitOfWork.GetRepository<WorkingHour>()
+                .Entities.AsNoTracking()
+                .Include(x => x.SpaBranchLocation!)
+                .Where(x => x.DeletedTime == null)
+                .OrderByDescending(x => x.CreatedTime);
 
-            var totalCount = await query.CountAsync();
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-            var result = _mapper.Map<IReadOnlyCollection<GETWorkingHourModelViews>>(items);
+            var result = await _unitOfWork.GetRepository<WorkingHour>().GetPagging(query, pageNumber, pageSize);
+            var data = result.Items.Select(x => _mapper.Map<GETWorkingHourModelViews>(x)).ToList();
 
-            return new BasePaginatedList<GETWorkingHourModelViews>(result, totalCount, pageNumber, pageSize);
+            return BaseResponseModel<BasePaginatedList<GETWorkingHourModelViews>>.Success(new BasePaginatedList<GETWorkingHourModelViews>(data, result.TotalItems, pageNumber, pageSize));
         }
 
-        public async Task<GETWorkingHourModelViews> GetByIdAsync(Guid id)
+        public async Task<BaseResponseModel<GETWorkingHourModelViews>> GetByIdAsync(Guid id)
         {
-            var entity = await _context.WorkingHours
+            var entity = await _unitOfWork.GetRepository<WorkingHour>()
+                .Entities.Include(x => x.SpaBranchLocation!)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(w => w.Id == id && w.DeletedTime == null);
+                .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Working hour not found.");
 
-            if (entity == null) throw new Exception("Working hour not found");
-            return _mapper.Map<GETWorkingHourModelViews>(entity);
+            return BaseResponseModel<GETWorkingHourModelViews>.Success(_mapper.Map<GETWorkingHourModelViews>(entity));
         }
 
-        public async Task<Guid> CreateAsync(POSTWorkingHourModelViews model)
+        public async Task<BaseResponseModel<Guid>> CreateAsync(POSTWorkingHourModelViews model)
         {
+            await new POSTWorkingHourModelValidator().ValidateAndThrowAsync(model);
+
             var entity = _mapper.Map<WorkingHour>(model);
             entity.Id = Guid.NewGuid();
-            entity.CreatedTime = DateTimeOffset.UtcNow;
+            entity.CreatedTime = CoreHelper.SystemTimeNow;
 
-            _context.WorkingHours.Add(entity);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.GetRepository<WorkingHour>().InsertAsync(entity);
+            await _unitOfWork.SaveAsync();
 
-            return entity.Id;
+            return BaseResponseModel<Guid>.Success(entity.Id);
         }
 
-        public async Task UpdateAsync(PUTWorkingHourModelViews model)
+        public async Task<BaseResponseModel<string>> UpdateAsync(PUTWorkingHourModelViews model)
         {
-            var entity = await _context.WorkingHours.FirstOrDefaultAsync(w => w.Id == model.Id && w.DeletedTime == null);
-            if (entity == null) throw new Exception("Working hour not found");
+            await new PUTWorkingHourModelValidator().ValidateAndThrowAsync(model);
+
+            var entity = await _unitOfWork.GetRepository<WorkingHour>().GetByIdAsync(model.Id)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Working hour not found.");
 
             _mapper.Map(model, entity);
-            entity.LastUpdatedTime = DateTimeOffset.UtcNow;
+            entity.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-            _context.WorkingHours.Update(entity);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("Updated successfully.");
         }
 
-        public async Task DeleteAsync(Guid id)
+        public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
-            var entity = await _context.WorkingHours.FirstOrDefaultAsync(w => w.Id == id && w.DeletedTime == null);
-            if (entity == null) throw new Exception("Working hour not found");
+            var entity = await _unitOfWork.GetRepository<WorkingHour>().GetByIdAsync(id)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Working hour not found.");
 
-            entity.DeletedTime = DateTimeOffset.UtcNow;
-            _context.WorkingHours.Update(entity);
-            await _context.SaveChangesAsync();
+            entity.DeletedTime = CoreHelper.SystemTimeNow;
+            await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<string>.Success("Deleted successfully.");
         }
     }
 }

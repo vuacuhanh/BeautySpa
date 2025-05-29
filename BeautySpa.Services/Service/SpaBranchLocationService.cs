@@ -94,8 +94,10 @@ namespace BeautySpa.Services.Service
             if (pageNumber <= 0 || pageSize <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
             IQueryable<SpaBranchLocation> query = _unitOfWork.GetRepository<SpaBranchLocation>()
-                .Entities.AsNoTracking()
+                .Entities
+                .Include(x => x.WorkingHours)
                 .Where(x => x.DeletedTime == null)
+                .AsNoTracking()
                 .OrderByDescending(x => x.CreatedTime);
 
             BasePaginatedList<SpaBranchLocation> paged = await _unitOfWork.GetRepository<SpaBranchLocation>().GetPagging(query, pageNumber, pageSize);

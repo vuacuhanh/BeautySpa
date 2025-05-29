@@ -1,5 +1,4 @@
 ﻿using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.WorkingHourModelViews;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -8,7 +7,7 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Giờ làm việc của Provider")]
+    [SwaggerTag("Quản lý giờ làm việc của chi nhánh spa")]
     public class WorkingHourController : ControllerBase
     {
         private readonly IWorkingHourService _service;
@@ -18,44 +17,39 @@ namespace BeautySpa.API.Controllers
             _service = service;
         }
 
-        [HttpPost]
-        [SwaggerOperation(Summary = "Tạo giờ làm việc")]
-        public async Task<IActionResult> Create([FromBody] POSTWorkingHourModelViews model)
+        [HttpGet]
+        [SwaggerOperation(Summary = "Lấy danh sách giờ làm việc (có phân trang)")]
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
-            var id = await _service.CreateAsync(model);
-            return Ok(new BaseResponseModel<Guid>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, id));
-        }
-
-        [HttpGet("all")]
-        [SwaggerOperation(Summary = "Danh sách giờ làm việc (phân trang)")]
-        public async Task<IActionResult> GetAll(int pageNumber, int pageSize)
-        {
-            var result = await _service.GetAllAsync(pageNumber, pageSize);
-            return Ok(new BaseResponseModel<BasePaginatedList<GETWorkingHourModelViews>>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, result));
+            return Ok(await _service.GetAllAsync(pageNumber, pageSize));
         }
 
         [HttpGet("{id}")]
-        [SwaggerOperation(Summary = "Lấy giờ làm việc theo ID")]
+        [SwaggerOperation(Summary = "Lấy chi tiết giờ làm việc theo ID")]
         public async Task<IActionResult> GetById(Guid id)
         {
-            var result = await _service.GetByIdAsync(id);
-            return Ok(new BaseResponseModel<GETWorkingHourModelViews>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, result));
+            return Ok(await _service.GetByIdAsync(id));
+        }
+
+        [HttpPost]
+        [SwaggerOperation(Summary = "Tạo giờ làm việc mới cho chi nhánh")]
+        public async Task<IActionResult> Create([FromBody] POSTWorkingHourModelViews model)
+        {
+            return Ok(await _service.CreateAsync(model));
         }
 
         [HttpPut]
-        [SwaggerOperation(Summary = "Cập nhật giờ làm việc")]
+        [SwaggerOperation(Summary = "Cập nhật giờ làm việc của chi nhánh")]
         public async Task<IActionResult> Update([FromBody] PUTWorkingHourModelViews model)
         {
-            await _service.UpdateAsync(model);
-            return Ok(new BaseResponseModel<string>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, "Update successful"));
+            return Ok(await _service.UpdateAsync(model));
         }
 
         [HttpDelete("{id}")]
-        [SwaggerOperation(Summary = "Xoá giờ làm việc (soft delete)")]
+        [SwaggerOperation(Summary = "Xóa giờ làm việc")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            await _service.DeleteAsync(id);
-            return Ok(new BaseResponseModel<string>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, "Delete successful"));
+            return Ok(await _service.DeleteAsync(id));
         }
     }
 }

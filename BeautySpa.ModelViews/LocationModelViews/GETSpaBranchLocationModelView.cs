@@ -1,4 +1,6 @@
-﻿namespace BeautySpa.ModelViews.LocationModelViews
+﻿using BeautySpa.ModelViews.WorkingHourModelViews;
+
+namespace BeautySpa.ModelViews.LocationModelViews
 {
     public class GETSpaBranchLocationModelView
     {
@@ -13,5 +15,6 @@
         public string? DistrictId { get; set; }
         public string ProvinceName { get; set; } = string.Empty;
         public string DistrictName { get; set; } = string.Empty;
+        public List<GETWorkingHourModelViews>? WorkingHours { get; set; }
     }
 }   
