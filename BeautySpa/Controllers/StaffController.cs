@@ -8,7 +8,7 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [SwaggerTag("Nhân viên bên nhà đăng ký dịch vụ")]
+    [SwaggerTag("Quản lý nhân viên của nhà cung cấp dịch vụ")]
     public class StaffController : ControllerBase
     {
         private readonly IStaff _staffService;
@@ -18,44 +18,52 @@ namespace BeautySpa.API.Controllers
             _staffService = staffService;
         }
 
-        [HttpPost("create")]
+        [HttpGet("get-all")]
+        [SwaggerOperation(Summary = "Lấy danh sách nhân viên (provider hiện tại)")]
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            var result = await _staffService.GetAllAsync(pageNumber, pageSize);
+            return Ok(result);
+        }
+
+        [HttpGet("{id}")]
+        [SwaggerOperation(Summary = "Lấy thông tin nhân viên theo ID")]
+        public async Task<IActionResult> GetById(Guid id)
+        {
+            var result = await _staffService.GetByIdAsync(id);
+            return Ok(result);
+        }
+
+        [HttpPost]
         [SwaggerOperation(Summary = "Tạo mới nhân viên")]
         public async Task<IActionResult> Create([FromBody] POSTStaffModelView model)
         {
             var result = await _staffService.CreateAsync(model);
-            return StatusCode(result.StatusCode, result);
+            return Ok(result);
         }
 
-        [HttpPut("update")]
+        [HttpPut]
         [SwaggerOperation(Summary = "Cập nhật thông tin nhân viên")]
         public async Task<IActionResult> Update([FromBody] PUTStaffModelView model)
         {
             var result = await _staffService.UpdateAsync(model);
-            return StatusCode(result.StatusCode, result);
+            return Ok(result);
         }
 
-        [HttpDelete("{id:guid}")]
-        [SwaggerOperation(Summary = "Xóa mềm nhân viên theo ID")]
-        public async Task<IActionResult> Delete([FromRoute] Guid id)
+        [HttpDelete("{id}")]
+        [SwaggerOperation(Summary = "Xoá nhân viên (soft delete)")]
+        public async Task<IActionResult> Delete(Guid id)
         {
             var result = await _staffService.DeleteAsync(id);
-            return StatusCode(result.StatusCode, result);
+            return Ok(result);
+        }
+        [HttpDelete("permanent/{id}")]
+        [SwaggerOperation(Summary = "Xoá cứng nhân viên khỏi hệ thống")]
+        public async Task<IActionResult> DeletePermanent(Guid id)
+        {
+            var result = await _staffService.DeleteHardAsync(id);
+            return Ok(result);
         }
 
-        [HttpGet("{id:guid}")]
-        [SwaggerOperation(Summary = "Lấy thông tin nhân viên theo ID")]
-        public async Task<IActionResult> GetById([FromRoute] Guid id)
-        {
-            var result = await _staffService.GetByIdAsync(id);
-            return StatusCode(result.StatusCode, result);
-        }
-
-        [HttpGet("get-all")]
-        [SwaggerOperation(Summary = "Lấy danh sách nhân viên (phân trang)")]
-        public async Task<IActionResult> GetAll([FromQuery] int page, [FromQuery] int size, [FromQuery] Guid? providerId = null)
-        {
-            var result = await _staffService.GetAllAsync(page, size, providerId);
-            return StatusCode(result.StatusCode, result);
-        }
     }
 }

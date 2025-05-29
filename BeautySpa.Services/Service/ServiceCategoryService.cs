@@ -127,5 +127,57 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Category deleted successfully.");
         }
+        public async Task<BaseResponseModel<string>> DeleteHardAsync(Guid id)
+        {
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                var categoryRepo = _unitOfWork.GetRepository<ServiceCategory>();
+                var serviceRepo = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>();
+                var spcRepo = _unitOfWork.GetRepository<ServiceProviderCategory>();
+                var promotionRepo = _unitOfWork.GetRepository<ServicePromotion>();
+
+                var category = await categoryRepo.GetByIdAsync(id);
+                if (category == null)
+                    throw new ErrorException(404, ErrorCode.NotFound, "Category not found");
+
+                // Xóa các service liên quan
+                var services = await serviceRepo.Entities.Where(s => s.ServiceCategoryId == id).ToListAsync();
+                foreach (var service in services)
+                {
+                    // Xóa các ServicePromotion liên quan đến service
+                    var promotions = await promotionRepo.Entities
+                        .Where(p => p.ServiceId == service.Id).ToListAsync();
+                    foreach (var promo in promotions)
+                    {
+                        await promotionRepo.DeleteAsync(promo.Id);
+                    }
+
+                    // Xóa service
+                    await serviceRepo.DeleteAsync(service.Id);
+                }
+
+                // Xóa liên kết category với provider
+                var links = await spcRepo.Entities.Where(x => x.ServiceCategoryId == id).ToListAsync();
+                foreach (var link in links)
+                {
+                    await spcRepo.DeleteAsync(link.Id);
+                }
+
+                // Xoá category
+                await categoryRepo.DeleteAsync(id);
+
+                await _unitOfWork.SaveAsync();
+                await transaction.CommitAsync();
+
+                return BaseResponseModel<string>.Success("Service category permanently deleted.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw new ErrorException(500, ErrorCode.InternalServerError, "Failed to hard delete category.");
+            }
+        }
     }
 }

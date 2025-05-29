@@ -7,6 +7,7 @@ using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.StaffModelViews;
 using BeautySpa.Services.Validations.StaffValidator;
+using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,15 +28,27 @@ namespace BeautySpa.Services.Service
             _contextAccessor = contextAccessor;
         }
 
+        private async Task<Guid> GetProviderIdAsync()
+        {
+            var userId = Guid.Parse(CurrentUserId); // CHUYỂN string => Guid
+
+            var provider = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.FirstOrDefaultAsync(x => x.ProviderId == userId && x.DeletedTime == null);
+
+            return provider?.Id ?? throw new ErrorException(
+                StatusCodes.Status403Forbidden,
+                ErrorCode.UnAuthenticated,
+                "Provider not found for current user."
+            );
+        }
+
         public async Task<BaseResponseModel<Guid>> CreateAsync(POSTStaffModelView model)
         {
-            var validator = new POSTStaffModelViewValidator();
-            var result = await validator.ValidateAsync(model);
-            if (!result.IsValid)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, string.Join("; ", result.Errors.Select(e => e.ErrorMessage)));
+            await new POSTStaffModelViewValidator().ValidateAndThrowAsync(model);
 
             var staff = _mapper.Map<Staff>(model);
             staff.Id = Guid.NewGuid();
+            staff.ProviderId = await GetProviderIdAsync();
             staff.CreatedBy = CurrentUserId;
             staff.CreatedTime = CoreHelper.SystemTimeNow;
 
@@ -47,15 +60,14 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<string>> UpdateAsync(PUTStaffModelView model)
         {
-            var validator = new PUTStaffModelViewValidator();
-            var result = await validator.ValidateAsync(model);
-            if (!result.IsValid)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, string.Join("; ", result.Errors.Select(e => e.ErrorMessage)));
+            await new PUTStaffModelViewValidator().ValidateAndThrowAsync(model);
 
+            var providerId = await GetProviderIdAsync();
             var repo = _unitOfWork.GetRepository<Staff>();
-            var staff = await repo.Entities.FirstOrDefaultAsync(s => s.Id == model.Id && s.DeletedTime == null);
-            if (staff == null)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
+
+            var staff = await repo.Entities
+                .FirstOrDefaultAsync(s => s.Id == model.Id && s.ProviderId == providerId && s.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
 
             _mapper.Map(model, staff);
             staff.LastUpdatedBy = CurrentUserId;
@@ -69,10 +81,12 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
+            var providerId = await GetProviderIdAsync();
             var repo = _unitOfWork.GetRepository<Staff>();
-            var staff = await repo.Entities.FirstOrDefaultAsync(s => s.Id == id && s.DeletedTime == null);
-            if (staff == null)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
+
+            var staff = await repo.Entities
+                .FirstOrDefaultAsync(s => s.Id == id && s.ProviderId == providerId && s.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
 
             staff.DeletedTime = CoreHelper.SystemTimeNow;
             staff.DeletedBy = CurrentUserId;
@@ -85,38 +99,50 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<GETStaffModelView>> GetByIdAsync(Guid id)
         {
-            IQueryable<Staff> query = _unitOfWork.GetRepository<Staff>()
-                .Entities
-                .AsNoTracking();
+            var providerId = await GetProviderIdAsync();
 
-            var staff = await query.FirstOrDefaultAsync(s => s.Id == id && s.DeletedTime == null);
-            if (staff == null)
-                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
+            var staff = await _unitOfWork.GetRepository<Staff>()
+                .Entities.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == id && s.ProviderId == providerId && s.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
 
             return BaseResponseModel<GETStaffModelView>.Success(_mapper.Map<GETStaffModelView>(staff));
         }
 
-        public async Task<BaseResponseModel<BasePaginatedList<GETStaffModelView>>> GetAllAsync(int page, int size, Guid? providerId)
+        public async Task<BaseResponseModel<BasePaginatedList<GETStaffModelView>>> GetAllAsync(int page, int size)
         {
             if (page <= 0 || size <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid pagination.");
 
-            IQueryable<Staff> query = _unitOfWork.GetRepository<Staff>()
-                .Entities
+            var providerId = await GetProviderIdAsync();
+
+            var query = _unitOfWork.GetRepository<Staff>().Entities
                 .AsNoTracking()
-                .Where(s => s.DeletedTime == null && (!providerId.HasValue || s.ProviderId == providerId))
+                .Where(s => s.ProviderId == providerId && s.DeletedTime == null)
                 .OrderByDescending(s => s.CreatedTime);
 
             var totalCount = await query.CountAsync();
-            var pagedStaff = await query.Skip((page - 1) * size).Take(size).ToListAsync();
-            var result = new BasePaginatedList<GETStaffModelView>(
-                _mapper.Map<List<GETStaffModelView>>(pagedStaff),
-                totalCount,
-                page,
-                size
-            );
+            var items = await query.Skip((page - 1) * size).Take(size).ToListAsync();
 
+            var result = new BasePaginatedList<GETStaffModelView>(_mapper.Map<List<GETStaffModelView>>(items), totalCount, page, size);
             return BaseResponseModel<BasePaginatedList<GETStaffModelView>>.Success(result);
         }
+
+        public async Task<BaseResponseModel<string>> DeleteHardAsync(Guid id)
+        {
+            var providerId = await GetProviderIdAsync();
+            var repo = _unitOfWork.GetRepository<Staff>();
+
+            var staff = await repo.Entities
+                .FirstOrDefaultAsync(s => s.Id == id && s.ProviderId == providerId)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
+
+            await repo.DeleteAsync(staff.Id); // Gọi xóa cứng
+            await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<string>.Success("Staff permanently deleted.");
+        }
+
     }
+
 }

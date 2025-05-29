@@ -12,7 +12,6 @@ namespace BeautySpa.Services.Validations.StaffValidator
     {
         public POSTStaffModelViewValidator()
         {
-            RuleFor(x => x.StaffUserId).NotEmpty();
             RuleFor(x => x.StaffRole).NotEmpty().MaximumLength(50);
         }
     }

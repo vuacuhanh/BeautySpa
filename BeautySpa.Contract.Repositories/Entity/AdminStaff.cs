@@ -3,8 +3,8 @@ using BeautySpa.Core.Base;
 
 public class AdminStaff : BaseEntity
 {
-    public string StaffRole { get; set; } = "Support"; // Support, Manager, Approver
-    public string Permissions { get; set; } = ""; // Ví dụ: ["ManageUsers","ManageRequests","ManageReports"]
+    public string StaffRole { get; set; } = "Support"; 
+    public string Permissions { get; set; } = ""; 
 
     public bool IsActive { get; set; } = true;
 
