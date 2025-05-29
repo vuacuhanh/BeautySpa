@@ -50,7 +50,6 @@ namespace BeautySpa.Services.Service
             staff.CreatedBy = CurrentUserId;
             staff.CreatedTime = CoreHelper.SystemTimeNow;
 
-            // Gán danh mục dịch vụ
             staff.StaffServiceCategories = model.ServiceCategoryIds.Select(id => new StaffServiceCategory
             {
                 StaffId = staff.Id,
@@ -79,17 +78,21 @@ namespace BeautySpa.Services.Service
             staff.LastUpdatedBy = CurrentUserId;
             staff.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-            // Cập nhật lại ServiceCategory
             var linkRepo = _unitOfWork.GetRepository<StaffServiceCategory>();
             var oldLinks = await linkRepo.Entities.Where(x => x.StaffId == model.Id).ToListAsync();
             foreach (var link in oldLinks)
-                await linkRepo.DeleteAsync(link);
-
-            staff.StaffServiceCategories = model.ServiceCategoryIds.Select(id => new StaffServiceCategory
             {
-                StaffId = model.Id,
-                ServiceCategoryId = id
-            }).ToList();
+                await linkRepo.DeleteAsync(new object[] { link.StaffId, link.ServiceCategoryId });
+            }
+
+            foreach (var id in model.ServiceCategoryIds)
+            {
+                await linkRepo.InsertAsync(new StaffServiceCategory
+                {
+                    StaffId = model.Id,
+                    ServiceCategoryId = id
+                });
+            }
 
             await repo.UpdateAsync(staff);
             await _unitOfWork.SaveAsync();
@@ -158,6 +161,13 @@ namespace BeautySpa.Services.Service
             var staff = await repo.Entities
                 .FirstOrDefaultAsync(s => s.Id == id && s.ProviderId == providerId)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
+
+            var linkRepo = _unitOfWork.GetRepository<StaffServiceCategory>();
+            var links = await linkRepo.Entities.Where(x => x.StaffId == id).ToListAsync();
+            foreach (var link in links)
+            {
+                await linkRepo.DeleteAsync(new object[] { link.StaffId, link.ServiceCategoryId });
+            }
 
             await repo.DeleteAsync(staff.Id);
             await _unitOfWork.SaveAsync();
