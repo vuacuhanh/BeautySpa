@@ -3,7 +3,7 @@
     public class QueryVnPayModel
     {
         public string TransactionId { get; set; } = string.Empty;
-        public DateTime TransactionDate { get; set; } // VNPAY yêu cầu yyyyMMddHHmmss
+        public DateTimeOffset TransactionDate { get; set; } // VNPAY yêu cầu yyyyMMddHHmmss
     }
 
     public class QueryMoMoModel

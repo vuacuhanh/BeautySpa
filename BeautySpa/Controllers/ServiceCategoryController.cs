@@ -53,12 +53,12 @@ namespace BeautySpa.API.Controllers
             return Ok(await _categoryService.DeleteAsync(id));
         }
 
-        [HttpDelete("hard-delete/{id:guid}")]
-        //[Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Xóa cứng danh mục dịch vụ và tất cả liên quan")]
-        public async Task<IActionResult> DeleteHard([FromRoute] Guid id)
-        {
-            return Ok(await _categoryService.DeleteHardAsync(id));
-        }
+        //[HttpDelete("hard-delete/{id:guid}")]
+        ////[Authorize(Roles = "Admin")]
+        //[SwaggerOperation(Summary = "Xóa cứng danh mục dịch vụ và tất cả liên quan")]
+        //public async Task<IActionResult> DeleteHard([FromRoute] Guid id)
+        //{
+        //    return Ok(await _categoryService.DeleteHardAsync(id));
+        //}
     }
 }
