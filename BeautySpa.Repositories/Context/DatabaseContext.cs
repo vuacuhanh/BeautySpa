@@ -106,11 +106,6 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(s => s.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<Staff>()
-                .HasOne(s => s.StaffUser)
-                .WithMany()
-                .HasForeignKey(s => s.StaffUserId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             // AdminStaff
             builder.Entity<AdminStaff>()

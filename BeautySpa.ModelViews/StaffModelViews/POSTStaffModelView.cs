@@ -8,9 +8,14 @@ namespace BeautySpa.ModelViews.StaffModelViews
 {
     public class POSTStaffModelView
     {
-        public Guid? ProviderId { get; set; } // null nếu là beautyspa staff
-        public Guid StaffUserId { get; set; }
-        public string StaffRole { get; set; } = "Staff";
-        public List<string> Permissions { get; set; } = new(); // Convert về JSON khi lưu
+        public string FullName { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string? Email { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string? Gender { get; set; }
+        public int? YearsOfExperience { get; set; }
+
+        public string StaffRole { get; set; } = "Nhân viên";
+        public List<string> Permissions { get; set; } = new();
     }
 }
