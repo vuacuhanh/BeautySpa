@@ -57,13 +57,6 @@ namespace BeautySpa.API.Controllers
             var result = await _staffService.DeleteAsync(id);
             return Ok(result);
         }
-        [HttpDelete("permanent/{id}")]
-        [SwaggerOperation(Summary = "Xoá cứng nhân viên khỏi hệ thống")]
-        public async Task<IActionResult> DeletePermanent(Guid id)
-        {
-            var result = await _staffService.DeleteHardAsync(id);
-            return Ok(result);
-        }
 
     }
 }
