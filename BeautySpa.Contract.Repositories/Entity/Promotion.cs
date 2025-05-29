@@ -1,4 +1,5 @@
 ﻿using BeautySpa.Core.Base;
+using System;
 
 namespace BeautySpa.Contract.Repositories.Entity
 {
