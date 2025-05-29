@@ -14,8 +14,6 @@ namespace BeautySpa.ModelViews.StaffModelViews
         public string? AvatarUrl { get; set; }
         public string? Gender { get; set; }
         public int? YearsOfExperience { get; set; }
-
-        public string StaffRole { get; set; } = "Nhân viên";
-        public List<string> Permissions { get; set; } = new();
+        public List<Guid> ServiceCategoryIds { get; set; } = new();
     }
 }

@@ -42,7 +42,7 @@ namespace BeautySpa.Repositories.Context
         public DbSet<ServiceProviderCategory> ServiceProviderCategories => Set<ServiceProviderCategory>();
         public DbSet<DepositPolicy> DepositPolicys => Set<DepositPolicy>();
         public DbSet<ProviderFeePolicy> ProviderFeePolicys => Set<ProviderFeePolicy>();
-
+        public DbSet<StaffServiceCategory> staffServiceCategories => Set<StaffServiceCategory>();
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -180,6 +180,19 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(spc => spc.ServiceCategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // StaffServiceCategory
+            builder.Entity<StaffServiceCategory>()
+            .HasKey(sc => new { sc.StaffId, sc.ServiceCategoryId });
+
+            builder.Entity<StaffServiceCategory>()
+                .HasOne(sc => sc.Staff)
+                .WithMany(s => s.StaffServiceCategories)
+                .HasForeignKey(sc => sc.StaffId);
+
+            builder.Entity<StaffServiceCategory>()
+                .HasOne(sc => sc.ServiceCategory)
+                .WithMany()
+                .HasForeignKey(sc => sc.ServiceCategoryId);
 
             // Precision configs
             builder.Entity<Payment>().Property(p => p.Amount).HasPrecision(10, 2);

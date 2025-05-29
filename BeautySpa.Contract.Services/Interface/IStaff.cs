@@ -10,6 +10,5 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<Guid>> CreateAsync(POSTStaffModelView model);
         Task<BaseResponseModel<string>> UpdateAsync(PUTStaffModelView model);
         Task<BaseResponseModel<string>> DeleteAsync(Guid id);        
-        Task<BaseResponseModel<string>> DeleteHardAsync(Guid id); 
     }
 }
