@@ -17,5 +17,6 @@ namespace BeautySpa.ModelViews.StaffModelViews
         public string? Gender { get; set; }
         public int? YearsOfExperience { get; set; }
         public List<Guid> ServiceCategoryIds { get; set; } = new();
+        public List<string> ServiceCategoryNames { get; set; } = new();
     }
 }

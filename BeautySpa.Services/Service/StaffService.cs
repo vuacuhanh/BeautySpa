@@ -10,7 +10,6 @@ using BeautySpa.Services.Validations.StaffValidator;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 
 namespace BeautySpa.Services.Service
 {
@@ -38,39 +37,25 @@ namespace BeautySpa.Services.Service
             return provider?.Id ?? throw new ErrorException(
                 StatusCodes.Status403Forbidden,
                 ErrorCode.UnAuthenticated,
-                "Provider not found for current user."
-            );
+                "Provider not found for current user.");
         }
 
         public async Task<BaseResponseModel<Guid>> CreateAsync(POSTStaffModelView model)
         {
             await new POSTStaffModelViewValidator().ValidateAndThrowAsync(model);
 
-            var providerId = await GetProviderIdAsync();
-
-            // Kiểm tra các ServiceCategory có thuộc provider không
-            var validCategories = await ValidateServiceCategories(model.ServiceCategoryIds, providerId);
-            if (validCategories.Count != model.ServiceCategoryIds.Count)
-            {
-                throw new ErrorException(
-                    StatusCodes.Status400BadRequest,
-                    ErrorCode.InvalidInput,
-                    "Some service categories are invalid or not belong to your provider");
-            }
-
             var staff = _mapper.Map<Staff>(model);
             staff.Id = Guid.NewGuid();
-            staff.ProviderId = providerId;
+            staff.ProviderId = await GetProviderIdAsync();
             staff.CreatedBy = CurrentUserId;
             staff.CreatedTime = CoreHelper.SystemTimeNow;
 
-            // Thêm chuyên môn cho nhân viên
-            staff.StaffServiceCategories = model.ServiceCategoryIds.Select(categoryId =>
-                new StaffServiceCategory
-                {
-                    StaffId = staff.Id,
-                    ServiceCategoryId = categoryId
-                }).ToList();
+            // Gán danh mục dịch vụ
+            staff.StaffServiceCategories = model.ServiceCategoryIds.Select(id => new StaffServiceCategory
+            {
+                StaffId = staff.Id,
+                ServiceCategoryId = id
+            }).ToList();
 
             await _unitOfWork.GetRepository<Staff>().InsertAsync(staff);
             await _unitOfWork.SaveAsync();
@@ -90,51 +75,26 @@ namespace BeautySpa.Services.Service
                 .FirstOrDefaultAsync(s => s.Id == model.Id && s.ProviderId == providerId && s.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
 
-            // Kiểm tra các ServiceCategory có thuộc provider không
-            var validCategories = await ValidateServiceCategories(model.ServiceCategoryIds, providerId);
-            if (validCategories.Count != model.ServiceCategoryIds.Count)
-            {
-                throw new ErrorException(
-                    StatusCodes.Status400BadRequest,
-                    ErrorCode.InvalidInput,
-                    "Some service categories are invalid or not belong to your provider");
-            }
-
             _mapper.Map(model, staff);
             staff.LastUpdatedBy = CurrentUserId;
             staff.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-            // Cập nhật chuyên môn
-            staff.StaffServiceCategories.Clear();
-            foreach (var categoryId in model.ServiceCategoryIds)
+            // Cập nhật lại ServiceCategory
+            var linkRepo = _unitOfWork.GetRepository<StaffServiceCategory>();
+            var oldLinks = await linkRepo.Entities.Where(x => x.StaffId == model.Id).ToListAsync();
+            foreach (var link in oldLinks)
+                await linkRepo.DeleteAsync(link);
+
+            staff.StaffServiceCategories = model.ServiceCategoryIds.Select(id => new StaffServiceCategory
             {
-                staff.StaffServiceCategories.Add(new StaffServiceCategory
-                {
-                    StaffId = staff.Id,
-                    ServiceCategoryId = categoryId
-                });
-            }
+                StaffId = model.Id,
+                ServiceCategoryId = id
+            }).ToList();
 
             await repo.UpdateAsync(staff);
             await _unitOfWork.SaveAsync();
 
             return BaseResponseModel<string>.Success("Staff updated successfully.");
-        }
-
-        private async Task<List<Guid>> ValidateServiceCategories(List<Guid> categoryIds, Guid providerId)
-        {
-            if (categoryIds == null || !categoryIds.Any())
-                return new List<Guid>();
-
-            // Lấy danh sách category thuộc provider
-            var validCategories = await _unitOfWork.GetRepository<ServiceProviderCategory>()
-                .Entities
-                .Where(spc => spc.ServiceProviderId == providerId &&
-                             categoryIds.Contains(spc.ServiceCategoryId))
-                .Select(spc => spc.ServiceCategoryId)
-                .ToListAsync();
-
-            return validCategories;
         }
 
         public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
@@ -160,9 +120,9 @@ namespace BeautySpa.Services.Service
             var providerId = await GetProviderIdAsync();
 
             var staff = await _unitOfWork.GetRepository<Staff>()
-                .Entities
-                .AsNoTracking()
+                .Entities.AsNoTracking()
                 .Include(s => s.StaffServiceCategories)
+                .ThenInclude(ssc => ssc.ServiceCategory)
                 .FirstOrDefaultAsync(s => s.Id == id && s.ProviderId == providerId && s.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
 
@@ -179,19 +139,30 @@ namespace BeautySpa.Services.Service
             var query = _unitOfWork.GetRepository<Staff>().Entities
                 .AsNoTracking()
                 .Include(s => s.StaffServiceCategories)
+                .ThenInclude(ssc => ssc.ServiceCategory)
                 .Where(s => s.ProviderId == providerId && s.DeletedTime == null)
                 .OrderByDescending(s => s.CreatedTime);
 
             var totalCount = await query.CountAsync();
             var items = await query.Skip((page - 1) * size).Take(size).ToListAsync();
 
-            var result = new BasePaginatedList<GETStaffModelView>(
-                _mapper.Map<List<GETStaffModelView>>(items),
-                totalCount,
-                page,
-                size);
-
+            var result = new BasePaginatedList<GETStaffModelView>(_mapper.Map<List<GETStaffModelView>>(items), totalCount, page, size);
             return BaseResponseModel<BasePaginatedList<GETStaffModelView>>.Success(result);
+        }
+
+        public async Task<BaseResponseModel<string>> DeleteHardAsync(Guid id)
+        {
+            var providerId = await GetProviderIdAsync();
+            var repo = _unitOfWork.GetRepository<Staff>();
+
+            var staff = await repo.Entities
+                .FirstOrDefaultAsync(s => s.Id == id && s.ProviderId == providerId)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
+
+            await repo.DeleteAsync(staff.Id);
+            await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<string>.Success("Staff permanently deleted.");
         }
     }
 }
