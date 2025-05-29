@@ -1,5 +1,4 @@
 ﻿using BeautySpa.Core.Base;
-using System;
 
 namespace BeautySpa.Contract.Repositories.Entity
 {
@@ -12,8 +11,8 @@ namespace BeautySpa.Contract.Repositories.Entity
         public decimal? DiscountPercent { get; set; }   // Giảm theo %
         public decimal? DiscountAmount { get; set; }    // Giảm theo số tiền
         public int Quantity { get; set; } = 0;
-        public DateTimeOffset StartDate { get; set; }
-        public DateTimeOffset EndDate { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
 
         public bool IsActive { get; set; } = true;
 

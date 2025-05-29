@@ -7,8 +7,8 @@
         public decimal? DiscountPercent { get; set; } = 0;
         public decimal? DiscountAmount { get; set; } = 0;
         public int Quantity { get; set; } = 0;
-        public DateTimeOffset StartDate { get; set; }
-        public DateTimeOffset EndDate { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
     }
 
 }
