@@ -45,6 +45,7 @@ namespace BeautySpa.Services.Service
             await new POSTStaffModelViewValidator().ValidateAndThrowAsync(model);
 
             var staff = _mapper.Map<Staff>(model);
+            staff.BranchId = model.BranchId;
             staff.Id = Guid.NewGuid();
             staff.ProviderId = await GetProviderIdAsync();
             staff.CreatedBy = CurrentUserId;
@@ -75,6 +76,7 @@ namespace BeautySpa.Services.Service
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
 
             _mapper.Map(model, staff);
+            staff.BranchId = model.BranchId;
             staff.LastUpdatedBy = CurrentUserId;
             staff.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
@@ -173,6 +175,20 @@ namespace BeautySpa.Services.Service
             await _unitOfWork.SaveAsync();
 
             return BaseResponseModel<string>.Success("Staff permanently deleted.");
+        }
+        public async Task<BaseResponseModel<List<GETStaffModelView>>> GetByBranchAsync(Guid branchId)
+        {
+            var providerId = await GetProviderIdAsync();
+
+            var staffs = await _unitOfWork.GetRepository<Staff>().Entities
+                .AsNoTracking()
+                .Include(s => s.StaffServiceCategories)
+                .ThenInclude(ssc => ssc.ServiceCategory)
+                .Where(s => s.ProviderId == providerId && s.BranchId == branchId && s.DeletedTime == null)
+                .ToListAsync();
+
+            var result = _mapper.Map<List<GETStaffModelView>>(staffs);
+            return BaseResponseModel<List<GETStaffModelView>>.Success(result);
         }
     }
 }

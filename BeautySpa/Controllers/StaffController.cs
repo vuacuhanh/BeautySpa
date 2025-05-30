@@ -58,5 +58,13 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("by-branch/{branchId}")]
+        [SwaggerOperation(Summary = "Lấy danh sách nhân viên theo chi nhánh")]
+        public async Task<IActionResult> GetByBranch(Guid branchId)
+        {
+            var result = await _staffService.GetByBranchAsync(branchId);
+            return Ok(result);
+        }
+
     }
 }

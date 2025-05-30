@@ -9,6 +9,7 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<GETStaffModelView>> GetByIdAsync(Guid id);
         Task<BaseResponseModel<Guid>> CreateAsync(POSTStaffModelView model);
         Task<BaseResponseModel<string>> UpdateAsync(PUTStaffModelView model);
-        Task<BaseResponseModel<string>> DeleteAsync(Guid id);        
+        Task<BaseResponseModel<string>> DeleteAsync(Guid id);
+        Task<BaseResponseModel<List<GETStaffModelView>>> GetByBranchAsync(Guid branchId);
     }
 }

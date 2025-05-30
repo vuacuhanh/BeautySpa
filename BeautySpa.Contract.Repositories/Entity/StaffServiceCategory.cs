@@ -2,7 +2,7 @@
 
 namespace BeautySpa.Contract.Repositories.Entity
 {
-    public class StaffServiceCategory: BaseEntity
+    public class StaffServiceCategory
     {
         public Guid StaffId { get; set; }
         public Staff? Staff { get; set; }
