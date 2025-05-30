@@ -30,6 +30,6 @@ namespace BeautySpa.Contract.Repositories.IUOW
         Task SaveAsync();
         //thêm
         Task<IList<T>> FindAsync(Expression<Func<T, bool>> predicate);
-
+        Task DeleteAsync(object[] keyValues);
     }
 }
