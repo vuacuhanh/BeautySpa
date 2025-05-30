@@ -2,7 +2,6 @@
 {
     public class POSTSpaBranchLocationModelView
     {
-        public Guid ServiceProviderId { get; set; }
         public string BranchName { get; set; } = string.Empty;
         public string Street { get; set; } = string.Empty;
         public string District { get; set; } = string.Empty;
