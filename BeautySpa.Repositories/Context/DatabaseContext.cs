@@ -195,7 +195,11 @@ namespace BeautySpa.Repositories.Context
                 .WithMany(c => c.StaffServiceCategories)
                 .HasForeignKey(sc => sc.ServiceCategoryId)
                 .OnDelete(DeleteBehavior.Cascade);
-
+            builder.Entity<Staff>()
+            .HasOne(s => s.Branch)
+            .WithMany()
+            .HasForeignKey(s => s.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
             // Precision configs
             builder.Entity<Payment>().Property(p => p.Amount).HasPrecision(10, 2);
             builder.Entity<Payment>().Property(p => p.RefundAmount).HasPrecision(10, 2);
