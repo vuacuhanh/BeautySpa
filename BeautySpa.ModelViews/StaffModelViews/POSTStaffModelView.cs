@@ -8,6 +8,7 @@ namespace BeautySpa.ModelViews.StaffModelViews
 {
     public class POSTStaffModelView
     {
+        public Guid BranchId { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string? Email { get; set; }

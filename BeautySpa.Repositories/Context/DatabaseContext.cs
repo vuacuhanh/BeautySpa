@@ -180,19 +180,21 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(spc => spc.ServiceCategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // StaffServiceCategory
+            // StaffServiceCategory (many-to-many)
             builder.Entity<StaffServiceCategory>()
-            .HasKey(sc => new { sc.StaffId, sc.ServiceCategoryId });
+                .HasKey(sc => new { sc.StaffId, sc.ServiceCategoryId });
 
             builder.Entity<StaffServiceCategory>()
                 .HasOne(sc => sc.Staff)
                 .WithMany(s => s.StaffServiceCategories)
-                .HasForeignKey(sc => sc.StaffId);
+                .HasForeignKey(sc => sc.StaffId)
+                .OnDelete(DeleteBehavior.Cascade); // có thể dùng Restrict nếu muốn giữ liên kết
 
             builder.Entity<StaffServiceCategory>()
                 .HasOne(sc => sc.ServiceCategory)
-                .WithMany()
-                .HasForeignKey(sc => sc.ServiceCategoryId);
+                .WithMany(c => c.StaffServiceCategories)
+                .HasForeignKey(sc => sc.ServiceCategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Precision configs
             builder.Entity<Payment>().Property(p => p.Amount).HasPrecision(10, 2);

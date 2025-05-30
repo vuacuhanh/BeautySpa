@@ -90,13 +90,6 @@ namespace BeautySpa.Repositories.UOW
         {
             return Task.FromResult(_dbSet.Update(obj));
         }
-        //thêm
-        public async Task<T?> GetByKeysAsync(object key1, object key2)
-        {
-            return await _dbSet.FirstOrDefaultAsync(entity =>
-                EF.Property<string>(entity, "BookingId") == key1.ToString() &&
-                EF.Property<string>(entity, "PackageId") == key2.ToString());
-        }
         public void Delete1(T entity)
         {
             _dbSet.Remove(entity); // Xóa dựa trên đối tượng 
@@ -105,6 +98,12 @@ namespace BeautySpa.Repositories.UOW
         public async Task<IList<T>> FindAsync(Expression<Func<T, bool>> predicate)
         {
             return await _dbSet.Where(predicate).ToListAsync();
+        }
+
+        public async Task DeleteAsync(object[] keyValues)
+        {
+            T entity = await _dbSet.FindAsync(keyValues) ?? throw new Exception("Entity not found");
+            _dbSet.Remove(entity);
         }
     }
 }

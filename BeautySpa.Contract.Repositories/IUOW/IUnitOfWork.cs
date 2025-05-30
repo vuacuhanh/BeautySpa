@@ -13,5 +13,6 @@ namespace BeautySpa.Contract.Repositories.IUOW
         Task<IDbContextTransaction> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted, CancellationToken cancellationToken = default); 
         void CommitTransaction();
         void RollBack();
+
     }
 }
