@@ -16,6 +16,7 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public string ContactPosition { get; set; } = string.Empty;
         public int? YearsOfExperience { get; set; }
         public string PhoneNumber { get; set; } = string.Empty;
+        public int MaxAppointmentsPerSlot { get; set; } = 0;
         public string? Email { get; set; }
         public Guid UserId { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
