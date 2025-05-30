@@ -81,13 +81,19 @@ namespace BeautySpa.Services.Service
             staff.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
             var linkRepo = _unitOfWork.GetRepository<StaffServiceCategory>();
-            var oldLinks = await linkRepo.Entities.Where(x => x.StaffId == model.Id).ToListAsync();
+
+            // ✅ Dòng này mới: gọi đúng overload cho composite key
+            var oldLinks = await linkRepo.Entities
+                .Where(x => x.StaffId == model.Id)
+                .ToListAsync();
+
             foreach (var link in oldLinks)
             {
+                // ✅ Đây là đoạn sửa đúng: truyền object[] cho composite key
                 await linkRepo.DeleteAsync(new object[] { link.StaffId, link.ServiceCategoryId });
             }
 
-            foreach (var id in model.ServiceCategoryIds)
+            foreach (var id in model.ServiceCategoryIds.Distinct())
             {
                 await linkRepo.InsertAsync(new StaffServiceCategory
                 {
@@ -101,6 +107,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Staff updated successfully.");
         }
+
 
         public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
         {
