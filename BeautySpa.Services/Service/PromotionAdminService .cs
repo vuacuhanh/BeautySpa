@@ -4,7 +4,7 @@ using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.Core.Infrastructure;
-using BeautySpa.Core.SignalR;
+using BeautySpa.Repositories.SignaIR;
 using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.PromotionAdminModelView;
 using FluentValidation;
