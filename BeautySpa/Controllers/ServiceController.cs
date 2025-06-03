@@ -45,6 +45,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpPost("create")]
+        [Authorize(Roles = "Provider")]
         [SwaggerOperation(Summary = "Tạo mới dịch vụ")]
         public async Task<IActionResult> Create([FromBody] POSTServiceModelViews model)
         {
@@ -52,6 +53,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpPut("update")]
+        [Authorize(Roles = "Provider")]
         [SwaggerOperation(Summary = "Cập nhật thông tin dịch vụ")]
         public async Task<IActionResult> Update([FromBody] PUTServiceModelViews model)
         {
@@ -59,6 +61,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "Provider")]
         [SwaggerOperation(Summary = "Xóa mềm dịch vụ theo ID")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {

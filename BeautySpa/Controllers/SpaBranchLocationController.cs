@@ -8,7 +8,6 @@ namespace BeautySpa.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     [SwaggerTag("Quản lý chi nhánh spa (SpaBranchLocation)")]
     public class SpaBranchLocationController : ControllerBase
     {
@@ -20,6 +19,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpPost("create")]
+        [Authorize(Roles = "Provider")]
         [SwaggerOperation(Summary = "Tạo chi nhánh spa mới")]
         public async Task<IActionResult> Create([FromBody] POSTSpaBranchLocationModelView model)
         {
@@ -27,6 +27,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpPut("update")]
+        [Authorize(Roles = "Provider")]
         [SwaggerOperation(Summary = "Cập nhật thông tin chi nhánh spa")]
         public async Task<IActionResult> Update([FromBody] PUTSpaBranchLocationModelView model)
         {
@@ -34,6 +35,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpDelete("delete/{id}")]
+        [Authorize(Roles = "Provider")]
         [SwaggerOperation(Summary = "Xoá (soft delete) chi nhánh spa")]
         public async Task<IActionResult> Delete(Guid id)
         {
