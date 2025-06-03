@@ -139,7 +139,7 @@ namespace BeautySpa.Services.Service
             // Truy vấn nhánh theo ServiceProviderId (internal GUID)
             IQueryable<SpaBranchLocation> query = _unitOfWork.GetRepository<SpaBranchLocation>()
                 .Entities.AsNoTracking()
-                .Where(x => x.ServiceProviderId == providerId && x.DeletedTime == null);
+                .Where(x => x.ServiceProviderId == serviceProvider.Id && x.DeletedTime == null);
 
             List<SpaBranchLocation> raw = await query.ToListAsync();
             List<GETSpaBranchLocationModelView> result = _mapper.Map<List<GETSpaBranchLocationModelView>>(raw);
