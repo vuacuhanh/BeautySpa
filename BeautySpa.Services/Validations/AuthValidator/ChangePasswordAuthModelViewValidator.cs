@@ -11,8 +11,5 @@ public class ChangePasswordAuthModelViewValidator : AbstractValidator<ChangePass
         RuleFor(x => x.NewPassword)
             .NotEmpty().WithMessage("New password is required.")
             .MinimumLength(6).WithMessage("New password must be at least 6 characters.");
-
-        RuleFor(x => x.OtpCode)
-            .NotEmpty().WithMessage("OTP Code is required.");
     }
 }
