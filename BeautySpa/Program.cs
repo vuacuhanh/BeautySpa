@@ -12,6 +12,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
+using BeautySpa.Repositories.SignalR;
+using Microsoft.AspNetCore.SignalR;
 
 // Optional: Đặt môi trường runtime nếu cần
 Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
@@ -142,8 +144,8 @@ builder.Services.AddCors(options =>
 
 // MVC + SignalR
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
-
+builder.Services.AddSignalR(); 
+builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
