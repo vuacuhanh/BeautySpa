@@ -73,10 +73,15 @@ namespace BeautySpa.Services.Service
                 .Include(x => x.ServiceCategory)
                 .Where(x => x.DeletedTime == null);
 
-            // Lọc theo providerId nếu có
             if (providerId.HasValue && providerId != Guid.Empty)
             {
-                query = query.Where(x => x.ProviderId == providerId.Value);
+                var provider = await _unitOfWork.GetRepository<ServiceProvider>()
+                    .Entities.FirstOrDefaultAsync(p => p.ProviderId == providerId && p.DeletedTime == null);
+
+                if (provider != null)
+                {
+                    query = query.Where(x => x.ProviderId == provider.Id);
+                }
             }
 
             query = query.OrderByDescending(x => x.CreatedTime);
@@ -114,16 +119,16 @@ namespace BeautySpa.Services.Service
             if (providerId == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "ProviderId không hợp lệ.");
 
-            var exists = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.AnyAsync(x => x.Id == providerId && x.DeletedTime == null);
+            var provider = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.FirstOrDefaultAsync(x => x.ProviderId == providerId && x.DeletedTime == null);
 
-            if (!exists)
+            if (provider == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Nhà cung cấp không tồn tại.");
 
             var services = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
                 .Entities
                 .Include(s => s.ServiceCategory)
-                .Where(s => s.ProviderId == providerId && s.DeletedTime == null)
+                .Where(s => s.ProviderId == provider.Id && s.DeletedTime == null)
                 .OrderByDescending(s => s.CreatedTime)
                 .ToListAsync();
 
