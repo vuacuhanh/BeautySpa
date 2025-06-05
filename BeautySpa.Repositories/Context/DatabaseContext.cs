@@ -42,7 +42,7 @@ namespace BeautySpa.Repositories.Context
         public DbSet<ServiceProviderCategory> ServiceProviderCategories => Set<ServiceProviderCategory>();
         public DbSet<DepositPolicy> DepositPolicys => Set<DepositPolicy>();
         public DbSet<ProviderFeePolicy> ProviderFeePolicys => Set<ProviderFeePolicy>();
-
+        public DbSet<StaffServiceCategory> staffServiceCategories => Set<StaffServiceCategory>();
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -104,12 +104,6 @@ namespace BeautySpa.Repositories.Context
                 .HasOne(s => s.Provider)
                 .WithMany()
                 .HasForeignKey(s => s.ProviderId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.Entity<Staff>()
-                .HasOne(s => s.StaffUser)
-                .WithMany()
-                .HasForeignKey(s => s.StaffUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // AdminStaff
@@ -186,7 +180,26 @@ namespace BeautySpa.Repositories.Context
                 .HasForeignKey(spc => spc.ServiceCategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // StaffServiceCategory (many-to-many)
+            builder.Entity<StaffServiceCategory>()
+                .HasKey(sc => new { sc.StaffId, sc.ServiceCategoryId });
 
+            builder.Entity<StaffServiceCategory>()
+                .HasOne(sc => sc.Staff)
+                .WithMany(s => s.StaffServiceCategories)
+                .HasForeignKey(sc => sc.StaffId)
+                .OnDelete(DeleteBehavior.Cascade); // có thể dùng Restrict nếu muốn giữ liên kết
+
+            builder.Entity<StaffServiceCategory>()
+                .HasOne(sc => sc.ServiceCategory)
+                .WithMany(c => c.StaffServiceCategories)
+                .HasForeignKey(sc => sc.ServiceCategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<Staff>()
+            .HasOne(s => s.Branch)
+            .WithMany()
+            .HasForeignKey(s => s.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
             // Precision configs
             builder.Entity<Payment>().Property(p => p.Amount).HasPrecision(10, 2);
             builder.Entity<Payment>().Property(p => p.RefundAmount).HasPrecision(10, 2);

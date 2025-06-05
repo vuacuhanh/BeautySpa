@@ -129,4 +129,21 @@ public class PromotionService : IPromotionService
 
         return BaseResponseModel<string>.Success("Promotion deleted successfully");
     }
+    public async Task<BaseResponseModel<string>> DeleteHardAsync(Guid id)
+    {
+        var repo = _unitOfWork.GetRepository<Promotion>();
+        var entity = await repo.Entities.FirstOrDefaultAsync(p => p.Id == id);
+
+        if (entity == null)
+            throw new ErrorException(404, ErrorCode.NotFound, "Promotion not found");
+
+        var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(currentUserId) || entity.ProviderId != Guid.Parse(currentUserId))
+            throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "Access denied");
+
+        await repo.DeleteAsync(entity.Id); // Xoá cứng
+        await _unitOfWork.SaveAsync();
+
+        return BaseResponseModel<string>.Success("Promotion permanently deleted");
+    }
 }

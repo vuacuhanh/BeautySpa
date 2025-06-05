@@ -22,17 +22,12 @@ namespace BeautySpa.Services.Validations.PromotionValidator
                 .GreaterThanOrEqualTo(x => x.StartDate)
                 .WithMessage("End date must be greater than or equal to start date");
 
-            RuleFor(x => x.DiscountPercent)
-                .InclusiveBetween(0, 100).When(x => x.DiscountPercent.HasValue)
-                .WithMessage("Discount percent must be between 0 and 100");
-
-            RuleFor(x => x.DiscountAmount)
-                .GreaterThan(0).When(x => x.DiscountAmount.HasValue)
-                .WithMessage("Discount amount must be greater than 0");
-
             RuleFor(x => x)
-                .Must(x => x.DiscountPercent.HasValue ^ x.DiscountAmount.HasValue)
-                .WithMessage("Only one of DiscountPercent or DiscountAmount must be provided, not both");
+                .Must(x =>
+                    (x.DiscountPercent > 0 && (x.DiscountAmount == null || x.DiscountAmount == 0)) ||
+                    (x.DiscountAmount > 0 && (x.DiscountPercent == null || x.DiscountPercent == 0)))
+                .WithMessage("Only one of DiscountPercent or DiscountAmount must be greater than 0");
         }
     }
+
 }

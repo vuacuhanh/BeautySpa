@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Core.Base;
 using BeautySpa.Repositories.Context;

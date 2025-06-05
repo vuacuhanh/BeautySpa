@@ -11,10 +11,10 @@ namespace BeautySpa.ModelViews.ServiceModelViews
     {
         public Guid Id { get; set; }
         public string ServiceName { get; set; } = string.Empty;
+        public string ImageUrl { get; set; } = string.Empty;
         public string? Description { get; set; }
         public decimal Price { get; set; }
         public int Duration { get; set; }
-        public bool IsAvailable { get; set; }
         public string? CategoryName { get; set; }
         public Guid ProviderId { get; set; }
         public Guid CategoryId { get; set; }

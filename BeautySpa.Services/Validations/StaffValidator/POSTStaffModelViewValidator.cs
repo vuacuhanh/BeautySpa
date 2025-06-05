@@ -12,8 +12,16 @@ namespace BeautySpa.Services.Validations.StaffValidator
     {
         public POSTStaffModelViewValidator()
         {
-            RuleFor(x => x.StaffUserId).NotEmpty();
-            RuleFor(x => x.StaffRole).NotEmpty().MaximumLength(50);
+            RuleFor(x => x.PhoneNumber)
+                .NotEmpty().WithMessage("Phone number is required")
+                .Matches(@"^[0-9]{10,15}$").WithMessage("Invalid phone number format");
+
+            RuleFor(x => x.Email)
+                .EmailAddress().When(x => !string.IsNullOrEmpty(x.Email))
+                .WithMessage("Invalid email format");
+
+            RuleFor(x => x.ServiceCategoryIds)
+                .NotEmpty().WithMessage("At least one service category is required");
         }
     }
 }

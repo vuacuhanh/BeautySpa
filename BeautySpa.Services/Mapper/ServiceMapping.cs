@@ -11,6 +11,7 @@ namespace BeautySpa.Services.Mapper
         {
             // Mapping Entity -> GET View
             CreateMap<BeautySpa.Contract.Repositories.Entity.Service, GETServiceModelViews>()
+                .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl))
                 .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.ServiceCategoryId))
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.ServiceCategory!.CategoryName))
                 .ForMember(dest => dest.Duration, opt => opt.MapFrom(src => src.DurationMinutes))
@@ -18,6 +19,7 @@ namespace BeautySpa.Services.Mapper
 
             // Mapping POST View -> Entity
             CreateMap<POSTServiceModelViews, BeautySpa.Contract.Repositories.Entity.Service>()
+                .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl))
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
@@ -26,6 +28,7 @@ namespace BeautySpa.Services.Mapper
 
             // Mapping PUT View -> Entity
             CreateMap<PUTServiceModelViews, BeautySpa.Contract.Repositories.Entity.Service>()
+                .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl))
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())

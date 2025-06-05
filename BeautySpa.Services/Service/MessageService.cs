@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using FluentValidation;
-using BeautySpa.Core.SignalR;
+using BeautySpa.Repositories.SignaIR;
 
 namespace BeautySpa.Services.Service
 {
@@ -65,7 +65,8 @@ namespace BeautySpa.Services.Service
                 LastMessage = item.LastMessage?.Content ?? string.Empty,
                 LastTime = item.LastMessage?.CreatedTime ?? DateTimeOffset.MinValue,
                 UnreadCount = item.UnreadCount,
-                UserName = userNameMap.TryGetValue(item.UserId, out string? value) ? value : "Unknown"
+                UserName = userNameMap.TryGetValue(item.UserId, out string? value) ? value : "Unknown",
+                UserAvatar = userInfos.FirstOrDefault(u => u.Id == item.UserId)?.UserInfor?.AvatarUrl ?? "",
             }).ToList();
 
             return BaseResponseModel<List<ConversationItem>>.Success(result);

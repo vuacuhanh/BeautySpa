@@ -63,7 +63,7 @@ namespace BeautySpa.Services.Service
         }
 
 
-        public async Task<BaseResponseModel<BasePaginatedList<GETServiceModelViews>>> GetAllAsync(int pageNumber, int pageSize, Guid? providerId = null)
+        public async Task<BaseResponseModel<BasePaginatedList<GETServiceModelViews>>> GetAllAsync(int pageNumber, int pageSize)
         {
             if (pageNumber <= 0 || pageSize <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Page number and page size must be greater than 0.");
@@ -71,15 +71,8 @@ namespace BeautySpa.Services.Service
             IQueryable<BeautySpa.Contract.Repositories.Entity.Service> query = _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
                 .Entities
                 .Include(x => x.ServiceCategory)
-                .Where(x => x.DeletedTime == null);
-
-            // Lọc theo providerId nếu có
-            if (providerId.HasValue && providerId != Guid.Empty)
-            {
-                query = query.Where(x => x.ProviderId == providerId.Value);
-            }
-
-            query = query.OrderByDescending(x => x.CreatedTime);
+                .Where(x => x.DeletedTime == null)
+                .OrderByDescending(x => x.CreatedTime);
 
             var pagedQuery = query.Skip((pageNumber - 1) * pageSize).Take(pageSize);
             var mappedItems = await pagedQuery.ProjectTo<GETServiceModelViews>(_mapper.ConfigurationProvider).ToListAsync();
@@ -88,6 +81,7 @@ namespace BeautySpa.Services.Service
             var result = new BasePaginatedList<GETServiceModelViews>(mappedItems, totalCount, pageNumber, pageSize);
             return BaseResponseModel<BasePaginatedList<GETServiceModelViews>>.Success(result);
         }
+
         public async Task<BaseResponseModel<List<GETServiceModelViews>>> GetMyServicesAsync()
         {
             var currentUserId = Guid.Parse(CurrentUserId);
@@ -114,16 +108,16 @@ namespace BeautySpa.Services.Service
             if (providerId == Guid.Empty)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "ProviderId không hợp lệ.");
 
-            var exists = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.AnyAsync(x => x.Id == providerId && x.DeletedTime == null);
+            var provider = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities.FirstOrDefaultAsync(x => x.ProviderId == providerId && x.DeletedTime == null);
 
-            if (!exists)
+            if (provider == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Nhà cung cấp không tồn tại.");
 
             var services = await _unitOfWork.GetRepository<BeautySpa.Contract.Repositories.Entity.Service>()
                 .Entities
                 .Include(s => s.ServiceCategory)
-                .Where(s => s.ProviderId == providerId && s.DeletedTime == null)
+                .Where(s => s.ProviderId == provider.Id && s.DeletedTime == null)
                 .OrderByDescending(s => s.CreatedTime)
                 .ToListAsync();
 

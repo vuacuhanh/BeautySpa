@@ -32,7 +32,7 @@ namespace BeautySpa.Services.Service
             _userManager = userManager;
             _mapper = mapper;
             _contextAccessor = contextAccessor;
-            _esgoo = esgoo; 
+            _esgoo = esgoo;
         }
 
         public async Task<BaseResponseModel<GETUserModelViews>> GetByIdAsync(Guid id)

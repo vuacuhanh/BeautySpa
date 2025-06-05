@@ -56,5 +56,12 @@ public class PromotionController : ControllerBase
     {
         return Ok(await _service.GetByProviderIdAsync(providerId));
     }
+    [HttpDelete("hard/{id}")]
+    [SwaggerOperation(Summary = "Xoá cứng khuyến mãi khỏi hệ thống")]
+    public async Task<IActionResult> DeletePermanent(Guid id)
+    {
+        var result = await _service.DeleteHardAsync(id);
+        return Ok(result);
+    }
 }
 

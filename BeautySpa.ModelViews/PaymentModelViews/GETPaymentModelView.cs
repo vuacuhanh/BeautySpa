@@ -10,6 +10,6 @@
         public string Status { get; set; } = string.Empty; // deposit_paid | refunded | completed
         public string PaymentMethod { get; set; } = string.Empty; // Momo | Vnpay
         public string? TransactionId { get; set; }
-        public DateTime? PaymentDate { get; set; }
+        public DateTimeOffset? PaymentDate { get; set; }
     }
 }

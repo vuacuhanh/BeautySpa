@@ -4,6 +4,8 @@ namespace BeautySpa.Contract.Repositories.Entity
 {
     public class RequestBecomeProvider : BaseEntity
     {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public string BusinessName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string? Description { get; set; }
@@ -22,7 +24,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public string? ServiceCategoryIds { get; set; } // "id1|id2"
         public string? RejectedReason { get; set; }
 
-        public Guid UserId { get; set; }
+        public Guid? UserId { get; set; }
         public string? PostalCode { get; set; } = "700000";
         public string RequestStatus { get; set; } = "pending";
 

@@ -1,5 +1,6 @@
 ﻿using BeautySpa.Contract.Services.Interface;
 using BeautySpa.ModelViews.ServiceCategoryModelViews;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -51,5 +52,13 @@ namespace BeautySpa.API.Controllers
         {
             return Ok(await _categoryService.DeleteAsync(id));
         }
+
+        //[HttpDelete("hard-delete/{id:guid}")]
+        ////[Authorize(Roles = "Admin")]
+        //[SwaggerOperation(Summary = "Xóa cứng danh mục dịch vụ và tất cả liên quan")]
+        //public async Task<IActionResult> DeleteHard([FromRoute] Guid id)
+        //{
+        //    return Ok(await _categoryService.DeleteHardAsync(id));
+        //}
     }
 }

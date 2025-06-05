@@ -1,9 +1,4 @@
 ﻿using BeautySpa.ModelViews.ServiceImageModelViews;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BeautySpa.ModelViews.ServiceProviderModelViews
 {
@@ -29,9 +24,6 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public Guid ProviderId { get; set; }
         public TimeSpan? OpenTime { get; set; }
         public TimeSpan? CloseTime { get; set; }
-        public DateTimeOffset CreatedTime { get; set; }
-        public DateTimeOffset LastUpdatedTime { get; set; }
-        public DateTimeOffset? DeletedTime { get; set; }
         public List<GETServiceImageModelViews>? Images { get; set; }
         public List<string>? Categories { get; set; }
     }
