@@ -2,7 +2,10 @@
 {
     public class PaymentResponse
     {
-        public string PayUrl { get; set; } = string.Empty;
-        public string QrCodeUrl { get; set; } = string.Empty;
+        public Guid AppointmentId { get; set; }
+        public decimal Amount { get; set; }
+        public string PaymentMethod { get; set; } = string.Empty;
+        public string? PayUrl { get; set; }
+        public string? QrCodeUrl { get; set; }  
     }
 }

@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BeautySpa.ModelViews.ServiceModelViews;
 using BeautySpa.ModelViews.ServiceImageModelViews;
+using BeautySpa.Contract.Repositories.Entity;
 
 namespace BeautySpa.Services.Mapper
 {

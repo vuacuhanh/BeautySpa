@@ -2,7 +2,7 @@
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.AuthModelViews;
 
-namespace BeautySpa.Mapping
+namespace BeautySpa.Services.Mapper
 {
     public class AuthMapping : Profile
     {

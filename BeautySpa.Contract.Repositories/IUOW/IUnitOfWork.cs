@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Threading;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace BeautySpa.Contract.Repositories.IUOW

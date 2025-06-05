@@ -14,7 +14,7 @@ namespace BeautySpa.Contract.Repositories.Entity
         public int TotalReviews { get; set; } = 0;
         public bool IsApproved { get; set; } = false;
         public string Status { get; set; } = "pending";
-        public string PhoneNumber { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty; 
         public string? Email { get; set; }
 
         public TimeSpan? OpenTime { get; set; }

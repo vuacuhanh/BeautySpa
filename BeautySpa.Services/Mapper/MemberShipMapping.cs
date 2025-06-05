@@ -2,7 +2,7 @@
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.MemberShipModelViews;
 
-namespace BeautySpa.Services.Mappings
+namespace BeautySpa.Services.Mapper
 {
     public class MemberShipMapping : Profile
     {

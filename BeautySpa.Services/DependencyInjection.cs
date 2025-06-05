@@ -1,9 +1,9 @@
-﻿using AutoMapper;
-using BeautySpa.Contract.Repositories.IUOW;
+﻿using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Services.Service;
 using Microsoft.Extensions.DependencyInjection;
 using BeautySpa.Repositories.UOW;
 using BeautySpa.Contract.Services.Interface;
+using BeautySpa.Services.Interface;
 
 
 namespace BeautySpa.Services

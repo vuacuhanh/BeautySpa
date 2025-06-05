@@ -6,6 +6,7 @@ using BeautySpa.Core.Base;
 using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.ServiceProviderModelViews;
+using BeautySpa.Services.Validations.ServiceProviderValidator;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 

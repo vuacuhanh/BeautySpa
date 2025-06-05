@@ -2,7 +2,7 @@
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.RankModelViews;
 
-namespace BeautySpa.Services.Mappings
+namespace BeautySpa.Services.Mapper 
 {
     public class RankMapping : Profile
     {

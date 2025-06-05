@@ -306,6 +306,60 @@ namespace BeautySpa.Services.Service
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("User deleted successfully.");
         }
+
+        public async Task<BaseResponseModel<string>> DeletepermanentlyAsync(Guid id)
+        {
+            if (id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id.");
+
+            var user = await _userManager.FindByIdAsync(id.ToString())
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
+
+            var userInforRepo = _unitOfWork.GetRepository<UserInfor>();
+            var userInfor = await userInforRepo.Entities.FirstOrDefaultAsync(u => u.UserId == id);
+            if (userInfor != null)
+                userInforRepo.Delete1(userInfor);
+
+            var appointmentRepo = _unitOfWork.GetRepository<Appointment>();
+            var appointments = await appointmentRepo.Entities.Where(a => a.CustomerId == id || a.ProviderId == id).ToListAsync();
+            foreach (var appt in appointments)
+                appointmentRepo.Delete(appt);
+
+            var favoriteRepo = _unitOfWork.GetRepository<Favorite>();
+            var favorites = await favoriteRepo.Entities.Where(f => f.CustomerId == id || f.ProviderId == id).ToListAsync();
+            foreach (var fav in favorites)
+                favoriteRepo.Delete(fav);
+
+            var reviewRepo = _unitOfWork.GetRepository<Review>();
+            var reviews = await reviewRepo.Entities.Where(r => r.CustomerId == id || r.ProviderId == id).ToListAsync();
+            foreach (var rv in reviews)
+                reviewRepo.Delete(rv);
+
+            var messageRepo = _unitOfWork.GetRepository<Message>();
+            var messages = await messageRepo.Entities.Where(m => m.SenderId == id || m.ReceiverId == id).ToListAsync();
+            foreach (var msg in messages)
+                messageRepo.Delete(msg);
+
+            var notificationRepo = _unitOfWork.GetRepository<Notification>();
+            var notifications = await notificationRepo.Entities.Where(n => n.UserId == id).ToListAsync();
+            foreach (var noti in notifications)
+                notificationRepo.Delete(noti);
+
+            // Remove roles if any
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles.Any())
+                await _userManager.RemoveFromRolesAsync(user, roles);
+
+            // Remove from Identity
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.BadRequest, "Failed to delete user.");
+
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("User permanently deleted.");
+        }
+
+
         public async Task<BaseResponseModel<string>> DeactivateProviderAccountAsync(Guid userId)
         {
             if (userId == Guid.Empty)

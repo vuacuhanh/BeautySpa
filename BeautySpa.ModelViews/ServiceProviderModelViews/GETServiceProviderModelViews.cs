@@ -11,12 +11,13 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
     {
         public Guid Id { get; set; }
         public string BusinessName { get; set; } = string.Empty;
-        public string ImageUrl { get; set; } = string.Empty; 
+        public string ImageUrl { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string ContactFullName { get; set; } = string.Empty;
         public string ContactPosition { get; set; } = string.Empty;
         public int? YearsOfExperience { get; set; }
         public decimal AverageRating { get; set; }
+        public int MaxAppointmentsPerSlot { get; set; } = 5;
         public int TotalReviews { get; set; }
         public bool IsApproved { get; set; }
         public string? AddressDetail { get; set; }

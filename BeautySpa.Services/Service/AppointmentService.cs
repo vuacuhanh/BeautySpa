@@ -8,6 +8,7 @@ using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.AppointmentModelViews;
 using BeautySpa.ModelViews.NotificationModelViews;
 using BeautySpa.ModelViews.PaymentModelViews;
+using BeautySpa.Repositories.UOW;
 using BeautySpa.Services.Validations.AppoitmentValidator;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
@@ -40,56 +41,115 @@ namespace BeautySpa.Services.Service
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_context);
 
-        public async Task<BaseResponseModel<Guid>> CreateAsync(POSTAppointmentModelView model)
+
+        // Tạo đặt lịch
+        public async Task<BaseResponseModel<dynamic>> CreateAsync(POSTAppointmentModelView model)
+        {
+            var unitOfWorkImpl = _unitOfWork as UnitOfWork
+                ?? throw new InvalidCastException("IUnitOfWork must be UnitOfWork");
+
+            var strategy = unitOfWorkImpl.Context.Database.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await unitOfWorkImpl.Context.Database.BeginTransactionAsync();
+                var result = await CreateAppointmentInternalAsync(model);
+                await transaction.CommitAsync();
+                return result;
+            });
+        }
+
+        private async Task<BaseResponseModel<dynamic>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
         {
             await new POSTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
-            var now = CoreHelper.SystemTimeNow;
+
             var userId = Guid.Parse(CurrentUserId);
+            var now = CoreHelper.SystemTimeNow;
 
-            var firstService = await _unitOfWork.GetRepository<Entity.Service>()
+            var provider = await GetProviderAsync(model.SpaBranchLocationId);
+            ValidateWorkingHours(provider, model.StartTime);
+            await ValidateSlotAvailabilityAsync(provider, model);
+
+            var (appointmentServices, originalTotal) = await BuildAppointmentServicesAsync(model, now);
+            var discount = await CalculateTotalDiscountAsync(model, userId, originalTotal, now);
+
+            var finalPrice = originalTotal - discount;
+            var depositAmount = CalculateDepositAmount(finalPrice);
+
+            var appointment = await CreateAppointmentEntityAsync(model, userId, provider, appointmentServices, originalTotal, discount, finalPrice, now);
+
+            var paymentResult = await _paymentService.CreateDepositAsync(new POSTPaymentModelView
+            {
+                AppointmentId = appointment.Id,
+                Amount = depositAmount,
+                PaymentMethod = model.PaymentMethod ?? "momo"
+            });
+
+            var startDateTime = model.AppointmentDate.Date + model.StartTime;
+            await _notificationService.CreateAsync(new POSTNotificationModelView
+            {
+                UserId = userId,
+                Title = "Đặt lịch thành công",
+                Message = $"Bạn đã đặt lịch lúc {startDateTime:HH\\:mm dd/MM/yyyy}. Vui lòng thanh toán tiền cọc.",
+                NotificationType = "appointment"
+            });
+
+            return BaseResponseModel<dynamic>.Success(new
+            {
+                appointmentId = appointment.Id,
+                paymentMethod = model.PaymentMethod ?? "momo",
+                payUrl = paymentResult.Data?.PayUrl,
+                qrCodeUrl = paymentResult.Data?.QrCodeUrl
+            });
+        }
+
+        // ---- Các phương thức phụ trợ ----
+
+        private async Task<ServiceProvider> GetProviderAsync(Guid spaBranchLocationId)
+        {
+            var branch = await _unitOfWork.GetRepository<SpaBranchLocation>()
                 .Entities.Include(x => x.Provider)
-                .FirstOrDefaultAsync(x => x.Id == model.Services[0].ServiceId)
-                ?? throw new ErrorException(404, ErrorCode.NotFound, "Service not found.");
+                .FirstOrDefaultAsync(x => x.Id == spaBranchLocationId)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Branch not found.");
 
-            var providerId = firstService.ProviderId;
-            int dayOfWeek = (int)model.AppointmentDate.DayOfWeek;
-            var workingHour = await _unitOfWork.GetRepository<WorkingHour>()
-            .Entities.FirstOrDefaultAsync(x =>
-                x.SpaBranchLocationId == model.SpaBranchLocationId &&
-                x.DayOfWeek == dayOfWeek &&
-                x.IsWorking &&
-                x.OpeningTime <= model.StartTime &&
-                x.ClosingTime >= model.StartTime);
+            return branch.Provider
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Provider not found.");
+        }
 
-            if (workingHour == null)
-                throw new ErrorException(400, ErrorCode.Failed, "Outside of working hours.");
+        private void ValidateWorkingHours(ServiceProvider provider, TimeSpan startTime)
+        {
+            if (!provider.OpenTime.HasValue || !provider.CloseTime.HasValue)
+                throw new ErrorException(400, ErrorCode.Failed, "Provider working hours not configured.");
 
+            if (startTime < provider.OpenTime || startTime >= provider.CloseTime)
+                throw new ErrorException(400, ErrorCode.Failed, $"Outside working hours. Open: {provider.OpenTime:hh\\:mm}, Close: {provider.CloseTime:hh\\:mm}");
+        }
+
+        private async Task ValidateSlotAvailabilityAsync(ServiceProvider provider, POSTAppointmentModelView model)
+        {
             int maxDuration = await _unitOfWork.GetRepository<Entity.Service>()
                 .Entities.Where(s => model.Services.Select(x => x.ServiceId).Contains(s.Id))
-                .Select(s => s.DurationMinutes)
-                .MaxAsync();
+                .MaxAsync(s => s.DurationMinutes);
 
             TimeSpan endTime = model.StartTime + TimeSpan.FromMinutes(maxDuration);
 
             var slotUsed = await _unitOfWork.GetRepository<Appointment>()
                 .Entities.Where(a =>
-                    a.ProviderId == providerId &&
+                    a.ProviderId == provider.ProviderId &&
                     a.AppointmentDate == model.AppointmentDate &&
                     new[] { "pending", "confirmed", "checked_in" }.Contains(a.BookingStatus) &&
                     a.DeletedTime == null &&
                     a.StartTime < endTime)
                 .CountAsync();
 
-            int maxSlot = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.Where(x => x.ProviderId == providerId)
-                .Select(x => x.MaxAppointmentsPerSlot)
-                .FirstOrDefaultAsync();
+            if (slotUsed >= provider.MaxAppointmentsPerSlot)
+                throw new ErrorException(400, ErrorCode.Failed, $"Time slot fully booked. Used: {slotUsed}, Max: {provider.MaxAppointmentsPerSlot}");
+        }
 
-            if (slotUsed >= maxSlot)
-                throw new ErrorException(400, ErrorCode.Failed, "Time slot is fully booked.");
-
+        private async Task<(List<Entity.AppointmentService>, decimal)> BuildAppointmentServicesAsync(POSTAppointmentModelView model, DateTimeOffset now)
+        {
             decimal originalTotal = 0;
-            List<Entity.AppointmentService> appointmentServices = new();
+            var appointmentServices = new List<Entity.AppointmentService>();
 
             foreach (var s in model.Services)
             {
@@ -97,8 +157,10 @@ namespace BeautySpa.Services.Service
                     ?? throw new ErrorException(404, ErrorCode.NotFound, "Service not found.");
 
                 decimal price = service.Price;
+
                 var flash = await _unitOfWork.GetRepository<ServicePromotion>().Entities
                     .FirstOrDefaultAsync(f => f.ServiceId == s.ServiceId && f.StartDate <= now && f.EndDate >= now);
+
                 if (flash != null)
                 {
                     price -= flash.DiscountPercent > 0 ? price * flash.DiscountPercent.Value / 100 : flash.DiscountAmount ?? 0;
@@ -116,37 +178,68 @@ namespace BeautySpa.Services.Service
                 originalTotal += price * s.Quantity;
             }
 
+            return (appointmentServices, originalTotal);
+        }
+
+        private async Task<decimal> CalculateTotalDiscountAsync(POSTAppointmentModelView model, Guid userId, decimal originalTotal, DateTimeOffset now)
+        {
             decimal discount = 0;
+
             if (model.PromotionId.HasValue)
             {
-                var promo = await _unitOfWork.GetRepository<Promotion>().GetByIdAsync(model.PromotionId.Value);
-                if (promo != null && promo.IsActive && now >= promo.StartDate && now <= promo.EndDate)
-                {
-                    discount = promo.DiscountPercent > 0
-                        ? originalTotal * promo.DiscountPercent.Value / 100
-                        : promo.DiscountAmount ?? 0;
-                    promo.Quantity++;
-                }
+                discount += await CalculatePromotionDiscountAsync(model.PromotionId.Value, originalTotal, now);
             }
 
             if (model.PromotionAdminId.HasValue)
             {
-                var promoAdmin = await _unitOfWork.GetRepository<PromotionAdmin>().GetByIdAsync(model.PromotionAdminId.Value);
-                var rankId = await _unitOfWork.GetRepository<MemberShip>().Entities
-                    .Where(m => m.UserId == userId)
-                    .Select(m => m.RankId)
-                    .FirstOrDefaultAsync();
-
-                if (promoAdmin != null && promoAdmin.IsActive && now >= promoAdmin.StartDate && now <= promoAdmin.EndDate && promoAdmin.PromotionAdminRanks.Any(x => x.RankId == rankId))
-                {
-                    discount += promoAdmin.DiscountPercent > 0
-                        ? originalTotal * promoAdmin.DiscountPercent.Value / 100
-                        : promoAdmin.DiscountAmount ?? 0;
-                    promoAdmin.Quantity++;
-                }
+                discount += await CalculatePromotionAdminDiscountAsync(model.PromotionAdminId.Value, userId, originalTotal, now);
             }
 
-            decimal finalPrice = originalTotal - discount;
+            return discount;
+        }
+
+        private async Task<decimal> CalculatePromotionDiscountAsync(Guid promoId, decimal originalTotal, DateTimeOffset now)
+        {
+            var promo = await _unitOfWork.GetRepository<Promotion>().GetByIdAsync(promoId)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Promotion không tồn tại.");
+
+            if (promo.IsActive && now >= promo.StartDate && now <= promo.EndDate)
+            {
+                promo.Quantity++;
+                return promo.DiscountPercent > 0
+                    ? originalTotal * promo.DiscountPercent.Value / 100
+                    : promo.DiscountAmount ?? 0;
+            }
+
+            return 0;
+        }
+
+        private async Task<decimal> CalculatePromotionAdminDiscountAsync(Guid promoAdminId, Guid userId, decimal originalTotal, DateTimeOffset now)
+        {
+            var promoAdmin = await _unitOfWork.GetRepository<PromotionAdmin>().Entities
+                .Include(pa => pa.PromotionAdminRanks)
+                .FirstOrDefaultAsync(pa => pa.Id == promoAdminId)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "PromotionAdmin không tồn tại.");
+
+            var rankId = await _unitOfWork.GetRepository<MemberShip>().Entities
+                .Where(m => m.UserId == userId)
+                .Select(m => m.RankId)
+                .FirstOrDefaultAsync();
+
+            if (promoAdmin.IsActive && now >= promoAdmin.StartDate && now <= promoAdmin.EndDate &&
+                promoAdmin.PromotionAdminRanks.Any(x => x.RankId == rankId))
+            {
+                promoAdmin.Quantity++;
+                return promoAdmin.DiscountPercent > 0
+                    ? originalTotal * promoAdmin.DiscountPercent.Value / 100
+                    : promoAdmin.DiscountAmount ?? 0;
+            }
+
+            return 0;
+        }
+
+        private decimal CalculateDepositAmount(decimal finalPrice)
+        {
             decimal depositPercent = finalPrice switch
             {
                 < 100_000 => 1.0m,
@@ -154,8 +247,11 @@ namespace BeautySpa.Services.Service
                 < 1_000_000 => 0.3m,
                 _ => 0.2m
             };
-            decimal depositAmount = Math.Round(finalPrice * depositPercent, 0);
+            return Math.Round(finalPrice * depositPercent, 0);
+        }
 
+        private async Task<Appointment> CreateAppointmentEntityAsync(POSTAppointmentModelView model, Guid userId, ServiceProvider provider, List<Entity.AppointmentService> appointmentServices, decimal originalTotal, decimal discount, decimal finalPrice, DateTimeOffset now)
+        {
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
@@ -164,7 +260,7 @@ namespace BeautySpa.Services.Service
                 SpaBranchLocationId = model.SpaBranchLocationId,
                 Notes = model.Notes,
                 CustomerId = userId,
-                ProviderId = providerId,
+                ProviderId = provider.ProviderId,
                 PromotionId = model.PromotionId,
                 PromotionAdminId = model.PromotionAdminId,
                 OriginalTotalPrice = originalTotal,
@@ -178,22 +274,14 @@ namespace BeautySpa.Services.Service
             await _unitOfWork.GetRepository<Appointment>().InsertAsync(appointment);
             await _unitOfWork.SaveAsync();
 
-            await _paymentService.CreateDepositAsync(new POSTPaymentModelView
-            {
-                AppointmentId = appointment.Id,
-                Amount = depositAmount,
-                PaymentMethod = model.PaymentMethod ?? "momo"
-            });
-
-            await _notificationService.CreateAsync(new POSTNotificationModelView
-            {
-                UserId = userId,
-                Title = "Đặt lịch thành công",
-                Message = $"Bạn đã đặt lịch lúc {model.StartTime:hh\\:mm dd/MM/yyyy}. Vui lòng thanh toán tiền cọc."
-            });
-
-            return BaseResponseModel<Guid>.Success(appointment.Id);
+            return appointment;
         }
+
+// End tạo đặt lịch
+
+
+
+
         public async Task<BaseResponseModel<string>> AutoCancelUnpaidAppointmentsAsync()
         {
             var now = CoreHelper.SystemTimeNow;

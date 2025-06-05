@@ -82,6 +82,24 @@ namespace BeautySpa.API.Controllers
             return Ok(await _userService.DeleteAsync(id));
         }
 
+        [HttpDelete("Delete/{id}")]
+        [SwaggerOperation(Summary = "Xóa mềm người dùng theo ID")]
+        //[Authorize(Roles = "Admin")]
+        public async Task<IActionResult> SoftDeleteAsync(Guid id)
+        {
+            return Ok(await _userService.DeleteAsync(id));
+        }
+
+        [HttpDelete("Deletepermanent/{id}")]
+        [SwaggerOperation(Summary = "Xóa vĩnh viễn người dùng theo ID")]
+        //[Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeletepermanentlyAsync(Guid id)
+        {
+            return Ok(await _userService.DeletepermanentlyAsync(id));
+        }
+        
+
+
         [HttpPut("deactivate-provider/{userId}")]
         //[Authorize(Roles = "Admin")]
         [SwaggerOperation(Summary = "Hủy quyền và khóa tài khoản provider")]

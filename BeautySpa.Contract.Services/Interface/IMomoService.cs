@@ -1,7 +1,7 @@
 ﻿using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.MoMoModelViews;
 
-namespace BeautySpa.Contract.Services.Interface
+namespace BeautySpa.Services.Interface
 {
     public interface IMomoService
     {

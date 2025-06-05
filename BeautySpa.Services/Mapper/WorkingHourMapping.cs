@@ -1,20 +1,17 @@
 ﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
-using BeautySpa.ModelViews.LocationModelViews;
+using BeautySpa.ModelViews.WorkingHourModelViews;
 
-namespace BeautySpa.Services.Mappings
+namespace BeautySpa.Services.Mapper
 {
-    public class SpaBranchLocationMapping : Profile
+    public class WorkingHourMapping : Profile
     {
-        public SpaBranchLocationMapping()
+        public WorkingHourMapping()
         {
-            CreateMap<SpaBranchLocation, GETSpaBranchLocationModelView>()
-            .ForMember(dest => dest.WorkingHours, opt =>
-                opt.MapFrom(src => (src.WorkingHours ?? new List<WorkingHour>())
-                    .OrderBy(x => x.DayOfWeek).ToList()));  
-
-            CreateMap<POSTSpaBranchLocationModelView, SpaBranchLocation>();
-            CreateMap<PUTSpaBranchLocationModelView, SpaBranchLocation>();
+            CreateMap<WorkingHour, GETWorkingHourModelViews>().ReverseMap();
+            CreateMap<WorkingHour, POSTWorkingHourModelViews>().ReverseMap();
+            CreateMap<WorkingHour, PUTWorkingHourModelViews>().ReverseMap();
+            CreateMap<POSTWorkingHourModelViews, WorkingHour>().ReverseMap();
         }
     }
 }
