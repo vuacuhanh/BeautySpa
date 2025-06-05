@@ -32,7 +32,7 @@ namespace BeautySpa.Services.Service
             _userManager = userManager;
             _mapper = mapper;
             _contextAccessor = contextAccessor;
-            _esgoo = esgoo;
+            _esgoo = esgoo; 
         }
 
         public async Task<BaseResponseModel<GETUserModelViews>> GetByIdAsync(Guid id)
@@ -172,27 +172,18 @@ namespace BeautySpa.Services.Service
                 userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
                 // Lấy tên tỉnh và huyện
-                try
+                if (!string.IsNullOrWhiteSpace(model.ProvinceId))
                 {
-                    if (!string.IsNullOrWhiteSpace(model.ProvinceId))
-                    {
-                        var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
-                        userInfor.ProvinceName = province?.name; // Nếu province là null, để ProvinceName là null
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(model.ProvinceId) && !string.IsNullOrWhiteSpace(model.DistrictId))
-                    {
-                        var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId, model.ProvinceId);
-                        userInfor.DistrictName = district?.name; // Nếu district là null, để DistrictName là null
-                    }
+                    var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
+                    if (province != null)
+                        userInfor.ProvinceName = province.name;
                 }
-                catch (Exception ex)
+
+                if (!string.IsNullOrWhiteSpace(model.ProvinceId) && !string.IsNullOrWhiteSpace(model.DistrictId))
                 {
-                    // Log lỗi để debug
-                    Console.WriteLine($"Error fetching province/district: {ex.Message}");
-                    // Không ném lỗi, chỉ để ProvinceName và DistrictName là null
-                    userInfor.ProvinceName = null;
-                    userInfor.DistrictName = null;
+                    var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId, model.ProvinceId);
+                    if (district != null)
+                        userInfor.DistrictName = district.name;
                 }
 
                 await userInforRepo.InsertAsync(userInfor);
@@ -203,30 +194,24 @@ namespace BeautySpa.Services.Service
                 userInfor.LastUpdatedBy = CurrentUserId;
                 userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-                try
+                if (!string.IsNullOrWhiteSpace(model.ProvinceId))
                 {
-                    if (!string.IsNullOrWhiteSpace(model.ProvinceId))
-                    {
-                        var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
-                        userInfor.ProvinceName = province?.name;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(model.ProvinceId) && !string.IsNullOrWhiteSpace(model.DistrictId))
-                    {
-                        var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId, model.ProvinceId);
-                        userInfor.DistrictName = district?.name;
-                    }
+                    var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
+                    if (province != null)
+                        userInfor.ProvinceName = province.name;
                 }
-                catch (Exception ex)
+
+                if (!string.IsNullOrWhiteSpace(model.ProvinceId) && !string.IsNullOrWhiteSpace(model.DistrictId))
                 {
-                    Console.WriteLine($"Error fetching province/district: {ex.Message}");
-                    userInfor.ProvinceName = null;
-                    userInfor.DistrictName = null;
+                    var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId, model.ProvinceId);
+                    if (district != null)
+                        userInfor.DistrictName = district.name;
                 }
 
                 await userInforRepo.UpdateAsync(userInfor);
             }
 
+            // Cập nhật thông tin từ ApplicationUsers nếu cần (PhoneNumber)
             user.PhoneNumber = model.PhoneNumber;
             user.LastUpdatedBy = CurrentUserId;
             user.LastUpdatedTime = CoreHelper.SystemTimeNow;
@@ -237,89 +222,6 @@ namespace BeautySpa.Services.Service
 
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("User updated successfully.");
-        }
-
-        //public async Task<BaseResponseModel<string>> UpdateCustomerAsync(PUTuserforcustomer model)
-        //{
-        //    await new PUTuserforcustomerValidator().ValidateAndThrowAsync(model);
-
-        //    var user = await _userManager.FindByIdAsync(model.Id.ToString())
-        //               ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Customer not found.");
-
-        //    var roles = await _userManager.GetRolesAsync(user);
-        //    if (!roles.Contains("Customer"))
-        //        throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "User is not a customer.");
-
-        //    var userInforRepo = _unitOfWork.GetRepository<UserInfor>();
-        //    var userInfor = await userInforRepo.Entities
-        //        .FirstOrDefaultAsync(u => u.UserId == user.Id);
-
-        //    if (model.UserInfor != null)
-        //    {
-        //        if (userInfor == null)
-        //        {
-        //            userInfor = new UserInfor
-        //            {
-        //                UserId = user.Id,
-        //                CreatedBy = CurrentUserId,
-        //                CreatedTime = DateTimeOffset.UtcNow
-        //            };
-        //            _mapper.Map(model.UserInfor, userInfor);
-        //            userInfor.LastUpdatedBy = CurrentUserId;
-        //            userInfor.LastUpdatedTime = DateTimeOffset.UtcNow;
-
-        //            await userInforRepo.InsertAsync(userInfor);
-        //        }
-        //        else
-        //        {
-        //            _mapper.Map(model.UserInfor, userInfor);
-        //            userInfor.LastUpdatedBy = CurrentUserId;
-        //            userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
-
-        //            await userInforRepo.UpdateAsync(userInfor);
-        //        }
-        //    }
-
-        //    user.Email = model.Email;
-        //    user.LastUpdatedBy = CurrentUserId;
-        //    user.LastUpdatedTime = DateTimeOffset.UtcNow;
-
-        //    var result = await _userManager.UpdateAsync(user);
-        //    if (!result.Succeeded)
-        //        throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to update customer.");
-
-        //    await _unitOfWork.SaveAsync();
-        //    return BaseResponseModel<string>.Success("Customer updated successfully.");
-        //}
-
-        public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
-        {
-            if (id == Guid.Empty)
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id.");
-
-            var user = await _userManager.FindByIdAsync(id.ToString())
-                       ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found.");
-
-            user.DeletedTime = DateTimeOffset.UtcNow;
-            user.Status = "inactive";
-            user.DeletedBy = CurrentUserId;
-
-            var userInforRepo = _unitOfWork.GetRepository<UserInfor>();
-            var userInfor = await userInforRepo.Entities.FirstOrDefaultAsync(u => u.UserId == id);
-
-            if (userInfor != null)
-            {
-                userInfor.DeletedTime = DateTimeOffset.UtcNow;
-                userInfor.DeletedBy = CurrentUserId;
-                await userInforRepo.UpdateAsync(userInfor);
-            }
-
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.BadRequest, "Failed to delete user.");
-
-            await _unitOfWork.SaveAsync();
-            return BaseResponseModel<string>.Success("User deleted successfully.");
         }
 
         public async Task<BaseResponseModel<string>> DeletepermanentlyAsync(Guid id)
@@ -374,7 +276,36 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<string>.Success("User permanently deleted.");
         }
 
+        public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
+        {
+            if (id == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Id.");
 
+            // Dùng _userManager.Users để query đầy đủ
+            var user = await _userManager.Users
+                .Include(u => u.UserInfor)
+                .FirstOrDefaultAsync(u => u.Id == id && u.DeletedTime == null);
+
+            if (user == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User not found or already deleted.");
+
+            user.DeletedTime = CoreHelper.SystemTimeNow;
+            user.Status = "inactive";
+            user.DeletedBy = CurrentUserId;
+
+            if (user.UserInfor != null)
+            {
+                user.UserInfor.DeletedTime = CoreHelper.SystemTimeNow;
+                user.UserInfor.DeletedBy = CurrentUserId;
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+                throw new ErrorException(StatusCodes.Status500InternalServerError, ErrorCode.InternalServerError, "Failed to delete user.");
+
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("User deleted successfully.");
+        }
         public async Task<BaseResponseModel<string>> DeactivateProviderAccountAsync(Guid userId)
         {
             if (userId == Guid.Empty)
