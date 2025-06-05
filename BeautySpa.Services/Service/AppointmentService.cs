@@ -340,8 +340,18 @@ namespace BeautySpa.Services.Service
 
                 if (appointment.Payment != null)
                 {
-                    appointment.Payment.Status = "completed";
-                    appointment.Payment.PlatformFee = Math.Round(appointment.FinalPrice * 0.1m, 0);
+                    // Nếu là thanh toán tiền mặt thì xử lý hoàn tất
+                    if (appointment.Payment.PaymentMethod?.ToLower() == "cash" &&
+                        appointment.Payment.Status == "waiting")
+                    {
+                        appointment.Payment.Status = "completed";
+                        appointment.Payment.PaymentDate = now.UtcDateTime;
+                    }
+
+                    if (appointment.Payment.Status == "completed")
+                    {
+                        appointment.Payment.PlatformFee = Math.Round(appointment.FinalPrice * 0.1m, 0);
+                    }
                 }
 
                 var member = await _unitOfWork.GetRepository<MemberShip>()
@@ -437,6 +447,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Cập nhật trạng thái thành công.");
         }
+
         public async Task<BaseResponseModel<string>> AutoNoShowAfter12HoursAsync()
         {
             var now = CoreHelper.SystemTimeNow;

@@ -108,6 +108,10 @@ namespace BeautySpa.Services.Service
                 payment.TransactionId = vnpayResp.Data.TransactionId;
                 payUrl = vnpayResp.Data.PayUrl;
             }
+            else if (model.PaymentMethod?.ToLower() == "cash")
+            {
+                payment.Status = "waiting"; 
+            }
             else
             {
                 throw new ErrorException(400, ErrorCode.InvalidInput, "Phương thức thanh toán không hợp lệ");
