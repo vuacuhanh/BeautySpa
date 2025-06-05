@@ -8,7 +8,6 @@ using BeautySpa.Services.Validations.VnPayValidator;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace BeautySpa.Services.Service
@@ -16,14 +15,14 @@ namespace BeautySpa.Services.Service
     public class VnpayService : IVnpayService
     {
         private readonly IConfiguration _config; private readonly IHttpContextAccessor _contextAccessor; private readonly IHttpClientFactory _httpClientFactory;
-        private readonly ILogger<VnpayService> _logger;
+        private readonly IEmailService _emailService;
 
-        public VnpayService(IConfiguration config, IHttpContextAccessor contextAccessor, IHttpClientFactory httpClientFactory, ILogger<VnpayService> logger)
+        public VnpayService(IConfiguration config, IHttpContextAccessor contextAccessor, IHttpClientFactory httpClientFactory, IEmailService emailService)
         {
             _config = config;
             _contextAccessor = contextAccessor;
             _httpClientFactory = httpClientFactory;
-            _logger = logger;
+            _emailService = emailService;
         }
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
@@ -113,7 +112,6 @@ namespace BeautySpa.Services.Service
         { "vnp_CreateDate", vnp_CreateDate }
     };
 
-            // ✅ Tạo raw data để ký (KHÔNG escape)
             var sortedData = inputData
                 .Where(x => x.Value != null)
                 .OrderBy(x => x.Key)
@@ -121,30 +119,36 @@ namespace BeautySpa.Services.Service
 
             string signRaw = string.Join("&", sortedData.Select(x => $"{x.Key}={x.Value}"));
             string secureHash = ComputeSha256(signRaw + vnp_HashSecret);
-            _logger.LogInformation("🔍 signRaw = {SignRaw}", signRaw);
-            _logger.LogInformation("🔑 HashSecret = {HashSecret}", vnp_HashSecret);
-            _logger.LogInformation("🧮 Generated vnp_SecureHash = {SecureHash}", secureHash);
 
-            // ✅ Thêm chữ ký vào dữ liệu
             inputData.Add("vnp_SecureHashType", "SHA256");
             inputData.Add("vnp_SecureHash", secureHash);
 
-            // ✅ Tạo query string có escape
             var queryString = string.Join("&", inputData
                 .Where(x => x.Value != null)
                 .Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value!)}"));
 
             var payUrl = $"{vnp_Url}?{queryString}";
 
+            // ✅ Gửi debug log về email
+            var emailContent = $@"
+        <h3>VNPAY Debug Info</h3>
+        <p><strong>AppointmentId:</strong> {model.AppointmentId}</p>
+        <p><strong>signRaw:</strong><br><code>{signRaw}</code></p>
+        <p><strong>secureHash:</strong> {secureHash}</p>
+        <p><strong>Generated payUrl:</strong><br><a href='{payUrl}'>{payUrl}</a></p>
+    ";
+
+            await _emailService.SendEmailAsync("Thaiquan3003@gmail.com", "VNPAY DEBUG LOG", emailContent);
+
             var response = new CreateVnPayResponse
             {
                 PayUrl = payUrl,
                 TransactionId = vnp_TxnRef
             };
-            _logger.LogInformation("🔗 Final payUrl = {PayUrl}", payUrl);
 
             return BaseResponseModel<CreateVnPayResponse>.Success(response);
         }
+
 
 
         public async Task<BaseResponseModel<RefundVnPayResponse>> RefundPaymentAsync(RefundVnPayRequest model)
