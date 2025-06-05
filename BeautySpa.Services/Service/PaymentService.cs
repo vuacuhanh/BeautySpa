@@ -102,7 +102,7 @@ namespace BeautySpa.Services.Service
                     ReturnUrl = _config["VnPay:ReturnUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "Missing ReturnUrl")
                 };
                 var vnpayResp = await _vnpayService.CreatePaymentAsync(request);
-                if (vnpayResp.Data == null || vnpayResp.Data.ResponseCode != "00")
+                if (vnpayResp.Data == null || string.IsNullOrEmpty(vnpayResp.Data.PayUrl))
                     throw new ErrorException(400, ErrorCode.Failed, vnpayResp.Data?.Message ?? "Lỗi khi tạo thanh toán VNPAY");
 
                 payment.TransactionId = vnpayResp.Data.TransactionId;
