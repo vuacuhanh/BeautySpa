@@ -291,7 +291,10 @@ namespace BeautySpa.Services.Service
                 .Include(x => x.AppointmentServices)
                 .Where(x => x.BookingStatus == "pending"
                          && x.CreatedTime <= now.AddMinutes(-10).DateTime
-                         && x.DeletedTime == null)
+                         && x.DeletedTime == null
+                         && x.Payment != null
+                         && x.Payment.PaymentMethod != "cash"
+                         && x.Payment.Status == "pending")
                 .ToListAsync();
 
             foreach (var appointment in appointments)
