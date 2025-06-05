@@ -118,7 +118,10 @@ namespace BeautySpa.Services.Service
 
             string signRaw = string.Join("&", sortedData.Select(x => $"{x.Key}={x.Value}"));
             string secureHash = ComputeSha256(signRaw + vnp_HashSecret);
-
+            Console.WriteLine("🔍 signRaw = " + signRaw);
+            Console.WriteLine("🔑 HashSecret = " + vnp_HashSecret);
+            Console.WriteLine("🧮 Generated vnp_SecureHash = " + secureHash);
+            
             // ✅ Thêm chữ ký vào dữ liệu
             inputData.Add("vnp_SecureHashType", "SHA256");
             inputData.Add("vnp_SecureHash", secureHash);
@@ -135,6 +138,7 @@ namespace BeautySpa.Services.Service
                 PayUrl = payUrl,
                 TransactionId = vnp_TxnRef
             };
+            Console.WriteLine("🔗 Final payUrl = " + payUrl);
 
             return BaseResponseModel<CreateVnPayResponse>.Success(response);
         }
