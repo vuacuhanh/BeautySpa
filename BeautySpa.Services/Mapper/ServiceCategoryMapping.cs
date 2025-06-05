@@ -1,13 +1,6 @@
 ﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.ServiceCategoryModelViews;
-using BeautySpa.ModelViews.ServiceImageModelViews;
-using BeautySpa.ModelViews.ServiceModelViews;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BeautySpa.Services.Mapper
 {

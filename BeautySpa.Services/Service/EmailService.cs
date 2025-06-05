@@ -24,14 +24,15 @@ namespace BeautySpa.Services.Service
             var emailSettings = _configuration.GetSection("EmailSettings");
 
             var fromEmail = emailSettings.GetValue<string>("From")
-                            ?? throw new InvalidOperationException("Email 'From' is not configured.");
+                ?? throw new InvalidOperationException("Email 'From' is not configured.");
             var smtpHost = emailSettings.GetValue<string>("Host")
-                            ?? throw new InvalidOperationException("SMTP Host is not configured.");
+                ?? throw new InvalidOperationException("SMTP Host is not configured.");
             var smtpPort = emailSettings.GetValue<int?>("Port") ?? 587;
             var username = emailSettings.GetValue<string>("Username")
-                            ?? throw new InvalidOperationException("SMTP Username is not configured.");
+                ?? throw new InvalidOperationException("SMTP Username is not configured.");
             var password = emailSettings.GetValue<string>("Password")
-                            ?? throw new InvalidOperationException("SMTP Password is not configured.");
+                ?? throw new InvalidOperationException("SMTP Password is not configured.");
+            var skipSslValidation = emailSettings.GetValue<bool>("SkipSslValidation");
 
             var message = new MimeMessage();
             message.From.Add(MailboxAddress.Parse(fromEmail));
@@ -41,8 +42,13 @@ namespace BeautySpa.Services.Service
 
             using var smtp = new SmtpClient
             {
-                Timeout = 10000 
+                Timeout = 10000 // 10s timeout
             };
+
+            if (skipSslValidation)
+            {
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+            }
 
             await smtp.ConnectAsync(smtpHost, smtpPort, SecureSocketOptions.StartTls);
             await smtp.AuthenticateAsync(username, password);

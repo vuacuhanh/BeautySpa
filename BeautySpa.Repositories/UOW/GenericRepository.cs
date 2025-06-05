@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Core.Base;
 using BeautySpa.Repositories.Context;
@@ -90,6 +90,13 @@ namespace BeautySpa.Repositories.UOW
         {
             return Task.FromResult(_dbSet.Update(obj));
         }
+        //thêm
+        public async Task<T?> GetByKeysAsync(object key1, object key2)
+        {
+            return await _dbSet.FirstOrDefaultAsync(entity =>
+                EF.Property<string>(entity, "BookingId") == key1.ToString() &&
+                EF.Property<string>(entity, "PackageId") == key2.ToString());
+        }
         public void Delete1(T entity)
         {
             _dbSet.Remove(entity); // Xóa dựa trên đối tượng 
@@ -100,10 +107,12 @@ namespace BeautySpa.Repositories.UOW
             return await _dbSet.Where(predicate).ToListAsync();
         }
 
-        public async Task DeleteAsync(object[] keyValues)
+        public Task DeleteAsync(T entity)
         {
-            T entity = await _dbSet.FindAsync(keyValues) ?? throw new Exception("Entity not found");
             _dbSet.Remove(entity);
+            return Task.CompletedTask;
         }
+
+
     }
 }

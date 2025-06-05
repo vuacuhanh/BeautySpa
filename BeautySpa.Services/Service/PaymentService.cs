@@ -16,6 +16,7 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using BeautySpa.Services.Interface;
 
 namespace BeautySpa.Services.Service
 {
@@ -52,62 +53,81 @@ namespace BeautySpa.Services.Service
         public async Task<BaseResponseModel<PaymentResponse>> CreateDepositAsync(POSTPaymentModelView model)
         {
             await new POSTPaymentValidator().ValidateAndThrowAsync(model);
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             var appointment = await _unitOfWork.GetRepository<Appointment>()
                 .Entities.Include(x => x.Payment)
                 .FirstOrDefaultAsync(x => x.Id == model.AppointmentId && x.DeletedTime == null)
-                ?? throw new ErrorException(404, ErrorCode.NotFound, "Appointment does not exist");
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Appointment not found");
 
-            if (appointment.Payment != null)
+            if (appointment.Payment != null && appointment.Payment.Status != "refunded")
                 throw new ErrorException(400, ErrorCode.Duplicate, "Appointment has been paid deposit");
 
-            var payment = _mapper.Map<Payment>(model);
-            payment.Id = Guid.NewGuid();
-            payment.AppointmentId = appointment.Id;
-            payment.CreatedBy = CurrentUserId;
-            payment.CreatedTime = CoreHelper.SystemTimeNow;
-            payment.Status = "deposit_paid";
-            payment.TransactionType = "Deposit";
+            var userId = Authentication.GetUserIdFromHttpContextAccessor(_httpContext);
 
-            PaymentResponse response = new();
+            var payment = new Payment
+            {
+                Id = Guid.NewGuid(),
+                AppointmentId = appointment.Id,
+                Amount = model.Amount,
+                PaymentMethod = model.PaymentMethod,
+                CreatedBy = userId,
+                CreatedTime = CoreHelper.SystemTimeNow,
+                Status = "pending"
+            };
 
-            if (model.PaymentMethod.ToLower() == "momo")
+            string? payUrl = null;
+
+            if (model.PaymentMethod?.ToLower() == "momo")
             {
                 var request = new CreatePaymentRequest
                 {
+                    OrderId = appointment.Id.ToString(),
                     Amount = (long)model.Amount,
-                    OrderId = $"appointment_{appointment.Id}",
-                    OrderInfo = $"Deposit payment for appointment #{appointment.Id}"
+                    OrderInfo = $"Thanh toán cọc lịch hẹn #{appointment.Id}"
                 };
                 var momoResp = await _momoService.CreatePaymentAsync(request);
-                payment.TransactionId = momoResp.Data?.RequestId;
-                response.PayUrl = momoResp.Data?.PayUrl!;
-                response.QrCodeUrl = momoResp.Data?.DeeplinkQr!;
+                if (momoResp.Data == null || momoResp.Data.ResultCode != 0)
+                    throw new ErrorException(400, ErrorCode.Failed, momoResp.Data?.Message ?? "Lỗi khi tạo thanh toán MoMo");
+
+                payment.TransactionId = momoResp.Data.RequestId;
+                payUrl = momoResp.Data.PayUrl;
             }
-            else if (model.PaymentMethod.ToLower() == "vnpay")
+            else if (model.PaymentMethod?.ToLower() == "vnpay")
             {
                 var request = new CreateVnPayRequest
                 {
                     AppointmentId = appointment.Id,
                     Amount = model.Amount,
-                    OrderInfo = $"Deposit payment for appointment #{appointment.Id}",
-                    ReturnUrl = "https://spa-api.com/api/Payment/vnpay-callback"
+                    OrderInfo = $"Thanh toán cọc lịch hẹn #{appointment.Id}",
+                    ReturnUrl = _config["VnPay:ReturnUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "Missing ReturnUrl")
                 };
                 var vnpayResp = await _vnpayService.CreatePaymentAsync(request);
-                payment.TransactionId = vnpayResp.Data?.TransactionId;
-                response.PayUrl = vnpayResp.Data?.PayUrl!;
-                response.QrCodeUrl = vnpayResp.Data?.PayUrl!;
+                if (vnpayResp.Data == null || vnpayResp.Data.ResponseCode != "00")
+                    throw new ErrorException(400, ErrorCode.Failed, vnpayResp.Data?.Message ?? "Lỗi khi tạo thanh toán VNPAY");
+
+                payment.TransactionId = vnpayResp.Data.TransactionId;
+                payUrl = vnpayResp.Data.PayUrl;
             }
             else
-                throw new ErrorException(400, ErrorCode.InvalidInput, "Invalid payment method");
+            {
+                throw new ErrorException(400, ErrorCode.InvalidInput, "Phương thức thanh toán không hợp lệ");
+            }
 
             await _unitOfWork.GetRepository<Payment>().InsertAsync(payment);
             await _unitOfWork.SaveAsync();
-            await transaction.CommitAsync();
+
+            var response = new PaymentResponse
+            {
+                AppointmentId = appointment.Id,
+                Amount = model.Amount,
+                PaymentMethod = model.PaymentMethod ?? string.Empty,
+                PayUrl = payUrl ?? string.Empty
+            };
 
             return BaseResponseModel<PaymentResponse>.Success(response);
         }
+
+
 
         public async Task<BaseResponseModel<string>> RefundDepositAsync(RefundPaymentModelView model)
         {

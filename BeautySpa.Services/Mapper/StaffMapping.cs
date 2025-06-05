@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.StaffModelViews;
 using System.Text.Json;
 

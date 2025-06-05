@@ -2,7 +2,7 @@
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.AppointmentModelViews;
 
-namespace BeautySpa.API.Mapping
+namespace BeautySpa.Services.Mapper
 {
     public class AppointmentMapping : Profile
     {

@@ -1,160 +1,132 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Core.Base;
+﻿using BeautySpa.Core.Base;
+using BeautySpa.Core.Settings;
 using BeautySpa.ModelViews.MoMoModelViews;
-using BeautySpa.Services.Validations.MomoValidator;
-using FluentValidation;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using Polly;
+using System.Security.Cryptography;
+using System.Text;
+using BeautySpa.Services.Interface;
 
 namespace BeautySpa.Services.Service
 {
     public class MoMoService : IMomoService
     {
-        private readonly IConfiguration _config; private readonly IHttpClientFactory _httpClientFactory;
+        private readonly HttpClient _httpClient;
+        private readonly MomoSettings _momoSettings;
 
-        public MoMoService(IConfiguration config, IHttpClientFactory httpClientFactory)
+        public MoMoService(IHttpClientFactory httpClientFactory, IOptions<MomoSettings> momoOptions)
         {
-            _config = config;
-            _httpClientFactory = httpClientFactory;
+            _httpClient = httpClientFactory.CreateClient();
+            _momoSettings = momoOptions.Value;
         }
 
         public async Task<BaseResponseModel<CreatePaymentResponse>> CreatePaymentAsync(CreatePaymentRequest model)
         {
-            await new CreatePaymentValidator().ValidateAndThrowAsync(model);
+            if (string.IsNullOrEmpty(model.RequestId))
+                model.RequestId = Guid.NewGuid().ToString();
 
-            string endpoint = GetConfig("MoMo:PaymentUrl");
-            string partnerCode = GetConfig("MoMo:PartnerCode");
-            string accessKey = GetConfig("MoMo:AccessKey");
-            string secretKey = GetConfig("MoMo:SecretKey");
-            string redirectUrl = _config["MoMo:RedirectUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo RedirectUrl is missing");
-            string ipnUrl = _config["MoMo:IpnUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo IpnUrl is missing");
+            // Tạo rawData đúng thứ tự chuẩn của MoMo
+            string rawData = $"partnerCode={_momoSettings.PartnerCode}&accessKey={_momoSettings.AccessKey}&requestId={model.RequestId}&amount={model.Amount}&orderId={model.OrderId}&orderInfo={model.OrderInfo}&returnUrl={_momoSettings.ReturnUrl}&notifyUrl={_momoSettings.NotifyUrl}&extraData={model.ExtraData}";
+            string signature = ComputeHmacSha256(rawData, _momoSettings.SecretKey);
 
-            string requestId = Guid.NewGuid().ToString();
-            string extraData = Convert.ToBase64String(Encoding.UTF8.GetBytes(""));
-            string rawHash = $"accessKey={accessKey}&amount={model.Amount}&extraData={extraData}&ipnUrl={ipnUrl}&orderId={model.OrderId}&orderInfo={model.OrderInfo}&partnerCode={partnerCode}&redirectUrl={redirectUrl}&requestId={requestId}&requestType=captureWallet";
-            string signature = ComputeHmacSha256(rawHash, secretKey);
-
-            var body = new
+            var request = new
             {
-                partnerCode,
-                partnerName = "BeautySpa",
-                storeId = "BeautySpaStore",
-                requestId,
+                partnerCode = _momoSettings.PartnerCode,
+                accessKey = _momoSettings.AccessKey,
+                requestId = model.RequestId,
                 amount = model.Amount,
                 orderId = model.OrderId,
                 orderInfo = model.OrderInfo,
-                redirectUrl,
-                ipnUrl,
-                extraData,
-                requestType = "captureWallet",
-                signature,
+                returnUrl = _momoSettings.ReturnUrl,
+                notifyUrl = _momoSettings.NotifyUrl,
+                requestType = _momoSettings.RequestType,
+                extraData = model.ExtraData,
+                signature = signature,
                 lang = "vi"
             };
 
-            var client = _httpClientFactory.CreateClient();
-            var retryPolicy = Policy
-                .Handle<HttpRequestException>()
-                .OrResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
-                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+            var content = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync(_momoSettings.PaymentUrl, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
 
-            var response = await retryPolicy.ExecuteAsync(async () =>
-            {
-                var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
-                return await client.PostAsync(endpoint, content);
-            });
+            Console.WriteLine("📦 MoMo RAW RESPONSE:");
+            Console.WriteLine(responseContent);
 
             if (!response.IsSuccessStatusCode)
-                throw new ErrorException(500, ErrorCode.InternalServerError, $"MoMo API returned {response.StatusCode}");
+                throw new ErrorException(500, ErrorCode.InternalServerError, $"MoMo API lỗi HTTP {(int)response.StatusCode}");
 
-            string result = await response.Content.ReadAsStringAsync();
-            dynamic json = JsonConvert.DeserializeObject(result)
-                ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo response is null");
+            if (!IsJson(responseContent))
+                throw new ErrorException(500, ErrorCode.InternalServerError, $"Phản hồi MoMo không phải JSON: {responseContent.Substring(0, Math.Min(300, responseContent.Length))}");
 
-            if (json.resultCode != 0)
-                throw new ErrorException(400, ErrorCode.Failed, json.message ?? "MoMo payment creation failed");
+            var momoResponse = JsonConvert.DeserializeObject<CreatePaymentResponse>(responseContent)
+                ?? throw new ErrorException(500, ErrorCode.InternalServerError, "Không thể phân tích JSON từ MoMo");
 
-            var responseModel = new CreatePaymentResponse
-            {
-                DeeplinkQr = json.qrCodeUrl ?? "",
-                PayUrl = json.payUrl ?? "",
-                RequestId = requestId
-            };
+            if (momoResponse.ResultCode != 0)
+                throw new ErrorException(400, ErrorCode.Failed, momoResponse.Message ?? "Thanh toán MoMo thất bại");
 
-            return BaseResponseModel<CreatePaymentResponse>.Success(responseModel);
+            return BaseResponseModel<CreatePaymentResponse>.Success(momoResponse);
         }
 
         public async Task<BaseResponseModel<RefundResponse>> RefundPaymentAsync(RefundRequest model)
         {
-            await new RefundValidator().ValidateAndThrowAsync(model);
+            if (string.IsNullOrEmpty(model.RequestId))
+                model.RequestId = Guid.NewGuid().ToString();
 
-            string endpoint = GetConfig("MoMo:RefundUrl");
-            string partnerCode = GetConfig("MoMo:PartnerCode");
-            string accessKey = GetConfig("MoMo:AccessKey");
-            string secretKey = GetConfig("MoMo:SecretKey");
+            string rawData = $"partnerCode={_momoSettings.PartnerCode}" +
+                $"&accessKey={_momoSettings.AccessKey}" +
+                $"&requestId={model.RequestId}" +
+                $"&amount={model.Amount}" +
+                $"&orderId={model.OrderId}" +
+                $"&transId={model.TransId}" +
+                $"&requestType=refundMoMoWallet";
+            string signature = ComputeHmacSha256(rawData, _momoSettings.SecretKey);
 
-            string rawHash = $"accessKey={accessKey}&amount={model.Amount}&description={model.Description}&orderId={model.OrderId}&partnerCode={partnerCode}&requestId={model.RequestId}&transId={model.TransId}";
-            string signature = ComputeHmacSha256(rawHash, secretKey);
-
-            var body = new
+            var request = new
             {
-                partnerCode,
+                partnerCode = _momoSettings.PartnerCode,
+                accessKey = _momoSettings.AccessKey,
                 requestId = model.RequestId,
-                orderId = model.OrderId,
                 amount = model.Amount,
+                orderId = model.OrderId,
                 transId = model.TransId,
-                lang = "vi",
-                description = model.Description,
-                signature
+                requestType = "refundMoMoWallet",
+                signature = signature,
+                lang = "vi"
             };
 
-            var client = _httpClientFactory.CreateClient();
-            var retryPolicy = Policy
-                .Handle<HttpRequestException>()
-                .OrResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
-                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
-
-            var response = await retryPolicy.ExecuteAsync(async () =>
-            {
-                var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
-                return await client.PostAsync(endpoint, content);
-            });
+            var content = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync(_momoSettings.RefundUrl, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-                throw new ErrorException(500, ErrorCode.InternalServerError, $"MoMo API returned {response.StatusCode}");
+                throw new ErrorException(500, ErrorCode.InternalServerError, $"MoMo Refund HTTP lỗi {(int)response.StatusCode}");
 
-            string result = await response.Content.ReadAsStringAsync();
-            dynamic json = JsonConvert.DeserializeObject(result)
-                ?? throw new ErrorException(500, ErrorCode.InternalServerError, "MoMo refund response is null");
+            if (!IsJson(responseContent))
+                throw new ErrorException(500, ErrorCode.InternalServerError, $"Phản hồi Refund không phải JSON: {responseContent.Substring(0, Math.Min(300, responseContent.Length))}");
 
-            var responseModel = new RefundResponse
-            {
-                Message = json.message ?? "",
-                ResultCode = json.resultCode ?? ""
-            };
+            var momoResponse = JsonConvert.DeserializeObject<RefundResponse>(responseContent)
+                ?? throw new ErrorException(500, ErrorCode.InternalServerError, "Không thể đọc JSON từ MoMo");
 
-            if (responseModel.ResultCode != "0")
-                throw new ErrorException(400, ErrorCode.Failed, responseModel.Message);
+            if (int.TryParse(momoResponse.ResultCode, out var result) && result != 0)
+                throw new ErrorException(400, ErrorCode.Failed, momoResponse.Message ?? "Lỗi hoàn tiền MoMo");
 
-            return BaseResponseModel<RefundResponse>.Success(responseModel);
-        }
-
-        private string GetConfig(string key)
-        {
-            return _config[key] ?? throw new ErrorException(500, ErrorCode.InternalServerError, $"Missing config key: {key}");
+            return BaseResponseModel<RefundResponse>.Success(momoResponse);
         }
 
         public static string ComputeHmacSha256(string rawData, string secretKey)
         {
-            if (string.IsNullOrEmpty(secretKey))
-                throw new ErrorException(500, ErrorCode.InternalServerError, "Secret key is empty");
-
-            var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(rawData));
             return BitConverter.ToString(hash).Replace("-", "").ToLower();
         }
-    }
 
+        private static bool IsJson(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            input = input.Trim();
+            return (input.StartsWith("{") && input.EndsWith("}")) || (input.StartsWith("[") && input.EndsWith("]"));
+        }
+    }
 }

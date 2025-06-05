@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.ModelViews.RoleModelViews;
-using Microsoft.AspNetCore.Identity;
 
 namespace BeautySpa.Services.Mapper
 {

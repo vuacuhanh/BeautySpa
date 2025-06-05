@@ -6,6 +6,10 @@ using BeautySpa.Core.Base;
 using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.ServiceProviderModelViews;
+<<<<<<< HEAD
+using BeautySpa.Services.Validations.ServiceProviderValidator;
+=======
+>>>>>>> 69164a2c523de3343cce845b080745ed3f4d99bd
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 

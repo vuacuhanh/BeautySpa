@@ -28,8 +28,8 @@ namespace BeautySpa.Contract.Repositories.IUOW
         Task UpdateAsync(T obj);
         Task DeleteAsync(object id);
         Task SaveAsync();
+        Task<T?> GetByKeysAsync(object key1, object key2);
         //thêm
         Task<IList<T>> FindAsync(Expression<Func<T, bool>> predicate);
-        Task DeleteAsync(object[] keyValues);
     }
 }

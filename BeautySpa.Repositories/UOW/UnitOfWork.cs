@@ -17,6 +17,8 @@ namespace BeautySpa.Repositories.UOW
             _dbContext = dbContext;
         }
 
+        public DatabaseContext Context => _dbContext;
+
         public void BeginTransaction()
         {
             _dbContext.Database.BeginTransaction();

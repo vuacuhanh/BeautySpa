@@ -58,7 +58,7 @@ public class ServicePromotionService : IServicePromotionService
         var items = await _unitOfWork.GetRepository<ServicePromotion>()
             .Entities
             .Include(x => x.Service)
-            .Where(x => x.DeletedTime == null && x.Service.ProviderId == provider.Id)
+            .Where(x => x.DeletedTime == null && x.Service!.ProviderId == provider.Id)
             .OrderByDescending(x => x.CreatedTime)
             .ToListAsync();
 
@@ -105,7 +105,7 @@ public class ServicePromotionService : IServicePromotionService
 
         var userId = Guid.Parse(CurrentUserId);
         var provider = await _unitOfWork.GetRepository<ServiceProvider>()
-            .Entities.FirstOrDefaultAsync(p => p.Id == entity.Service.ProviderId && p.ProviderId == userId && p.DeletedTime == null);
+            .Entities.FirstOrDefaultAsync(p => p.Id == entity.Service!.ProviderId && p.ProviderId == userId && p.DeletedTime == null);
 
         if (provider == null)
             throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "Bạn không có quyền cập nhật flash sale này.");
@@ -130,7 +130,7 @@ public class ServicePromotionService : IServicePromotionService
 
         var userId = Guid.Parse(CurrentUserId);
         var provider = await _unitOfWork.GetRepository<ServiceProvider>()
-            .Entities.FirstOrDefaultAsync(p => p.Id == entity.Service.ProviderId && p.ProviderId == userId && p.DeletedTime == null);
+            .Entities.FirstOrDefaultAsync(p => p.Id == entity.Service!.ProviderId && p.ProviderId == userId && p.DeletedTime == null);
 
         if (provider == null)
             throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthorized, "Bạn không có quyền xóa flash sale này.");
