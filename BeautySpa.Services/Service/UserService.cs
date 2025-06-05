@@ -172,18 +172,27 @@ namespace BeautySpa.Services.Service
                 userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
                 // Lấy tên tỉnh và huyện
-                if (!string.IsNullOrWhiteSpace(model.ProvinceId))
+                try
                 {
-                    var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
-                    if (province != null)
-                        userInfor.ProvinceName = province.name;
-                }
+                    if (!string.IsNullOrWhiteSpace(model.ProvinceId))
+                    {
+                        var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
+                        userInfor.ProvinceName = province?.name; // Nếu province là null, để ProvinceName là null
+                    }
 
-                if (!string.IsNullOrWhiteSpace(model.ProvinceId) && !string.IsNullOrWhiteSpace(model.DistrictId))
+                    if (!string.IsNullOrWhiteSpace(model.ProvinceId) && !string.IsNullOrWhiteSpace(model.DistrictId))
+                    {
+                        var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId, model.ProvinceId);
+                        userInfor.DistrictName = district?.name; // Nếu district là null, để DistrictName là null
+                    }
+                }
+                catch (Exception ex)
                 {
-                    var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId, model.ProvinceId);
-                    if (district != null)
-                        userInfor.DistrictName = district.name;
+                    // Log lỗi để debug
+                    Console.WriteLine($"Error fetching province/district: {ex.Message}");
+                    // Không ném lỗi, chỉ để ProvinceName và DistrictName là null
+                    userInfor.ProvinceName = null;
+                    userInfor.DistrictName = null;
                 }
 
                 await userInforRepo.InsertAsync(userInfor);
@@ -194,24 +203,30 @@ namespace BeautySpa.Services.Service
                 userInfor.LastUpdatedBy = CurrentUserId;
                 userInfor.LastUpdatedTime = CoreHelper.SystemTimeNow;
 
-                if (!string.IsNullOrWhiteSpace(model.ProvinceId))
+                try
                 {
-                    var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
-                    if (province != null)
-                        userInfor.ProvinceName = province.name;
-                }
+                    if (!string.IsNullOrWhiteSpace(model.ProvinceId))
+                    {
+                        var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId);
+                        userInfor.ProvinceName = province?.name;
+                    }
 
-                if (!string.IsNullOrWhiteSpace(model.ProvinceId) && !string.IsNullOrWhiteSpace(model.DistrictId))
+                    if (!string.IsNullOrWhiteSpace(model.ProvinceId) && !string.IsNullOrWhiteSpace(model.DistrictId))
+                    {
+                        var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId, model.ProvinceId);
+                        userInfor.DistrictName = district?.name;
+                    }
+                }
+                catch (Exception ex)
                 {
-                    var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId, model.ProvinceId);
-                    if (district != null)
-                        userInfor.DistrictName = district.name;
+                    Console.WriteLine($"Error fetching province/district: {ex.Message}");
+                    userInfor.ProvinceName = null;
+                    userInfor.DistrictName = null;
                 }
 
                 await userInforRepo.UpdateAsync(userInfor);
             }
 
-            // Cập nhật thông tin từ ApplicationUsers nếu cần (PhoneNumber)
             user.PhoneNumber = model.PhoneNumber;
             user.LastUpdatedBy = CurrentUserId;
             user.LastUpdatedTime = CoreHelper.SystemTimeNow;
