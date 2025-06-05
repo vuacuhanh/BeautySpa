@@ -25,6 +25,61 @@ namespace BeautySpa.Services.Service
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
 
+        //public async Task<BaseResponseModel<CreateVnPayResponse>> CreatePaymentAsync(CreateVnPayRequest model)
+        //{
+        //    await new CreateVnPayValidator().ValidateAndThrowAsync(model);
+
+        //    var vnp_Url = _config["VnPay:PaymentUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "VNPAY PaymentUrl is missing");
+        //    var vnp_TmnCode = _config["VnPay:TmnCode"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "VNPAY TmnCode is missing");
+        //    var vnp_HashSecret = _config["VnPay:HashSecret"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "VNPAY HashSecret is missing");
+
+        //    var vnp_ReturnUrl = model.ReturnUrl;
+        //    var vnp_TxnRef = model.AppointmentId.ToString();
+        //    var vnp_Amount = (long)(model.Amount * 100);
+        //    var vnp_IpAddr = _contextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+        //    var vnp_CreateDate = DateTime.Now.ToString("yyyyMMddHHmmss");
+
+        //    var inputData = new Dictionary<string, string?>
+        //    {
+        //        { "vnp_Version", "2.1.0" },
+        //        { "vnp_Command", "pay" },
+        //        { "vnp_TmnCode", vnp_TmnCode },
+        //        { "vnp_Amount", vnp_Amount.ToString() },
+        //        { "vnp_CurrCode", "VND" },
+        //        { "vnp_TxnRef", vnp_TxnRef },
+        //        { "vnp_OrderInfo", model.OrderInfo },
+        //        { "vnp_OrderType", "other" },
+        //        { "vnp_Locale", "vn" },
+        //        { "vnp_ReturnUrl", vnp_ReturnUrl },
+        //        { "vnp_IpAddr", vnp_IpAddr },
+        //        { "vnp_CreateDate", vnp_CreateDate }
+        //    };
+
+        //    var sortedData = inputData
+        //    .Where(x => x.Value != null)
+        //    .OrderBy(x => x.Key)
+        //    .ToDictionary(x => x.Key, x => x.Value!);
+
+        //    string signRaw = string.Join("&", sortedData.Select(x => $"{x.Key}={x.Value}"));
+        //    string secureHash = ComputeSha256(signRaw + vnp_HashSecret);
+
+        //    inputData.Add("vnp_SecureHashType", "SHA256");
+        //    inputData.Add("vnp_SecureHash", secureHash);
+
+        //    var queryString = string.Join('&', inputData
+        //        .Where(x => x.Value != null)
+        //        .Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value!)}"));
+        //    var payUrl = $"{vnp_Url}?{queryString}";
+
+        //    var response = new CreateVnPayResponse
+        //    {
+        //        PayUrl = payUrl,
+        //        TransactionId = vnp_TxnRef
+        //    };
+
+        //    return BaseResponseModel<CreateVnPayResponse>.Success(response);
+        //}
+
         public async Task<BaseResponseModel<CreateVnPayResponse>> CreatePaymentAsync(CreateVnPayRequest model)
         {
             await new CreateVnPayValidator().ValidateAndThrowAsync(model);
@@ -33,40 +88,46 @@ namespace BeautySpa.Services.Service
             var vnp_TmnCode = _config["VnPay:TmnCode"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "VNPAY TmnCode is missing");
             var vnp_HashSecret = _config["VnPay:HashSecret"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "VNPAY HashSecret is missing");
 
-            var vnp_ReturnUrl = model.ReturnUrl;
+            var vnp_ReturnUrl = model.ReturnUrl ?? throw new ErrorException(400, ErrorCode.Unknown, "Missing ReturnUrl");
             var vnp_TxnRef = model.AppointmentId.ToString();
             var vnp_Amount = (long)(model.Amount * 100);
             var vnp_IpAddr = _contextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "127.0.0.1";
             var vnp_CreateDate = DateTime.Now.ToString("yyyyMMddHHmmss");
 
             var inputData = new Dictionary<string, string?>
-            {
-                { "vnp_Version", "2.1.0" },
-                { "vnp_Command", "pay" },
-                { "vnp_TmnCode", vnp_TmnCode },
-                { "vnp_Amount", vnp_Amount.ToString() },
-                { "vnp_CurrCode", "VND" },
-                { "vnp_TxnRef", vnp_TxnRef },
-                { "vnp_OrderInfo", model.OrderInfo },
-                { "vnp_OrderType", "other" },
-                { "vnp_Locale", "vn" },
-                { "vnp_ReturnUrl", vnp_ReturnUrl },
-                { "vnp_IpAddr", vnp_IpAddr },
-                { "vnp_CreateDate", vnp_CreateDate }
-            };
+    {
+        { "vnp_Version", "2.1.0" },
+        { "vnp_Command", "pay" },
+        { "vnp_TmnCode", vnp_TmnCode },
+        { "vnp_Amount", vnp_Amount.ToString() },
+        { "vnp_CurrCode", "VND" },
+        { "vnp_TxnRef", vnp_TxnRef },
+        { "vnp_OrderInfo", model.OrderInfo },
+        { "vnp_OrderType", "other" },
+        { "vnp_Locale", "vn" },
+        { "vnp_ReturnUrl", vnp_ReturnUrl },
+        { "vnp_IpAddr", vnp_IpAddr },
+        { "vnp_CreateDate", vnp_CreateDate }
+    };
 
-            string signData = string.Join('&', inputData
+            // ✅ Tạo raw data để ký (KHÔNG escape)
+            var sortedData = inputData
                 .Where(x => x.Value != null)
                 .OrderBy(x => x.Key)
-                .Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value!)}"));
-            string secureHash = ComputeSha256(signData + vnp_HashSecret);
+                .ToDictionary(x => x.Key, x => x.Value!);
 
+            string signRaw = string.Join("&", sortedData.Select(x => $"{x.Key}={x.Value}"));
+            string secureHash = ComputeSha256(signRaw + vnp_HashSecret);
+
+            // ✅ Thêm chữ ký vào dữ liệu
             inputData.Add("vnp_SecureHashType", "SHA256");
             inputData.Add("vnp_SecureHash", secureHash);
 
-            var queryString = string.Join('&', inputData
+            // ✅ Tạo query string có escape
+            var queryString = string.Join("&", inputData
                 .Where(x => x.Value != null)
                 .Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value!)}"));
+
             var payUrl = $"{vnp_Url}?{queryString}";
 
             var response = new CreateVnPayResponse
@@ -77,6 +138,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<CreateVnPayResponse>.Success(response);
         }
+
 
         public async Task<BaseResponseModel<RefundVnPayResponse>> RefundPaymentAsync(RefundVnPayRequest model)
         {
