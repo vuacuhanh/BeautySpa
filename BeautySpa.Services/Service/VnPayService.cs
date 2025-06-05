@@ -8,6 +8,7 @@ using BeautySpa.Services.Validations.VnPayValidator;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace BeautySpa.Services.Service
@@ -15,12 +16,14 @@ namespace BeautySpa.Services.Service
     public class VnpayService : IVnpayService
     {
         private readonly IConfiguration _config; private readonly IHttpContextAccessor _contextAccessor; private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<VnpayService> _logger;
 
-        public VnpayService(IConfiguration config, IHttpContextAccessor contextAccessor, IHttpClientFactory httpClientFactory)
+        public VnpayService(IConfiguration config, IHttpContextAccessor contextAccessor, IHttpClientFactory httpClientFactory, ILogger<VnpayService> logger)
         {
             _config = config;
             _contextAccessor = contextAccessor;
             _httpClientFactory = httpClientFactory;
+            _logger = logger;
         }
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_contextAccessor);
@@ -118,10 +121,10 @@ namespace BeautySpa.Services.Service
 
             string signRaw = string.Join("&", sortedData.Select(x => $"{x.Key}={x.Value}"));
             string secureHash = ComputeSha256(signRaw + vnp_HashSecret);
-            Console.WriteLine("🔍 signRaw = " + signRaw);
-            Console.WriteLine("🔑 HashSecret = " + vnp_HashSecret);
-            Console.WriteLine("🧮 Generated vnp_SecureHash = " + secureHash);
-            
+            _logger.LogInformation("🔍 signRaw = {SignRaw}", signRaw);
+            _logger.LogInformation("🔑 HashSecret = {HashSecret}", vnp_HashSecret);
+            _logger.LogInformation("🧮 Generated vnp_SecureHash = {SecureHash}", secureHash);
+
             // ✅ Thêm chữ ký vào dữ liệu
             inputData.Add("vnp_SecureHashType", "SHA256");
             inputData.Add("vnp_SecureHash", secureHash);
@@ -138,7 +141,7 @@ namespace BeautySpa.Services.Service
                 PayUrl = payUrl,
                 TransactionId = vnp_TxnRef
             };
-            Console.WriteLine("🔗 Final payUrl = " + payUrl);
+            _logger.LogInformation("🔗 Final payUrl = {PayUrl}", payUrl);
 
             return BaseResponseModel<CreateVnPayResponse>.Success(response);
         }
