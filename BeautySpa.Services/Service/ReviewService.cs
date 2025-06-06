@@ -74,26 +74,47 @@ namespace BeautySpa.Services.Service
         }
 
         // Tạo mới review
-        public async Task<Guid> CreateAsync(POSTReviewModelViews model)
+        public async Task<BaseResponseModel<Guid>> CreateAsync(POSTReviewModelViews model)
         {
-            // Validate nội dung review
+            if (model.AppointmentId == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "AppointmentId không hợp lệ.");
+
             if (string.IsNullOrWhiteSpace(model.Comment))
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Nội dung đánh giá không được để trống.");
+
+            var appointment = await _unitOfWork.GetRepository<Appointment>()
+                .Entities
+                .FirstOrDefaultAsync(a => a.Id == model.AppointmentId && !a.DeletedTime.HasValue)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Không tìm thấy lịch hẹn.");
+
+            // Chỉ cho phép đánh giá nếu đã hoàn thành
+            if (!string.Equals(appointment.BookingStatus, "completed", StringComparison.OrdinalIgnoreCase))
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.Failed, "Chỉ được đánh giá lịch đã hoàn tất.");
+
+            // Kiểm tra trùng đánh giá
+            var existedReview = await _unitOfWork.GetRepository<Review>()
+                .Entities.AnyAsync(r => r.AppointmentId == model.AppointmentId && !r.DeletedTime.HasValue);
+            if (existedReview)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.Failed, "Bạn đã đánh giá lịch này rồi.");
+
+            var review = new Review
             {
-                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Review content cannot be empty.");
-            }
+                Id = Guid.NewGuid(),
+                AppointmentId = model.AppointmentId,
+                Rating = model.Rating,
+                Comment = model.Comment,
+                CustomerId = appointment.CustomerId,
+                ProviderId = appointment.ProviderId,
+                CreatedBy = appointment.CustomerId.ToString(),
+                CreatedTime = CoreHelper.SystemTimeNow
+            };
 
-            // Map từ model view sang entity
-            var review = _mapper.Map<Review>(model);
-            review.Id = Guid.NewGuid();
-            review.CreatedBy = currentUserId;
-            review.CreatedTime = CoreHelper.SystemTimeNow;
-
-            // Insert vào database
             await _unitOfWork.GetRepository<Review>().InsertAsync(review);
             await _unitOfWork.SaveAsync();
 
-            return review.Id;
+            return BaseResponseModel<Guid>.Success(review.Id, "Đánh giá thành công.");
         }
+
 
         // Cập nhật review
         public async Task UpdateAsync(PUTReviewModelViews model)
