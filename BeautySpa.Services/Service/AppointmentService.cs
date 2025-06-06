@@ -555,6 +555,7 @@ namespace BeautySpa.Services.Service
             var query = _unitOfWork.GetRepository<Appointment>()
                 .Entities.AsNoTracking()
                 .Include(x => x.AppointmentServices).ThenInclude(s => s.Service)
+                .Include(a => a.AppointmentServices)
                 .Where(x => x.DeletedTime == null)
                 .OrderByDescending(x => x.CreatedTime);
 
@@ -610,6 +611,7 @@ namespace BeautySpa.Services.Service
             .GetRepository<Appointment>()
             .Entities
             .Where(a => a.CustomerId.ToString() == currentUserId)
+            .Include(x => x.BranchLocation)
             .Include(a => a.AppointmentServices)
                 .ThenInclude(s => s.Service)
             .OrderByDescending(a => a.AppointmentDate)

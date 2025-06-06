@@ -9,7 +9,11 @@ namespace BeautySpa.Services.Mapper
         public AppointmentMapping()
         {
             CreateMap<Appointment, GETAppointmentModelView>()
-                .ForMember(dest => dest.Services, opt => opt.MapFrom(src => src.AppointmentServices));
+                .ForMember(dest => dest.Services, opt => opt.MapFrom(src => src.AppointmentServices))
+                .ForMember(dest => dest.BranchName, opt => opt.MapFrom(src => src.BranchLocation.BranchName))
+                .ForMember(dest => dest.Street, opt => opt.MapFrom(src => src.BranchLocation.Street))
+                .ForMember(dest => dest.DistrictName, opt => opt.MapFrom(src => src.BranchLocation.DistrictName))
+                .ForMember(dest => dest.ProvinceName, opt => opt.MapFrom(src => src.BranchLocation.ProvinceName));
 
             CreateMap<AppointmentService, AppointmentServiceDetail>()
                 .ForMember(dest => dest.ServiceName, opt => opt.MapFrom(src => src.Service!.ServiceName));
