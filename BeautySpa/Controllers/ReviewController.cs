@@ -1,6 +1,7 @@
 ﻿using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
 using BeautySpa.ModelViews.ReviewModelViews;
+using BeautySpa.Services.Service;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -22,8 +23,8 @@ namespace BeautySpa.API.Controllers
         [SwaggerOperation(Summary = "Tạo đánh giá")]
         public async Task<IActionResult> Create([FromBody] POSTReviewModelViews model)
         {
-            var id = await _service.CreateAsync(model);
-            return Ok(new BaseResponseModel<Guid>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, id));
+            var result = await _service.CreateAsync(model);
+            return Ok(result);
         }
 
         [HttpGet("all")]
