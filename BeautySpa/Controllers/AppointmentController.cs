@@ -1,5 +1,6 @@
 ﻿using BeautySpa.Contract.Services.Interface;
 using BeautySpa.ModelViews.AppointmentModelViews;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -78,6 +79,13 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> AutoNoShow()
         {
             var result = await _service.AutoNoShowAfter12HoursAsync();
+            return Ok(result);
+        }
+        [HttpGet("by-current-user")]
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> GetByCurrentUser()
+        {
+            var result = await _service.GetByCurrentUserAsync();
             return Ok(result);
         }
     }
