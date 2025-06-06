@@ -621,5 +621,48 @@ namespace BeautySpa.Services.Service
             return BaseResponseModel<List<GETAppointmentModelView>>.Success(result);
         }
 
+        public async Task<BaseResponseModel<string>> CancelByUserAsync(Guid appointmentId)
+        {
+            var userId = CurrentUserId;
+            var now = CoreHelper.SystemTimeNow;
+
+            var appointment = await _unitOfWork.GetRepository<Appointment>()
+                .Entities.Include(x => x.Payment)
+                .FirstOrDefaultAsync(x => x.Id == appointmentId
+                                       && x.CustomerId.ToString() == userId
+                                       && x.DeletedTime == null)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch hẹn.");
+
+            if (appointment.IsConfirmedBySpa)
+                throw new ErrorException(400, ErrorCode.Failed, "Lịch đã được spa xác nhận, không thể hủy.");
+
+            double minutesSinceCreated = (now - appointment.CreatedTime).TotalMinutes;
+            if (minutesSinceCreated > 5)
+                throw new ErrorException(400, ErrorCode.Failed, "Chỉ được hủy trong vòng 5 phút sau khi đặt.");
+
+            appointment.BookingStatus = "canceled";
+            appointment.DeletedTime = now;
+            appointment.LastUpdatedTime = now;
+            appointment.LastUpdatedBy = userId;
+
+            if (appointment.Payment != null && appointment.Payment.Status != "refunded")
+            {
+                appointment.Payment.RefundAmount = appointment.Payment.Amount;
+                appointment.Payment.PlatformFee = 0;
+                appointment.Payment.Status = "refunded";
+            }
+
+            await ReturnPromotionsAsync(appointment);
+
+            await _notificationService.CreateAsync(new POSTNotificationModelView
+            {
+                UserId = appointment.CustomerId,
+                Title = "Lịch hẹn đã hủy",
+                Message = "Bạn đã hủy lịch trong 5 phút – tiền cọc đã được hoàn lại."
+            });
+
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("Hủy lịch thành công.");
+        }
     }
 }
