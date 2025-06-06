@@ -38,5 +38,12 @@ namespace BeautySpa.API.Controllers
         {
             return Ok(await _favoriteService.GetFavoritesByProviderAsync(providerId));
         }
+
+        [HttpGet("favorites/by-customer/{customerId}")]
+        public async Task<IActionResult> GetFavoritesByCustomer(Guid customerId)
+        {
+            var result = await _favoriteService.GetFavoritesByCustomerAsync(customerId);
+            return Ok(result);
+        }
     }
 }
