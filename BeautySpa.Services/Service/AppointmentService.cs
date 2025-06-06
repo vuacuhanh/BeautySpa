@@ -656,9 +656,10 @@ namespace BeautySpa.Services.Service
 
             await _notificationService.CreateAsync(new POSTNotificationModelView
             {
-                UserId = appointment.CustomerId,
-                Title = "Lịch hẹn đã hủy",
-                Message = "Bạn đã hủy lịch trong 5 phút – tiền cọc đã được hoàn lại."
+                UserId = appointment.ProviderId,
+                Title = "Người dùng đã hủy lịch hẹn",
+                Message = $"Khách hàng đã hủy lịch đặt vào lúc {appointment.AppointmentDate:dd/MM/yyyy} - {appointment.StartTime}",
+                NotificationType = "Appointment" 
             });
 
             await _unitOfWork.SaveAsync();
