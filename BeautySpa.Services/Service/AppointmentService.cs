@@ -13,6 +13,7 @@ using BeautySpa.Services.Validations.AppoitmentValidator;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
 using Entity = BeautySpa.Contract.Repositories.Entity;
 
 namespace BeautySpa.Services.Service
@@ -602,5 +603,21 @@ namespace BeautySpa.Services.Service
                 if (flash != null) flash.Quantity--;
             }
         }
+        public async Task<BaseResponseModel<List<GETAppointmentModelView>>> GetByCurrentUserAsync()
+        {
+            var currentUserId = Authentication.GetUserIdFromHttpContextAccessor(_context);
+            var appointments = await _unitOfWork
+            .GetRepository<Appointment>()
+            .Entities
+            .Where(a => a.CustomerId.ToString() == currentUserId)
+            .Include(a => a.AppointmentServices)
+                .ThenInclude(s => s.Service)
+            .OrderByDescending(a => a.AppointmentDate)
+            .ToListAsync();
+
+            var result = _mapper.Map<List<GETAppointmentModelView>>(appointments);
+            return BaseResponseModel<List<GETAppointmentModelView>>.Success(result);
+        }
+
     }
 }
