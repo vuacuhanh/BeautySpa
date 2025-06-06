@@ -88,5 +88,14 @@ namespace BeautySpa.API.Controllers
             var result = await _service.GetByCurrentUserAsync();
             return Ok(result);
         }
+
+        [HttpPatch("cancel-by-user/{id}")]
+        [Authorize(Roles = "Customer")]
+        [SwaggerOperation(Summary = "Người dùng hủy lịch trong 5 phút sau khi đặt (nếu chưa được xác nhận)")]
+        public async Task<IActionResult> CancelByUser(Guid id)
+        {
+            var result = await _service.CancelByUserAsync(id);
+            return Ok(result);
+        }
     }
 }
