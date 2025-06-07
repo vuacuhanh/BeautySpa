@@ -317,7 +317,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Lịch hẹn bị hủy",
-                    Message = "Bạn chưa thanh toán cọc, lịch đã bị hủy sau 10 phút."
+                    Message = "Bạn chưa thanh toán cọc, lịch đã bị hủy sau 10 phút.",
+                    NotificationType = "appointment"
                 });
             }
 
@@ -363,13 +364,26 @@ namespace BeautySpa.Services.Service
                 if (member != null)
                 {
                     member.AccumulatedPoints += (int)(appointment.FinalPrice / 1000);
+
+                    var ranks = await _unitOfWork.GetRepository<Rank>()
+                        .Entities.Where(r => r.DeletedTime == null)
+                        .OrderByDescending(r => r.MinPoints)
+                        .ToListAsync();
+
+                    var matchedRank = ranks.FirstOrDefault(r => member.AccumulatedPoints >= r.MinPoints);
+                    if (matchedRank != null && matchedRank.Id != member.RankId)
+                    {
+                        member.RankId = matchedRank.Id;
+                        member.LastRankUpdate = CoreHelper.SystemTimeNow;
+                    }
                 }
 
                 await _notificationService.CreateAsync(new POSTNotificationModelView
                 {
                     UserId = appointment.CustomerId,
                     Title = "Lịch đã hoàn tất",
-                    Message = "Cảm ơn bạn! Spa rất vui khi được phục vụ bạn."
+                    Message = "Cảm ơn bạn! Spa rất vui khi được phục vụ bạn.",
+                    NotificationType = "Appointment"
                 });
             }
             else if (status.Equals("canceled", StringComparison.OrdinalIgnoreCase))
@@ -392,7 +406,8 @@ namespace BeautySpa.Services.Service
                     Title = "Lịch hẹn đã hủy",
                     Message = isLate
                         ? "Bạn đã hủy trễ – hệ thống đã trừ phí và hoàn lại tiền cọc."
-                        : "Bạn đã hủy lịch – tiền cọc đã được hoàn lại đầy đủ."
+                        : "Bạn đã hủy lịch – tiền cọc đã được hoàn lại đầy đủ.",
+                    NotificationType = "appointment",
                 });
             }
             else if (status.Equals("no_show", StringComparison.OrdinalIgnoreCase))
@@ -413,7 +428,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Bạn đã không đến",
-                    Message = "Lịch hẹn của bạn đã bị hủy. Hệ thống đã hoàn lại cọc sau khi trừ phí."
+                    Message = "Lịch hẹn của bạn đã bị hủy. Hệ thống đã hoàn lại cọc sau khi trừ phí.",
+                    NotificationType = "appointment"
                 });
             }
             else if (status.Equals("checked_in", StringComparison.OrdinalIgnoreCase))
@@ -437,7 +453,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Lịch hẹn được xác nhận",
-                    Message = "Lịch hẹn của bạn đã được spa xác nhận thành công."
+                    Message = "Lịch hẹn của bạn đã được spa xác nhận thành công.",
+                    NotificationType = "appointment"
                 });
             }
             else
@@ -483,7 +500,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Bạn đã không đến",
-                    Message = "Hệ thống đã tự động hủy lịch sau 12 giờ kể từ giờ hẹn. Tiền cọc đã được hoàn lại sau khi trừ phí."
+                    Message = "Hệ thống đã tự động hủy lịch sau 12 giờ kể từ giờ hẹn. Tiền cọc đã được hoàn lại sau khi trừ phí.",
+                    NotificationType = "appointment"
                 });
             }
 
