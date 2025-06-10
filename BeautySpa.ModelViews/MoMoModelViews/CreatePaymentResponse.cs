@@ -4,19 +4,16 @@ namespace BeautySpa.ModelViews.MoMoModelViews
 {
     public class CreatePaymentResponse
     {
-        [JsonProperty("requestId")]
-        public string RequestId { get; set; } = string.Empty;
-
-        [JsonProperty("resultCode")]
+        public string? PartnerCode { get; set; }
+        public string? OrderId { get; set; }
+        public string? RequestId { get; set; }
+        public int Amount { get; set; }
+        public string? ResponseTime { get; set; }
+        public string? Message { get; set; }
         public int ResultCode { get; set; }
-
-        [JsonProperty("message")]
-        public string Message { get; set; } = string.Empty;
-
-        [JsonProperty("qrCodeUrl")]
-        public string QrCodeUrl { get; set; } = string.Empty;
-
-        [JsonProperty("payUrl")]
-        public string PayUrl { get; set; } = string.Empty;
+        public string? PayUrl { get; set; }
+        public string? Deeplink { get; set; }
+        public string? QrCodeUrl { get; set; }
+        public string? ErrorCode { get; set; }
     }
 }

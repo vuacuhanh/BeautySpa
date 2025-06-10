@@ -8,8 +8,8 @@ namespace BeautySpa.Services.Validations.PaymentValidator
         public POSTPaymentValidator()
         {
             RuleFor(x => x.AppointmentId).NotEmpty();
-            RuleFor(x => x.Amount).GreaterThan(0).WithMessage("Deposit amount must be greater than 0");
-            RuleFor(x => x.PaymentMethod).NotEmpty();
+            RuleFor(x => x.PaymentMethod).NotEmpty().Must(m => m == "momo" || m == "vnpay"|| m == "paypal")
+                .WithMessage("Phương thức thanh toán không hợp lệ");
         }
     }
 }

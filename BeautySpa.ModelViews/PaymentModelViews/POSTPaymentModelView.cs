@@ -1,9 +1,9 @@
 ﻿namespace BeautySpa.ModelViews.PaymentModelViews
 {
-    public class POSTPaymentModelView 
+    public class POSTPaymentModelView
     {
         public Guid AppointmentId { get; set; }
-        public decimal Amount { get; set; }
-        public string PaymentMethod { get; set; } = "Momo"; // "Momo" | "Vnpay"
+        public int Amount { get; set; } // ✅ dùng long để đồng bộ MoMo
+        public string PaymentMethod { get; set; } = "Momo"; // Momo | Vnpay
     }
 }
