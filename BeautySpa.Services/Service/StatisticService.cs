@@ -5,16 +5,20 @@ using BeautySpa.ModelViews.StatisticModelViews;
 using BeautySpa.Contract.Repositories.IUOW;
 using Microsoft.EntityFrameworkCore;
 using BeautySpa.Contract.Repositories.Entity;
+using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
 
 namespace BeautySpa.Services.Service
 {
     public class StatisticService : IStatisticService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public StatisticService(IUnitOfWork unitOfWork)
+        public StatisticService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor)
         {
             _unitOfWork = unitOfWork;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<BaseResponseModel<StatisticResultModelView>> GetAdminStatisticsAsync(StatisticFilterModelView filter)
@@ -24,6 +28,17 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsAsync(StatisticFilterModelView filter, Guid providerId)
         {
+            return await GetStatistics(filter, providerId);
+        }
+
+        public async Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsByTokenAsync(StatisticFilterModelView filter)
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            var providerIdClaim = httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(providerIdClaim) || !Guid.TryParse(providerIdClaim, out var providerId))
+                throw new ErrorException(StatusCodes.Status401Unauthorized, ErrorCode.UnAuthorized, "Provider identity not found.");
+
             return await GetStatistics(filter, providerId);
         }
 
