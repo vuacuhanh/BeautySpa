@@ -374,6 +374,7 @@ namespace BeautySpa.Services.Service
 
                 if (appointment.Payment != null)
                 {
+
                     // Nếu là thanh toán tiền mặt thì xử lý hoàn tất
                     if (appointment.Payment.PaymentMethod?.ToLower() == "cash" &&
                         appointment.Payment.Status == "waiting")

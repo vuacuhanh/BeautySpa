@@ -125,6 +125,12 @@ namespace BeautySpa.Services.Service
                 payUrl = momoResp.Data.PayUrl;
             }
 
+            else if (method == "cash") 
+{
+                payment.Status = "waiting";
+                payment.PaymentDate = null;
+                payUrl = null;
+            }
             else
             {
                 throw new ErrorException(400, ErrorCode.InvalidInput, "Phương thức thanh toán không hợp lệ");
