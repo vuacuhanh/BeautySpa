@@ -97,8 +97,6 @@ namespace BeautySpa.API.Controllers
         {
             return Ok(await _userService.DeletepermanentlyAsync(id));
         }
-        
-
 
         [HttpPut("deactivate-provider/{userId}")]
         //[Authorize(Roles = "Admin")]

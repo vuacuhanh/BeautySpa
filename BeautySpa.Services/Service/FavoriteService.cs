@@ -6,6 +6,7 @@ using BeautySpa.Core.Base;
 using BeautySpa.Core.Infrastructure;
 using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.MemberShipModelViews.FavoriteModelViews;
+using BeautySpa.ModelViews.ServiceProviderModelViews;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -94,6 +95,30 @@ namespace BeautySpa.Services.Service
             var result = _mapper.Map<List<GETFavoriteModelViews>>(list);
 
             return BaseResponseModel<List<GETFavoriteModelViews>>.Success(result);
+        }
+
+        public async Task<BaseResponseModel<List<GETServiceProviderModelViews>>> GetFavoritesByCustomerAsync(Guid customerId)
+        {
+            var favoriteProviderIds = await _unitOfWork.GetRepository<Favorite>()
+                .Entities
+                .Where(f => f.CustomerId == customerId && f.DeletedTime == null)
+                .Select(f => f.ProviderId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!favoriteProviderIds.Any())
+                return BaseResponseModel<List<GETServiceProviderModelViews>>.Success(new List<GETServiceProviderModelViews>());
+
+            var providers = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities
+                .Include(sp => sp.ServiceImages)
+                .Include(sp => sp.ServiceProviderCategories)
+                    .ThenInclude(spc => spc.ServiceCategory)
+                .Where(p => favoriteProviderIds.Contains(p.ProviderId) && p.DeletedTime == null)
+                .ToListAsync();
+
+            var mapped = _mapper.Map<List<GETServiceProviderModelViews>>(providers);
+            return BaseResponseModel<List<GETServiceProviderModelViews>>.Success(mapped);
         }
     }
 }

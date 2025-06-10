@@ -33,9 +33,11 @@ builder.Configuration
 
 // Register configuration sections
 builder.Services.Configure<EsgooSettings>(builder.Configuration.GetSection("Esgoo"));
+
 builder.Services.Configure<PayPalSettings>(builder.Configuration.GetSection("PayPal"));
 builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
 builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("Momo"));
+
 builder.Services.AddHttpClient("EsgooClient");
 
 // Database

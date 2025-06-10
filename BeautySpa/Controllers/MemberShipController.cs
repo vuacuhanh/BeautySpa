@@ -25,7 +25,7 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("get/membership/by{id}")]
+        [HttpGet("get/membership/by/{id}")]
         [SwaggerOperation(Summary = "Lấy thành viên theo ID")]
         public async Task<IActionResult> GetById(Guid id)
         {

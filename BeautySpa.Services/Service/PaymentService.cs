@@ -178,7 +178,7 @@ namespace BeautySpa.Services.Service
                 if (result.Data == null || result.Data.Status?.ToLower() != "completed")
                     throw new ErrorException(400, ErrorCode.Failed, "Refund failed");
             }
-                
+
             else if (method == "vnpay")
             {
                 var request = new RefundVnPayRequest

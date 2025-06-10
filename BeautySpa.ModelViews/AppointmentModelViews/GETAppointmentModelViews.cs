@@ -11,6 +11,11 @@
         public decimal DiscountAmount { get; set; }
         public decimal FinalPrice { get; set; }
         public List<AppointmentServiceDetail> Services { get; set; } = new();
+
+        public string BranchName { get; set; } = string.Empty;
+        public string Street { get; set; } = string.Empty;
+        public string DistrictName { get; set; } = string.Empty;
+        public string ProvinceName { get; set; } = string.Empty;
     }
 }
 
