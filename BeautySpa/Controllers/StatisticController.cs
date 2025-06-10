@@ -3,11 +3,13 @@ using BeautySpa.ModelViews.StatisticModelViews;
 using BeautySpa.Services.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace BeautySpa.API.Controllers
 {
     [Route("api/statistic")]
     [ApiController]
+    [SwaggerTag("Thống kê Provider/ Admin")]
     public class StatisticController : ControllerBase
     {
         private readonly IStatisticService _statisticService;
@@ -19,16 +21,16 @@ namespace BeautySpa.API.Controllers
             _contextAccessor = contextAccessor;
         }
 
-        [HttpPost("admin")]
-        [Authorize(Roles = "Admin")]
+        [HttpGet("admin")]
+        //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAdminStats([FromBody] StatisticFilterModelView filter)
         {
             var result = await _statisticService.GetAdminStatisticsAsync(filter);
             return Ok(result);
         }
 
-        [HttpPost("provider")]
-        [Authorize(Roles = "Provider")]
+        [HttpGet("provider")]
+        //[Authorize(Roles = "Provider")]
         public async Task<IActionResult> GetProviderStats([FromBody] StatisticFilterModelView filter)
         {
             var providerId = Guid.Parse(User.Claims.First(c => c.Type.Contains("nameidentifier")).Value);
