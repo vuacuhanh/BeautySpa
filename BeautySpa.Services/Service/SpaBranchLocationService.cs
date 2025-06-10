@@ -30,11 +30,45 @@ namespace BeautySpa.Services.Service
             _httpContextAccessor = httpContextAccessor;
         }
 
+        //public async Task<BaseResponseModel<Guid>> CreateAsync(POSTSpaBranchLocationModelView model)
+        //{
+        //    await new POSTSpaBranchLocationModelViewValidator().ValidateAndThrowAsync(model);
+
+        //    // ✅ Tự động lấy ProviderId từ token
+        //    var currentUserId = Authentication.GetUserIdFromHttpContextAccessor(_httpContextAccessor);
+        //    var userGuid = Guid.Parse(currentUserId);
+
+        //    var serviceProvider = await _unitOfWork.GetRepository<ServiceProvider>()
+        //        .Entities
+        //        .FirstOrDefaultAsync(x => x.ProviderId == userGuid && x.DeletedTime == null);
+
+        //    if (serviceProvider == null)
+        //        throw new ErrorException(StatusCodes.Status403Forbidden, ErrorCode.UnAuthenticated, "Provider not found.");
+
+        //    var branch = _mapper.Map<SpaBranchLocation>(model);
+
+        //    var province = await _esgoo.GetProvinceByIdAsync(model.ProvinceId!)
+        //     ?? throw new ErrorException(404, ErrorCode.NotFound, "Province not found");
+
+        //    var district = await _esgoo.GetDistrictByIdAsync(model.DistrictId!, model.ProvinceId!)
+        //        ?? throw new ErrorException(404, ErrorCode.NotFound, "District not found");
+
+        //    branch.ProvinceName = province.name;
+        //    branch.DistrictName = district.name;
+        //    branch.Id = Guid.NewGuid();
+        //    branch.ServiceProviderId = serviceProvider.Id; 
+        //    branch.CreatedTime = CoreHelper.SystemTimeNow;
+        //    branch.CreatedBy = currentUserId;
+
+        //    await _unitOfWork.GetRepository<SpaBranchLocation>().InsertAsync(branch);
+        //    await _unitOfWork.SaveAsync();
+
+        //    return BaseResponseModel<Guid>.Success(branch.Id);
+        //}
         public async Task<BaseResponseModel<Guid>> CreateAsync(POSTSpaBranchLocationModelView model)
         {
             await new POSTSpaBranchLocationModelViewValidator().ValidateAndThrowAsync(model);
 
-            // ✅ Tự động lấy ProviderId từ token
             var currentUserId = Authentication.GetUserIdFromHttpContextAccessor(_httpContextAccessor);
             var userGuid = Guid.Parse(currentUserId);
 
@@ -56,12 +90,16 @@ namespace BeautySpa.Services.Service
             branch.ProvinceName = province.name;
             branch.DistrictName = district.name;
             branch.Id = Guid.NewGuid();
-            branch.ServiceProviderId = serviceProvider.Id; 
+            branch.ServiceProviderId = serviceProvider.Id;
             branch.CreatedTime = CoreHelper.SystemTimeNow;
             branch.CreatedBy = currentUserId;
 
             await _unitOfWork.GetRepository<SpaBranchLocation>().InsertAsync(branch);
             await _unitOfWork.SaveAsync();
+
+            // ✅ Gọi tự động tạo 7 ngày làm việc
+            var workingHourService = (IWorkingHourService)_httpContextAccessor.HttpContext!.RequestServices.GetService(typeof(IWorkingHourService))!;
+            await workingHourService.CreateDefaultForBranchAsync(branch.Id);
 
             return BaseResponseModel<Guid>.Success(branch.Id);
         }

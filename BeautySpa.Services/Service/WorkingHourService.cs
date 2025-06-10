@@ -86,5 +86,35 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Deleted successfully.");
         }
+
+        public async Task<BaseResponseModel<string>> CreateDefaultForBranchAsync(Guid branchId)
+        {
+            var branch = await _unitOfWork.GetRepository<SpaBranchLocation>().GetByIdAsync(branchId)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Branch not found");
+
+            var repo = _unitOfWork.GetRepository<WorkingHour>();
+
+            for (int i = 0; i < 7; i++)
+            {
+                var exists = await repo.Entities
+                    .AnyAsync(x => x.SpaBranchLocationId == branchId && x.DayOfWeek == i && x.DeletedTime == null);
+                if (exists) continue;
+
+                var wh = new WorkingHour
+                {
+                    Id = Guid.NewGuid(),
+                    SpaBranchLocationId = branchId,
+                    DayOfWeek = i,
+                    OpeningTime = TimeSpan.Parse("08:00:00"),
+                    ClosingTime = TimeSpan.Parse("18:00:00"),
+                    IsWorking = true,
+                    CreatedTime = CoreHelper.SystemTimeNow
+                };
+                await repo.InsertAsync(wh);
+            }
+
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("Đã tạo giờ làm việc mặc định cho chi nhánh.");
+        }
     }
 }

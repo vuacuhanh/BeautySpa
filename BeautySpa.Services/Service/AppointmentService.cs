@@ -68,7 +68,7 @@ namespace BeautySpa.Services.Service
             var now = CoreHelper.SystemTimeNow;
 
             var provider = await GetProviderAsync(model.SpaBranchLocationId);
-            ValidateWorkingHours(provider, model.StartTime);
+            await ValidateWorkingHoursAsync(model.SpaBranchLocationId, model.AppointmentDate, model.StartTime);
             await ValidateSlotAvailabilityAsync(provider, model);
 
             var (appointmentServices, originalTotal) = await BuildAppointmentServicesAsync(model, now);
@@ -117,13 +117,32 @@ namespace BeautySpa.Services.Service
                 ?? throw new ErrorException(404, ErrorCode.NotFound, "Provider not found.");
         }
 
-        private void ValidateWorkingHours(ServiceProvider provider, TimeSpan startTime)
-        {
-            if (!provider.OpenTime.HasValue || !provider.CloseTime.HasValue)
-                throw new ErrorException(400, ErrorCode.Failed, "Provider working hours not configured.");
+        //private void ValidateWorkingHours(ServiceProvider provider, TimeSpan startTime)
+        //{
+        //    if (!provider.OpenTime.HasValue || !provider.CloseTime.HasValue)
+        //        throw new ErrorException(400, ErrorCode.Failed, "Provider working hours not configured.");
 
-            if (startTime < provider.OpenTime || startTime >= provider.CloseTime)
-                throw new ErrorException(400, ErrorCode.Failed, $"Outside working hours. Open: {provider.OpenTime:hh\\:mm}, Close: {provider.CloseTime:hh\\:mm}");
+        //    if (startTime < provider.OpenTime || startTime >= provider.CloseTime)
+        //        throw new ErrorException(400, ErrorCode.Failed, $"Outside working hours. Open: {provider.OpenTime:hh\\:mm}, Close: {provider.CloseTime:hh\\:mm}");
+        //}
+        private async Task ValidateWorkingHoursAsync(Guid branchId, DateTime date, TimeSpan startTime)
+        {
+            int dayOfWeek = (int)date.DayOfWeek;
+
+            var workingHour = await _unitOfWork.GetRepository<WorkingHour>()
+                .Entities
+                .FirstOrDefaultAsync(x =>
+                    x.SpaBranchLocationId == branchId &&
+                    x.DayOfWeek == dayOfWeek &&
+                    x.IsWorking &&
+                    x.DeletedTime == null);
+
+            if (workingHour == null)
+                throw new ErrorException(400, ErrorCode.Failed, "Chi nhánh không hoạt động vào ngày đã chọn.");
+
+            if (startTime < workingHour.OpeningTime || startTime >= workingHour.ClosingTime)
+                throw new ErrorException(400, ErrorCode.Failed,
+                    $"Chi nhánh chỉ hoạt động từ {workingHour.OpeningTime:hh\\:mm} đến {workingHour.ClosingTime:hh\\:mm}.");
         }
 
         private async Task ValidateSlotAvailabilityAsync(ServiceProvider provider, POSTAppointmentModelView model)
