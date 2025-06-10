@@ -44,7 +44,7 @@ namespace BeautySpa.Services.Service
 
 
         // Tạo đặt lịch
-        public async Task<BaseResponseModel<dynamic>> CreateAsync(POSTAppointmentModelView model)
+        public async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAsync(POSTAppointmentModelView model)
         {
             var unitOfWorkImpl = _unitOfWork as UnitOfWork
                 ?? throw new InvalidCastException("IUnitOfWork must be UnitOfWork");
@@ -60,7 +60,7 @@ namespace BeautySpa.Services.Service
             });
         }
 
-        private async Task<BaseResponseModel<dynamic>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
+        private async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
         {
             await new POSTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
 
@@ -82,7 +82,7 @@ namespace BeautySpa.Services.Service
             var paymentResult = await _paymentService.CreateDepositAsync(new POSTPaymentModelView
             {
                 AppointmentId = appointment.Id,
-                Amount = depositAmount,
+                Amount = (int)depositAmount,
                 PaymentMethod = model.PaymentMethod ?? "momo"
             });
 
@@ -95,13 +95,24 @@ namespace BeautySpa.Services.Service
                 NotificationType = "appointment"
             });
 
-            return BaseResponseModel<dynamic>.Success(new
+            if (paymentResult.StatusCode != 200 || string.IsNullOrEmpty(paymentResult.Data?.PayUrl))
             {
-                appointmentId = appointment.Id,
-                paymentMethod = model.PaymentMethod ?? "momo",
-                payUrl = paymentResult.Data?.PayUrl,
-                qrCodeUrl = paymentResult.Data?.QrCodeUrl
+                throw new ErrorException(400, ErrorCode.Failed, "Tạo giao dịch thanh toán thất bại.");
+            }
+
+            // Đừng gửi noti "thành công" nếu chưa thanh toán
+            return BaseResponseModel<AppointmentCreatedResult>.Success(new AppointmentCreatedResult
+            {
+                AppointmentId = appointment.Id,
+                PaymentMethod = model.PaymentMethod ?? "momo",
+                PayUrl = paymentResult.Data?.PayUrl,
+                QrCodeUrl = paymentResult.Data?.QrCodeUrl
             });
+
+
+            
+
+
         }
 
         // ---- Các phương thức phụ trợ ----
@@ -587,7 +598,7 @@ namespace BeautySpa.Services.Service
         public async Task<BaseResponseModel<GETAppointmentModelView>> GetByIdAsync(Guid id)
         {
             var appointment = await _unitOfWork.GetRepository<Appointment>()
-                .Entities.AsNoTracking()
+                .Entities.AsNoTracking()    
                 .Include(x => x.AppointmentServices).ThenInclude(s => s.Service)
                 .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch.");
