@@ -44,6 +44,7 @@ namespace BeautySpa.Services.Service
 
 
         // Tạo đặt lịch
+        //public async Task<BaseResponseModel<dynamic>> CreateAsync(POSTAppointmentModelView model)
         public async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAsync(POSTAppointmentModelView model)
         {
             var unitOfWorkImpl = _unitOfWork as UnitOfWork
@@ -59,7 +60,7 @@ namespace BeautySpa.Services.Service
                 return result;
             });
         }
-
+        //private async Task<BaseResponseModel<dynamic>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
         private async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
         {
             await new POSTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
@@ -68,6 +69,7 @@ namespace BeautySpa.Services.Service
             var now = CoreHelper.SystemTimeNow;
 
             var provider = await GetProviderAsync(model.SpaBranchLocationId);
+            //ValidateWorkingHours(provider, model.StartTime);
             await ValidateWorkingHoursAsync(model.SpaBranchLocationId, model.AppointmentDate, model.StartTime);
             await ValidateSlotAvailabilityAsync(provider, model);
 
@@ -95,12 +97,13 @@ namespace BeautySpa.Services.Service
                 NotificationType = "appointment"
             });
 
-            if (paymentResult.StatusCode != 200 || string.IsNullOrEmpty(paymentResult.Data?.PayUrl))
-            {
-                throw new ErrorException(400, ErrorCode.Failed, "Tạo giao dịch thanh toán thất bại.");
-            }
-
-            // Đừng gửi noti "thành công" nếu chưa thanh toán
+            //return BaseResponseModel<dynamic>.Success(new
+            //{
+            //    appointmentId = appointment.Id,
+            //    paymentMethod = model.PaymentMethod ?? "momo",
+            //    payUrl = paymentResult.Data?.PayUrl,
+            //    qrCodeUrl = paymentResult.Data?.QrCodeUrl
+            //});
             return BaseResponseModel<AppointmentCreatedResult>.Success(new AppointmentCreatedResult
             {
                 AppointmentId = appointment.Id,
@@ -108,11 +111,6 @@ namespace BeautySpa.Services.Service
                 PayUrl = paymentResult.Data?.PayUrl,
                 QrCodeUrl = paymentResult.Data?.QrCodeUrl
             });
-
-
-            
-
-
         }
 
         // ---- Các phương thức phụ trợ ----
@@ -136,6 +134,7 @@ namespace BeautySpa.Services.Service
         //    if (startTime < provider.OpenTime || startTime >= provider.CloseTime)
         //        throw new ErrorException(400, ErrorCode.Failed, $"Outside working hours. Open: {provider.OpenTime:hh\\:mm}, Close: {provider.CloseTime:hh\\:mm}");
         //}
+
         private async Task ValidateWorkingHoursAsync(Guid branchId, DateTime date, TimeSpan startTime)
         {
             int dayOfWeek = (int)date.DayOfWeek;
@@ -393,8 +392,8 @@ namespace BeautySpa.Services.Service
                     .Entities.FirstOrDefaultAsync(x => x.UserId == appointment.CustomerId);
                 if (member != null)
                 {
-                    member.AccumulatedPoints += (int)(appointment.FinalPrice / 1000);
-
+                    //member.AccumulatedPoints += (int)(appointment.FinalPrice / 1000);
+                    member.AccumulatedPoints += Convert.ToInt32(appointment.FinalPrice / 1000);
                     var ranks = await _unitOfWork.GetRepository<Rank>()
                         .Entities.Where(r => r.DeletedTime == null)
                         .OrderByDescending(r => r.MinPoints)
@@ -617,7 +616,7 @@ namespace BeautySpa.Services.Service
         public async Task<BaseResponseModel<GETAppointmentModelView>> GetByIdAsync(Guid id)
         {
             var appointment = await _unitOfWork.GetRepository<Appointment>()
-                .Entities.AsNoTracking()    
+                .Entities.AsNoTracking()
                 .Include(x => x.AppointmentServices).ThenInclude(s => s.Service)
                 .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch.");
