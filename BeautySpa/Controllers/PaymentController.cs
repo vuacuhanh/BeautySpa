@@ -39,7 +39,7 @@ namespace BeautySpa.API.Controllers
             return Ok(await _service.GetByAppointmentIdAsync(appointmentId));
         }
 
-        [HttpGet("vnpay-ipn")]
+        /*[HttpGet("vnpay-ipn")]
         [SwaggerOperation(Summary = "Endpoint IPN nhận callback từ VNPAY khi thanh toán hoàn tất")]
         public async Task<IActionResult> HandleVnpayIpn([FromQuery] Dictionary<string, string> query)
         {
@@ -65,6 +65,6 @@ namespace BeautySpa.API.Controllers
         public async Task<IActionResult> QueryMoMoStatus([FromBody] QueryMoMoModel model)
         {
             return Ok(await _service.QueryMoMoStatusAsync(model));
-        }
+        }*/
     }
 }

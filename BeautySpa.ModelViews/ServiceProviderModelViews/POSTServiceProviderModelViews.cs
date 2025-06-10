@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BeautySpa.ModelViews.ServiceProviderModelViews
+﻿namespace BeautySpa.ModelViews.ServiceProviderModelViews
 {
     public class POSTServiceProviderModelViews
     {

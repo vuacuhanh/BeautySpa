@@ -5,7 +5,7 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface IAppointmentService
     {
-        Task<BaseResponseModel<object>> CreateAsync(POSTAppointmentModelView model);
+        Task<BaseResponseModel<AppointmentCreatedResult>> CreateAsync(POSTAppointmentModelView model);
         Task<BaseResponseModel<string>> UpdateAsync(PUTAppointmentModelView model);
         Task<BaseResponseModel<string>> UpdateStatusAsync(Guid appointmentId, string status);
         Task<BaseResponseModel<string>> DeleteAsync(Guid id);

@@ -9,7 +9,7 @@ namespace BeautySpa.Core.Base
         public string? Message { get; set; }
         public int StatusCode { get; set; }
         public string Code { get; set; }
-
+        public bool IsSuccess => StatusCode >= 200 && StatusCode < 300 && Data != null;
         public BaseResponseModel(int statusCode, string code, T? data, object? additionalData = null, string? message = null)
         {
             this.StatusCode = statusCode;
@@ -54,6 +54,17 @@ namespace BeautySpa.Core.Base
         public static BaseResponseModel<T> Success(T? data, object? additionalData = null, string code = ResponseCodeConstants.SUCCESS)
         {
             return new BaseResponseModel<T>(StatusCodes.Status200OK, code, data, additionalData);
+        }
+
+        public static BaseResponseModel<T> Error(int statusCode, string message, string code = ResponseCodeConstants.FAILED)
+        {
+            return new BaseResponseModel<T>(statusCode, code, default, null, message);
+        }
+        public static class ResponseCodeConstants
+        {
+            public const string SUCCESS = "SUCCESS";
+            public const string FAILED = "FAILED";
+            public const string NOT_FOUND = "NOT_FOUND";
         }
     }
 
