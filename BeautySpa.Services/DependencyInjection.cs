@@ -58,6 +58,7 @@ namespace BeautySpa.Services
             services.AddScoped<IVnpayService, VnpayService>();
             services.AddScoped<IEsgooService, EsgooService>();
             services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<IPayPalService, PayPalService>();
         }
     }
 }
