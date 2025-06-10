@@ -21,7 +21,7 @@ namespace BeautySpa.API.Controllers
             _contextAccessor = contextAccessor;
         }
 
-        [HttpGet("admin")]
+        [HttpPost("admin")]
         //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAdminStats([FromBody] StatisticFilterModelView filter)
         {
@@ -29,7 +29,7 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("provider")]
+        [HttpPost("provider")]
         //[Authorize(Roles = "Provider")]
         public async Task<IActionResult> GetProviderStats([FromBody] StatisticFilterModelView filter)
         {
