@@ -13,16 +13,15 @@ namespace BeautySpa.API.Controllers
     public class StatisticController : ControllerBase
     {
         private readonly IStatisticService _statisticService;
-        private readonly IHttpContextAccessor _contextAccessor;
 
-        public StatisticController(IStatisticService statisticService, IHttpContextAccessor contextAccessor)
+        public StatisticController(IStatisticService statisticService)
         {
             _statisticService = statisticService;
-            _contextAccessor = contextAccessor;
         }
 
         [HttpPost("admin")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Thống kê dành cho Admin")]
         public async Task<IActionResult> GetAdminStats([FromBody] StatisticFilterModelView filter)
         {
             var result = await _statisticService.GetAdminStatisticsAsync(filter);
@@ -30,11 +29,11 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpPost("provider")]
-        //[Authorize(Roles = "Provider")]
+        [Authorize(Roles = "Provider")]
+        [SwaggerOperation(Summary = "Thống kê dành cho Provider hiện tại")]
         public async Task<IActionResult> GetProviderStats([FromBody] StatisticFilterModelView filter)
         {
-            var providerId = Guid.Parse(User.Claims.First(c => c.Type.Contains("nameidentifier")).Value);
-            var result = await _statisticService.GetProviderStatisticsAsync(filter, providerId);
+            var result = await _statisticService.GetProviderStatisticsByTokenAsync(filter);
             return Ok(result);
         }
     }
