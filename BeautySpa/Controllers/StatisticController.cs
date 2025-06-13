@@ -1,6 +1,5 @@
 ﻿using BeautySpa.Contract.Services.Interface;
 using BeautySpa.ModelViews.StatisticModelViews;
-using BeautySpa.Services.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -20,7 +19,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpPost("admin")]
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         [SwaggerOperation(Summary = "Thống kê dành cho Admin")]
         public async Task<IActionResult> GetAdminStats([FromBody] StatisticFilterModelView filter)
         {
@@ -29,7 +28,7 @@ namespace BeautySpa.API.Controllers
         }
 
         [HttpPost("provider")]
-        [Authorize(Roles = "Provider")]
+        //[Authorize(Roles = "Provider")]
         [SwaggerOperation(Summary = "Thống kê dành cho Provider hiện tại")]
         public async Task<IActionResult> GetProviderStats([FromBody] StatisticFilterModelView filter)
         {
