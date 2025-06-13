@@ -13,8 +13,5 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<GETAppointmentModelView>> GetByIdAsync(Guid id);
         Task<BaseResponseModel<string>> AutoCancelUnpaidAppointmentsAsync();
         Task<BaseResponseModel<string>> AutoNoShowAfter12HoursAsync();
-        Task<BaseResponseModel<List<GETAppointmentModelView>>> GetByCurrentUserAsync();
-        Task<BaseResponseModel<string>> CancelByUserAsync(Guid appointmentId);
-
     }
 }
