@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
@@ -13,6 +13,7 @@ using BeautySpa.Services.Validations.AppoitmentValidator;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
 using Entity = BeautySpa.Contract.Repositories.Entity;
 
 namespace BeautySpa.Services.Service
@@ -59,6 +60,26 @@ namespace BeautySpa.Services.Service
             });
         }
 
+        private async Task ValidateWorkingHoursAsync(Guid branchId, DateTime date, TimeSpan startTime)
+        {
+            int dayOfWeek = (int)date.DayOfWeek;
+
+            var workingHour = await _unitOfWork.GetRepository<WorkingHour>()
+                .Entities
+                .FirstOrDefaultAsync(x =>
+                    x.SpaBranchLocationId == branchId &&
+                    x.DayOfWeek == dayOfWeek &&
+                    x.IsWorking &&
+                    x.DeletedTime == null);
+
+            if (workingHour == null)
+                throw new ErrorException(400, ErrorCode.Failed, "Chi nhánh không hoạt động vào ngày đã chọn.");
+
+            if (startTime < workingHour.OpeningTime || startTime >= workingHour.ClosingTime)
+                throw new ErrorException(400, ErrorCode.Failed,
+                    $"Chi nhánh chỉ hoạt động từ {workingHour.OpeningTime:hh\\:mm} đến {workingHour.ClosingTime:hh\\:mm}.");
+        }
+
         private async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
         {
             await new POSTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
@@ -67,7 +88,9 @@ namespace BeautySpa.Services.Service
             var now = CoreHelper.SystemTimeNow;
 
             var provider = await GetProviderAsync(model.SpaBranchLocationId);
-            ValidateWorkingHours(provider, model.StartTime);
+
+            // Dùng version async mới hơn
+            await ValidateWorkingHoursAsync(model.SpaBranchLocationId, model.AppointmentDate, model.StartTime);
             await ValidateSlotAvailabilityAsync(provider, model);
 
             var (appointmentServices, originalTotal) = await BuildAppointmentServicesAsync(model, now);
@@ -76,16 +99,31 @@ namespace BeautySpa.Services.Service
             var finalPrice = originalTotal - discount;
             var depositAmount = CalculateDepositAmount(finalPrice);
 
-            var appointment = await CreateAppointmentEntityAsync(model, userId, provider, appointmentServices, originalTotal, discount, finalPrice, now);
+            var appointment = await CreateAppointmentEntityAsync(
+                model,
+                userId,
+                provider,
+                appointmentServices,
+                originalTotal,
+                discount,
+                finalPrice,
+                now
+            );
+
+            var paymentMethod = model.PaymentMethod?.ToLower() ?? "momo";
 
             var paymentResult = await _paymentService.CreateDepositAsync(new POSTPaymentModelView
             {
                 AppointmentId = appointment.Id,
                 Amount = (int)depositAmount,
-                PaymentMethod = model.PaymentMethod ?? "momo"
+                PaymentMethod = paymentMethod
             });
 
+            if (paymentResult.StatusCode != 200 || string.IsNullOrEmpty(paymentResult.Data?.PayUrl))
+                throw new ErrorException(400, ErrorCode.Failed, "Tạo giao dịch thanh toán thất bại.");
+
             var startDateTime = model.AppointmentDate.Date + model.StartTime;
+
             await _notificationService.CreateAsync(new POSTNotificationModelView
             {
                 UserId = userId,
@@ -94,20 +132,15 @@ namespace BeautySpa.Services.Service
                 NotificationType = "appointment"
             });
 
-            if (paymentResult.StatusCode != 200 || string.IsNullOrEmpty(paymentResult.Data?.PayUrl))
-            {
-                throw new ErrorException(400, ErrorCode.Failed, "Tạo giao dịch thanh toán thất bại.");
-            }
-
-            // Đừng gửi noti "thành công" nếu chưa thanh toán
             return BaseResponseModel<AppointmentCreatedResult>.Success(new AppointmentCreatedResult
             {
                 AppointmentId = appointment.Id,
-                PaymentMethod = model.PaymentMethod ?? "momo",
+                PaymentMethod = paymentMethod,
                 PayUrl = paymentResult.Data?.PayUrl,
                 QrCodeUrl = paymentResult.Data?.QrCodeUrl
             });
         }
+
 
         // ---- Các phương thức phụ trợ ----
 
@@ -296,9 +329,6 @@ namespace BeautySpa.Services.Service
 
         // End tạo đặt lịch
 
-
-
-
         public async Task<BaseResponseModel<string>> AutoCancelUnpaidAppointmentsAsync()
         {
             var now = CoreHelper.SystemTimeNow;
@@ -308,7 +338,10 @@ namespace BeautySpa.Services.Service
                 .Include(x => x.AppointmentServices)
                 .Where(x => x.BookingStatus == "pending"
                          && x.CreatedTime <= now.AddMinutes(-10).DateTime
-                         && x.DeletedTime == null)
+                         && x.DeletedTime == null
+                         && x.Payment != null
+                         && x.Payment.PaymentMethod != "cash"
+                         && x.Payment.Status == "pending")
                 .ToListAsync();
 
             foreach (var appointment in appointments)
@@ -330,7 +363,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Lịch hẹn bị hủy",
-                    Message = "Bạn chưa thanh toán cọc, lịch đã bị hủy sau 10 phút."
+                    Message = "Bạn chưa thanh toán cọc, lịch đã bị hủy sau 10 phút.",
+                    NotificationType = "appointment"
                 });
             }
 
@@ -357,22 +391,46 @@ namespace BeautySpa.Services.Service
 
                 if (appointment.Payment != null)
                 {
-                    appointment.Payment.Status = "completed";
-                    appointment.Payment.PlatformFee = Math.Round(appointment.FinalPrice * 0.1m, 0);
+
+                    // Nếu là thanh toán tiền mặt thì xử lý hoàn tất
+                    if (appointment.Payment.PaymentMethod?.ToLower() == "cash" &&
+                        appointment.Payment.Status == "waiting")
+                    {
+                        appointment.Payment.Status = "completed";
+                        appointment.Payment.PaymentDate = now.UtcDateTime;
+                    }
+
+                    if (appointment.Payment.Status == "completed")
+                    {
+                        appointment.Payment.PlatformFee = Math.Round(appointment.FinalPrice * 0.1m, 0);
+                    }
                 }
 
                 var member = await _unitOfWork.GetRepository<MemberShip>()
                     .Entities.FirstOrDefaultAsync(x => x.UserId == appointment.CustomerId);
                 if (member != null)
                 {
-                    member.AccumulatedPoints += (int)(appointment.FinalPrice / 1000);
+                    //member.AccumulatedPoints += (int)(appointment.FinalPrice / 1000);
+                    member.AccumulatedPoints += Convert.ToInt32(appointment.FinalPrice / 1000);
+                    var ranks = await _unitOfWork.GetRepository<Rank>()
+                        .Entities.Where(r => r.DeletedTime == null)
+                        .OrderByDescending(r => r.MinPoints)
+                        .ToListAsync();
+
+                    var matchedRank = ranks.FirstOrDefault(r => member.AccumulatedPoints >= r.MinPoints);
+                    if (matchedRank != null && matchedRank.Id != member.RankId)
+                    {
+                        member.RankId = matchedRank.Id;
+                        member.LastRankUpdate = CoreHelper.SystemTimeNow;
+                    }
                 }
 
                 await _notificationService.CreateAsync(new POSTNotificationModelView
                 {
                     UserId = appointment.CustomerId,
                     Title = "Lịch đã hoàn tất",
-                    Message = "Cảm ơn bạn! Spa rất vui khi được phục vụ bạn."
+                    Message = "Cảm ơn bạn! Spa rất vui khi được phục vụ bạn.",
+                    NotificationType = "Appointment"
                 });
             }
             else if (status.Equals("canceled", StringComparison.OrdinalIgnoreCase))
@@ -395,7 +453,8 @@ namespace BeautySpa.Services.Service
                     Title = "Lịch hẹn đã hủy",
                     Message = isLate
                         ? "Bạn đã hủy trễ – hệ thống đã trừ phí và hoàn lại tiền cọc."
-                        : "Bạn đã hủy lịch – tiền cọc đã được hoàn lại đầy đủ."
+                        : "Bạn đã hủy lịch – tiền cọc đã được hoàn lại đầy đủ.",
+                    NotificationType = "appointment",
                 });
             }
             else if (status.Equals("no_show", StringComparison.OrdinalIgnoreCase))
@@ -416,7 +475,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Bạn đã không đến",
-                    Message = "Lịch hẹn của bạn đã bị hủy. Hệ thống đã hoàn lại cọc sau khi trừ phí."
+                    Message = "Lịch hẹn của bạn đã bị hủy. Hệ thống đã hoàn lại cọc sau khi trừ phí.",
+                    NotificationType = "appointment"
                 });
             }
             else if (status.Equals("checked_in", StringComparison.OrdinalIgnoreCase))
@@ -440,7 +500,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Lịch hẹn được xác nhận",
-                    Message = "Lịch hẹn của bạn đã được spa xác nhận thành công."
+                    Message = "Lịch hẹn của bạn đã được spa xác nhận thành công.",
+                    NotificationType = "appointment"
                 });
             }
             else
@@ -454,6 +515,7 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Cập nhật trạng thái thành công.");
         }
+
         public async Task<BaseResponseModel<string>> AutoNoShowAfter12HoursAsync()
         {
             var now = CoreHelper.SystemTimeNow;
@@ -485,7 +547,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Bạn đã không đến",
-                    Message = "Hệ thống đã tự động hủy lịch sau 12 giờ kể từ giờ hẹn. Tiền cọc đã được hoàn lại sau khi trừ phí."
+                    Message = "Hệ thống đã tự động hủy lịch sau 12 giờ kể từ giờ hẹn. Tiền cọc đã được hoàn lại sau khi trừ phí.",
+                    NotificationType = "appointment"
                 });
             }
 
@@ -557,6 +620,7 @@ namespace BeautySpa.Services.Service
             var query = _unitOfWork.GetRepository<Appointment>()
                 .Entities.AsNoTracking()
                 .Include(x => x.AppointmentServices).ThenInclude(s => s.Service)
+                .Include(a => a.AppointmentServices)
                 .Where(x => x.DeletedTime == null)
                 .OrderByDescending(x => x.CreatedTime);
 
@@ -570,7 +634,7 @@ namespace BeautySpa.Services.Service
         public async Task<BaseResponseModel<GETAppointmentModelView>> GetByIdAsync(Guid id)
         {
             var appointment = await _unitOfWork.GetRepository<Appointment>()
-                .Entities.AsNoTracking()    
+                .Entities.AsNoTracking()
                 .Include(x => x.AppointmentServices).ThenInclude(s => s.Service)
                 .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch.");
@@ -604,6 +668,67 @@ namespace BeautySpa.Services.Service
                         f.EndDate >= CoreHelper.SystemTimeNow);
                 if (flash != null) flash.Quantity--;
             }
+        }
+        public async Task<BaseResponseModel<List<GETAppointmentModelView>>> GetByCurrentUserAsync()
+        {
+            var currentUserId = Authentication.GetUserIdFromHttpContextAccessor(_context);
+            var appointments = await _unitOfWork
+            .GetRepository<Appointment>()
+            .Entities
+            .Where(a => a.CustomerId.ToString() == currentUserId)
+            .Include(x => x.BranchLocation)
+            .Include(a => a.AppointmentServices)
+                .ThenInclude(s => s.Service)
+            .OrderByDescending(a => a.AppointmentDate)
+            .ToListAsync();
+
+            var result = _mapper.Map<List<GETAppointmentModelView>>(appointments);
+            return BaseResponseModel<List<GETAppointmentModelView>>.Success(result);
+        }
+
+        public async Task<BaseResponseModel<string>> CancelByUserAsync(Guid appointmentId)
+        {
+            var userId = CurrentUserId;
+            var now = CoreHelper.SystemTimeNow;
+
+            var appointment = await _unitOfWork.GetRepository<Appointment>()
+                .Entities.Include(x => x.Payment)
+                .FirstOrDefaultAsync(x => x.Id == appointmentId
+                                       && x.CustomerId.ToString() == userId
+                                       && x.DeletedTime == null)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch hẹn.");
+
+            if (appointment.IsConfirmedBySpa)
+                throw new ErrorException(400, ErrorCode.Failed, "Lịch đã được spa xác nhận, không thể hủy.");
+
+            double minutesSinceCreated = (now - appointment.CreatedTime).TotalMinutes;
+            if (minutesSinceCreated > 5)
+                throw new ErrorException(400, ErrorCode.Failed, "Chỉ được hủy trong vòng 5 phút sau khi đặt.");
+
+            appointment.BookingStatus = "canceled";
+            appointment.DeletedTime = now;
+            appointment.LastUpdatedTime = now;
+            appointment.LastUpdatedBy = userId;
+
+            if (appointment.Payment != null && appointment.Payment.Status != "refunded")
+            {
+                appointment.Payment.RefundAmount = appointment.Payment.Amount;
+                appointment.Payment.PlatformFee = 0;
+                appointment.Payment.Status = "refunded";
+            }
+
+            await ReturnPromotionsAsync(appointment);
+
+            await _notificationService.CreateAsync(new POSTNotificationModelView
+            {
+                UserId = appointment.ProviderId,
+                Title = "Người dùng đã hủy lịch hẹn",
+                Message = $"Khách hàng đã hủy lịch đặt vào lúc {appointment.AppointmentDate:dd/MM/yyyy} - {appointment.StartTime}",
+                NotificationType = "Appointment"
+            });
+
+            await _unitOfWork.SaveAsync();
+            return BaseResponseModel<string>.Success("Hủy lịch thành công.");
         }
     }
 }

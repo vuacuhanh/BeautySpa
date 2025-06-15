@@ -8,7 +8,7 @@ namespace BeautySpa.Services.Validations.PaymentValidator
         public POSTPaymentValidator()
         {
             RuleFor(x => x.AppointmentId).NotEmpty();
-            RuleFor(x => x.PaymentMethod).NotEmpty().Must(m => m == "momo" || m == "vnpay"|| m == "paypal")
+            RuleFor(x => x.PaymentMethod).NotEmpty().Must(m => m == "momo" || m == "vnpay"|| m == "paypal" || m == "cash")
                 .WithMessage("Phương thức thanh toán không hợp lệ");
         }
     }

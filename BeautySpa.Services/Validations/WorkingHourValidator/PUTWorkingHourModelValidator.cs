@@ -13,4 +13,4 @@ namespace BeautySpa.Services.Validations.WorkingHourValidator
             Include(new POSTWorkingHourModelValidator());
         }
     }
-}
+}  

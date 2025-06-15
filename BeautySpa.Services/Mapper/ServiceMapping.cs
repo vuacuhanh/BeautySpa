@@ -24,7 +24,8 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId));
+                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId))
+                .ForMember(dest => dest.DurationMinutes, opt => opt.MapFrom(src => src.Duration));
 
             // Mapping PUT View -> Entity
             CreateMap<PUTServiceModelViews, BeautySpa.Contract.Repositories.Entity.Service>()
@@ -32,7 +33,8 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.LastUpdatedTime, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedTime, opt => opt.Ignore())
-                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId));
+                .ForMember(dest => dest.ServiceCategoryId, opt => opt.MapFrom(src => src.CategoryId))
+                .ForMember(dest => dest.DurationMinutes, opt => opt.MapFrom(src => src.Duration));
 
             // Mapping ServiceImage
             CreateMap<ServiceImage, GETServiceImageModelViews>();
