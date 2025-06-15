@@ -14,8 +14,6 @@ using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using PayPalCheckoutSdk.Orders;
-using System.Net;
 
 namespace BeautySpa.Services.Service
 {
@@ -70,7 +68,7 @@ namespace BeautySpa.Services.Service
                 PaymentMethod = model.PaymentMethod,
                 CreatedBy = userId,
                 CreatedTime = CoreHelper.SystemTimeNow,
-                Status = "pending"
+                Status = "waiting"
             };
 
             string? payUrl = null;
@@ -123,7 +121,6 @@ namespace BeautySpa.Services.Service
                     payUrl = momoResp.Data.PayUrl;
                     qrCodeUrl = momoResp.Data.QrCodeUrl;
                     break;
-
 
                 default:
                     throw new ErrorException(400, ErrorCode.InvalidInput, "Phương thức thanh toán không hợp lệ");
@@ -192,6 +189,7 @@ namespace BeautySpa.Services.Service
                 if (result.Data?.ResponseCode != 0)
                     throw new ErrorException(400, ErrorCode.Failed, result.Data?.Message ?? "Refund failed");
             }
+
             /*else if (method == "momo")
             {
                 var request = new RefundRequest
@@ -231,3 +229,4 @@ namespace BeautySpa.Services.Service
         }
     }
 }
+    
