@@ -1,25 +1,29 @@
-﻿using BeautySpa.Contract.Services.Interface;
+﻿using BeautySpa.Contract.Repositories.Entity;
+using BeautySpa.Contract.Repositories.IUOW;
+using BeautySpa.Contract.Services.Interface;
 using BeautySpa.Core.Base;
+using BeautySpa.Core.Utils;
 using BeautySpa.ModelViews.PayPalModelViews;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PayPalCheckoutSdk.Core;
 using PayPalCheckoutSdk.Orders;
 using PayPalCheckoutSdk.Payments;
-using PayPalHttp;
 using System.Net;
-using System.Text.Json;
 using Money = PayPalCheckoutSdk.Payments.Money;
 
 namespace BeautySpa.Services.Service
 {
     public class PayPalService : IPayPalService
     {
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _config;
         private readonly ILogger<PayPalService> _logger;
 
-        public PayPalService(IConfiguration config, ILogger<PayPalService> logger)
+        public PayPalService(IConfiguration config, ILogger<PayPalService> logger, IUnitOfWork unitOfWork)
         {
+            _unitOfWork = unitOfWork;
             _config = config;
             _logger = logger;
         }
@@ -119,6 +123,32 @@ namespace BeautySpa.Services.Service
                 RefundId = refund.Id,
                 Status = refund.Status
             });
+        }
+
+        public async Task<BaseResponseModel<string>> ConfirmPayPalAsync(string paymentId)
+        {
+            var captureRequest = new OrdersCaptureRequest(paymentId);
+            captureRequest.RequestBody(new OrderActionRequest());
+
+            var client = GetClient();
+            var response = await client.Execute(captureRequest);
+
+            if (response.StatusCode != HttpStatusCode.Created && response.StatusCode != HttpStatusCode.OK)
+                return BaseResponseModel<string>.Error(500, "Failed to capture PayPal payment");
+
+            var payment = await _unitOfWork.GetRepository<Payment>()
+                .Entities.FirstOrDefaultAsync(p =>
+                    p.TransactionId == paymentId && p.PaymentMethod == "paypal");
+
+            if (payment == null)
+                return BaseResponseModel<string>.Error(404, "Không tìm thấy thanh toán tương ứng");
+
+            payment.Status = "paid";
+            payment.PaymentDate = CoreHelper.SystemTimeNow.UtcDateTime;
+
+            await _unitOfWork.SaveAsync();
+
+            return BaseResponseModel<string>.Success("Payment captured and recorded successfully");
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Contract.Services.Interface;
@@ -44,7 +44,6 @@ namespace BeautySpa.Services.Service
 
 
         // Tạo đặt lịch
-        //public async Task<BaseResponseModel<dynamic>> CreateAsync(POSTAppointmentModelView model)
         public async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAsync(POSTAppointmentModelView model)
         {
             var unitOfWorkImpl = _unitOfWork as UnitOfWork
@@ -60,80 +59,6 @@ namespace BeautySpa.Services.Service
                 return result;
             });
         }
-        //private async Task<BaseResponseModel<dynamic>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
-        private async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
-        {
-            await new POSTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
-
-            var userId = Guid.Parse(CurrentUserId);
-            var now = CoreHelper.SystemTimeNow;
-
-            var provider = await GetProviderAsync(model.SpaBranchLocationId);
-            //ValidateWorkingHours(provider, model.StartTime);
-            await ValidateWorkingHoursAsync(model.SpaBranchLocationId, model.AppointmentDate, model.StartTime);
-            await ValidateSlotAvailabilityAsync(provider, model);
-
-            var (appointmentServices, originalTotal) = await BuildAppointmentServicesAsync(model, now);
-            var discount = await CalculateTotalDiscountAsync(model, userId, originalTotal, now);
-
-            var finalPrice = originalTotal - discount;
-            var depositAmount = CalculateDepositAmount(finalPrice);
-
-            var appointment = await CreateAppointmentEntityAsync(model, userId, provider, appointmentServices, originalTotal, discount, finalPrice, now);
-
-            var paymentResult = await _paymentService.CreateDepositAsync(new POSTPaymentModelView
-            {
-                AppointmentId = appointment.Id,
-                Amount = (int)depositAmount,
-                PaymentMethod = model.PaymentMethod ?? "momo"
-            });
-
-            var startDateTime = model.AppointmentDate.Date + model.StartTime;
-            await _notificationService.CreateAsync(new POSTNotificationModelView
-            {
-                UserId = userId,
-                Title = "Đặt lịch thành công",
-                Message = $"Bạn đã đặt lịch lúc {startDateTime:HH\\:mm dd/MM/yyyy}. Vui lòng thanh toán tiền cọc.",
-                NotificationType = "appointment"
-            });
-
-            //return BaseResponseModel<dynamic>.Success(new
-            //{
-            //    appointmentId = appointment.Id,
-            //    paymentMethod = model.PaymentMethod ?? "momo",
-            //    payUrl = paymentResult.Data?.PayUrl,
-            //    qrCodeUrl = paymentResult.Data?.QrCodeUrl
-            //});
-            return BaseResponseModel<AppointmentCreatedResult>.Success(new AppointmentCreatedResult
-            {
-                AppointmentId = appointment.Id,
-                PaymentMethod = model.PaymentMethod ?? "momo",
-                PayUrl = paymentResult.Data?.PayUrl,
-                QrCodeUrl = paymentResult.Data?.QrCodeUrl
-            });
-        }
-
-        // ---- Các phương thức phụ trợ ----
-
-        private async Task<ServiceProvider> GetProviderAsync(Guid spaBranchLocationId)
-        {
-            var branch = await _unitOfWork.GetRepository<SpaBranchLocation>()
-                .Entities.Include(x => x.Provider)
-                .FirstOrDefaultAsync(x => x.Id == spaBranchLocationId)
-                ?? throw new ErrorException(404, ErrorCode.NotFound, "Branch not found.");
-
-            return branch.Provider
-                ?? throw new ErrorException(404, ErrorCode.NotFound, "Provider not found.");
-        }
-
-        //private void ValidateWorkingHours(ServiceProvider provider, TimeSpan startTime)
-        //{
-        //    if (!provider.OpenTime.HasValue || !provider.CloseTime.HasValue)
-        //        throw new ErrorException(400, ErrorCode.Failed, "Provider working hours not configured.");
-
-        //    if (startTime < provider.OpenTime || startTime >= provider.CloseTime)
-        //        throw new ErrorException(400, ErrorCode.Failed, $"Outside working hours. Open: {provider.OpenTime:hh\\:mm}, Close: {provider.CloseTime:hh\\:mm}");
-        //}
 
         private async Task ValidateWorkingHoursAsync(Guid branchId, DateTime date, TimeSpan startTime)
         {
@@ -153,6 +78,90 @@ namespace BeautySpa.Services.Service
             if (startTime < workingHour.OpeningTime || startTime >= workingHour.ClosingTime)
                 throw new ErrorException(400, ErrorCode.Failed,
                     $"Chi nhánh chỉ hoạt động từ {workingHour.OpeningTime:hh\\:mm} đến {workingHour.ClosingTime:hh\\:mm}.");
+        }
+
+        private async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
+        {
+            await new POSTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
+
+            var userId = Guid.Parse(CurrentUserId);
+            var now = CoreHelper.SystemTimeNow;
+
+            var provider = await GetProviderAsync(model.SpaBranchLocationId);
+
+            // Dùng version async mới hơn
+            await ValidateWorkingHoursAsync(model.SpaBranchLocationId, model.AppointmentDate, model.StartTime);
+            await ValidateSlotAvailabilityAsync(provider, model);
+
+            var (appointmentServices, originalTotal) = await BuildAppointmentServicesAsync(model, now);
+            var discount = await CalculateTotalDiscountAsync(model, userId, originalTotal, now);
+
+            var finalPrice = originalTotal - discount;
+            var depositAmount = CalculateDepositAmount(finalPrice);
+
+            var appointment = await CreateAppointmentEntityAsync(
+                model,
+                userId,
+                provider,
+                appointmentServices,
+                originalTotal,
+                discount,
+                finalPrice,
+                now
+            );
+
+            var paymentMethod = model.PaymentMethod?.ToLower() ?? "momo";
+
+            var paymentResult = await _paymentService.CreateDepositAsync(new POSTPaymentModelView
+            {
+                AppointmentId = appointment.Id,
+                Amount = (int)depositAmount,
+                PaymentMethod = paymentMethod
+            });
+
+            if (paymentResult.StatusCode != 200 || string.IsNullOrEmpty(paymentResult.Data?.PayUrl))
+                throw new ErrorException(400, ErrorCode.Failed, "Tạo giao dịch thanh toán thất bại.");
+
+            var startDateTime = model.AppointmentDate.Date + model.StartTime;
+
+            await _notificationService.CreateAsync(new POSTNotificationModelView
+            {
+                UserId = userId,
+                Title = "Đặt lịch thành công",
+                Message = $"Bạn đã đặt lịch lúc {startDateTime:HH\\:mm dd/MM/yyyy}. Vui lòng thanh toán tiền cọc.",
+                NotificationType = "appointment"
+            });
+
+            return BaseResponseModel<AppointmentCreatedResult>.Success(new AppointmentCreatedResult
+            {
+                AppointmentId = appointment.Id,
+                PaymentMethod = paymentMethod,
+                PayUrl = paymentResult.Data?.PayUrl,
+                QrCodeUrl = paymentResult.Data?.QrCodeUrl
+            });
+        }
+
+
+        // ---- Các phương thức phụ trợ ----
+
+        private async Task<ServiceProvider> GetProviderAsync(Guid spaBranchLocationId)
+        {
+            var branch = await _unitOfWork.GetRepository<SpaBranchLocation>()
+                .Entities.Include(x => x.Provider)
+                .FirstOrDefaultAsync(x => x.Id == spaBranchLocationId)
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Branch not found.");
+
+            return branch.Provider
+                ?? throw new ErrorException(404, ErrorCode.NotFound, "Provider not found.");
+        }
+
+        private void ValidateWorkingHours(ServiceProvider provider, TimeSpan startTime)
+        {
+            if (!provider.OpenTime.HasValue || !provider.CloseTime.HasValue)
+                throw new ErrorException(400, ErrorCode.Failed, "Provider working hours not configured.");
+
+            if (startTime < provider.OpenTime || startTime >= provider.CloseTime)
+                throw new ErrorException(400, ErrorCode.Failed, $"Outside working hours. Open: {provider.OpenTime:hh\\:mm}, Close: {provider.CloseTime:hh\\:mm}");
         }
 
         private async Task ValidateSlotAvailabilityAsync(ServiceProvider provider, POSTAppointmentModelView model)
@@ -280,7 +289,16 @@ namespace BeautySpa.Services.Service
             return Math.Round(finalPrice * depositPercent, 0);
         }
 
-        private async Task<Appointment> CreateAppointmentEntityAsync(POSTAppointmentModelView model, Guid userId, ServiceProvider provider, List<Entity.AppointmentService> appointmentServices, decimal originalTotal, decimal discount, decimal finalPrice, DateTimeOffset now)
+        private async Task<Appointment> CreateAppointmentEntityAsync(
+            POSTAppointmentModelView model,
+            Guid userId,
+            ServiceProvider provider,
+            List<Entity.AppointmentService> appointmentServices,
+            decimal originalTotal,
+            decimal discount,
+            decimal finalPrice,
+            DateTimeOffset now
+            )
         {
             var appointment = new Appointment
             {
@@ -298,7 +316,8 @@ namespace BeautySpa.Services.Service
                 FinalPrice = finalPrice,
                 CreatedBy = CurrentUserId,
                 CreatedTime = now.DateTime,
-                AppointmentServices = appointmentServices
+                AppointmentServices = appointmentServices,
+                BookingStatus = "waiting_payment" // ✅ sửa đúng tại đây
             };
 
             await _unitOfWork.GetRepository<Appointment>().InsertAsync(appointment);
@@ -307,10 +326,8 @@ namespace BeautySpa.Services.Service
             return appointment;
         }
 
-// End tạo đặt lịch
 
-
-
+        // End tạo đặt lịch
 
         public async Task<BaseResponseModel<string>> AutoCancelUnpaidAppointmentsAsync()
         {
@@ -707,7 +724,7 @@ namespace BeautySpa.Services.Service
                 UserId = appointment.ProviderId,
                 Title = "Người dùng đã hủy lịch hẹn",
                 Message = $"Khách hàng đã hủy lịch đặt vào lúc {appointment.AppointmentDate:dd/MM/yyyy} - {appointment.StartTime}",
-                NotificationType = "Appointment" 
+                NotificationType = "Appointment"
             });
 
             await _unitOfWork.SaveAsync();
