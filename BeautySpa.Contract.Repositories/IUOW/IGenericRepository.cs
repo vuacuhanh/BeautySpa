@@ -18,6 +18,8 @@ namespace BeautySpa.Contract.Repositories.IUOW
         void Delete(object id);
         void Save();
         void Delete1(T entity);
+        void HardDelete(T entity); 
+
 
         // async
         Task<IList<T>> GetAllAsync();

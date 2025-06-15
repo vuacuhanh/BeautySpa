@@ -13,7 +13,6 @@ using BeautySpa.Services.Validations.AppoitmentValidator;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using System.Net.Http;
 using Entity = BeautySpa.Contract.Repositories.Entity;
 
 namespace BeautySpa.Services.Service
@@ -315,7 +314,7 @@ namespace BeautySpa.Services.Service
                 DiscountAmount = discount,
                 FinalPrice = finalPrice,
                 CreatedBy = CurrentUserId,
-                CreatedTime = now.DateTime,
+                CreatedTime = DateTime.UtcNow,
                 AppointmentServices = appointmentServices,
                 BookingStatus = "waiting_payment" // ✅ sửa đúng tại đây
             };
@@ -336,7 +335,7 @@ namespace BeautySpa.Services.Service
             var appointments = await _unitOfWork.GetRepository<Appointment>()
                 .Entities.Include(x => x.Payment)
                 .Include(x => x.AppointmentServices)
-                .Where(x => x.BookingStatus == "pending"
+                .Where(x => x.BookingStatus == "waiting_payment"
                          && x.CreatedTime <= now.AddMinutes(-10).DateTime
                          && x.DeletedTime == null
                          && x.Payment != null
@@ -346,15 +345,16 @@ namespace BeautySpa.Services.Service
 
             foreach (var appointment in appointments)
             {
-                appointment.BookingStatus = "canceled";
-                appointment.DeletedTime = now;
-                appointment.LastUpdatedTime = now;
+                // ✅ XÓA VĨNH VIỄN
+                _unitOfWork.GetRepository<Appointment>().HardDelete(appointment);
 
                 if (appointment.Payment != null && appointment.Payment.Status != "refunded")
                 {
                     appointment.Payment.RefundAmount = appointment.Payment.Amount;
                     appointment.Payment.PlatformFee = 0;
                     appointment.Payment.Status = "refunded";
+
+                    _unitOfWork.GetRepository<Payment>().Update(appointment.Payment);
                 }
 
                 await ReturnPromotionsAsync(appointment);
@@ -369,8 +369,9 @@ namespace BeautySpa.Services.Service
             }
 
             await _unitOfWork.SaveAsync();
-            return BaseResponseModel<string>.Success("Đã hủy các lịch quá hạn chưa thanh toán.");
+            return BaseResponseModel<string>.Success("Đã xóa các lịch quá hạn chưa thanh toán.");
         }
+
 
         public async Task<BaseResponseModel<string>> UpdateStatusAsync(Guid appointmentId, string status)
         {
@@ -379,6 +380,11 @@ namespace BeautySpa.Services.Service
                 .Include(x => x.AppointmentServices)
                 .FirstOrDefaultAsync(x => x.Id == appointmentId && x.DeletedTime == null)
                 ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch.");
+
+            if (appointment.BookingStatus == "waiting_payment")
+            {
+                throw new ErrorException(400, ErrorCode.Failed, "Lịch hẹn chưa được thanh toán. Không thể cập nhật trạng thái.");
+            }
 
             var now = CoreHelper.SystemTimeNow;
             DateTime appointmentTime = appointment.AppointmentDate.Date + appointment.StartTime;
@@ -391,10 +397,7 @@ namespace BeautySpa.Services.Service
 
                 if (appointment.Payment != null)
                 {
-
-                    // Nếu là thanh toán tiền mặt thì xử lý hoàn tất
-                    if (appointment.Payment.PaymentMethod?.ToLower() == "cash" &&
-                        appointment.Payment.Status == "waiting")
+                    if (appointment.Payment.PaymentMethod?.ToLower() == "cash" && appointment.Payment.Status == "waiting")
                     {
                         appointment.Payment.Status = "completed";
                         appointment.Payment.PaymentDate = now.UtcDateTime;
@@ -410,7 +413,6 @@ namespace BeautySpa.Services.Service
                     .Entities.FirstOrDefaultAsync(x => x.UserId == appointment.CustomerId);
                 if (member != null)
                 {
-                    //member.AccumulatedPoints += (int)(appointment.FinalPrice / 1000);
                     member.AccumulatedPoints += Convert.ToInt32(appointment.FinalPrice / 1000);
                     var ranks = await _unitOfWork.GetRepository<Rank>()
                         .Entities.Where(r => r.DeletedTime == null)
@@ -554,52 +556,6 @@ namespace BeautySpa.Services.Service
 
             await _unitOfWork.SaveAsync();
             return BaseResponseModel<string>.Success("Đã tự động xử lý no_show cho các lịch quá hạn.");
-        }
-
-        public async Task<BaseResponseModel<string>> UpdateAsync(PUTAppointmentModelView model)
-        {
-            await new PUTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
-
-            var appointment = await _unitOfWork.GetRepository<Appointment>()
-                .Entities.Include(a => a.AppointmentServices)
-                .FirstOrDefaultAsync(a => a.Id == model.Id && a.DeletedTime == null)
-                ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch hẹn.");
-
-            if (appointment.BookingStatus is "canceled" or "completed")
-                throw new ErrorException(400, ErrorCode.Failed, "Không thể cập nhật lịch đã hủy hoặc hoàn tất.");
-
-            appointment.AppointmentDate = model.AppointmentDate;
-            appointment.StartTime = model.StartTime;
-            appointment.SpaBranchLocationId = model.SpaBranchLocationId;
-            appointment.Notes = model.Notes;
-            appointment.LastUpdatedBy = CurrentUserId;
-            appointment.LastUpdatedTime = CoreHelper.SystemTimeNow;
-
-            foreach (var s in appointment.AppointmentServices.ToList())
-                _unitOfWork.GetRepository<Entity.AppointmentService>().Delete1(s);
-
-            decimal total = 0;
-            foreach (var s in model.Services)
-            {
-                var service = await _unitOfWork.GetRepository<Entity.Service>().GetByIdAsync(s.ServiceId)
-                    ?? throw new ErrorException(404, ErrorCode.NotFound, "Dịch vụ không tồn tại.");
-
-                appointment.AppointmentServices.Add(new Entity.AppointmentService
-                {
-                    Id = Guid.NewGuid(),
-                    ServiceId = s.ServiceId,
-                    Quantity = s.Quantity,
-                    PriceAtBooking = service.Price
-                });
-
-                total += service.Price * s.Quantity;
-            }
-
-            appointment.OriginalTotalPrice = total;
-            appointment.FinalPrice = total;
-
-            await _unitOfWork.SaveAsync();
-            return BaseResponseModel<string>.Success("Cập nhật lịch hẹn thành công.");
         }
 
         public async Task<BaseResponseModel<string>> DeleteAsync(Guid id)
