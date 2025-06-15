@@ -1,19 +1,20 @@
 using BeautySpa.API.Middleware;
 using BeautySpa.Contract.Repositories.Entity;
 using BeautySpa.Core.Settings;
-using BeautySpa.Repositories.SignaIR;
+using BeautySpa.ModelViews.MoMoModelViews;
 using BeautySpa.Repositories.Context;
+using BeautySpa.Repositories.SignaIR;
+using BeautySpa.Repositories.SignalR;
 using BeautySpa.Services;
 using BeautySpa.Services.seeding;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
-using BeautySpa.Repositories.SignalR;
-using Microsoft.AspNetCore.SignalR;
 
 // Optional: Đặt môi trường runtime nếu cần
 //Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
@@ -37,7 +38,7 @@ builder.Services.Configure<EsgooSettings>(builder.Configuration.GetSection("Esgo
 
 builder.Services.Configure<PayPalSettings>(builder.Configuration.GetSection("PayPal"));
 builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
-builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("Momo"));
+builder.Services.Configure<MomoOptionModel>(builder.Configuration.GetSection("MomoAPI"));
 
 builder.Services.AddHttpClient("EsgooClient");
 

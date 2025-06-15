@@ -8,6 +8,5 @@ namespace BeautySpa.Contract.Services.Interface
         Task<BaseResponseModel<PaymentResponse>> CreateDepositAsync(POSTPaymentModelView model);
         Task<BaseResponseModel<string>> RefundDepositAsync(RefundPaymentModelView model);
         Task<BaseResponseModel<GETPaymentModelView>> GetByAppointmentIdAsync(Guid appointmentId);
-        Task<BaseResponseModel<string>> ConfirmPayPalAsync(string paymentId);
     }
 }
