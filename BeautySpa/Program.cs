@@ -16,7 +16,8 @@ using BeautySpa.Repositories.SignalR;
 using Microsoft.AspNetCore.SignalR;
 
 // Optional: Đặt môi trường runtime nếu cần
-Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+//Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
