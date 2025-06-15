@@ -9,7 +9,6 @@ using BeautySpa.ModelViews.MoMoModelViews;
 using BeautySpa.ModelViews.PaymentModelViews;
 using BeautySpa.ModelViews.PayPalModelViews;
 using BeautySpa.ModelViews.VnPayModelViews;
-using BeautySpa.Services.Interface;
 using BeautySpa.Services.Validations.PaymentValidator;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
@@ -52,41 +51,6 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<PaymentResponse>> CreateDepositAsync(POSTPaymentModelView model)
         {
-            if (model.PaymentMethod?.ToLower() != "paypal")
-                throw new ErrorException(400, ErrorCode.Failed, "Chỉ hỗ trợ PayPal trong luồng này.");
-
-            var appointment = await _unitOfWork.GetRepository<Appointment>()
-                .Entities.FirstOrDefaultAsync(x => x.Id == model.AppointmentId && x.DeletedTime == null)
-                ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch.");
-
-            // Gọi PayPal để tạo giao dịch
-            var payRequest = new CreatePayPalPaymentRequest
-            {
-                Amount = model.Amount,
-                Currency = "USD",
-                Description = $"Tiền cọc cho lịch hẹn #{model.AppointmentId}",
-                ReturnUrl = $"{_config["PayPal:ReturnUrl"]}?appointmentId={model.AppointmentId}",
-                CancelUrl = $"{_config["PayPal:CancelUrl"]}?appointmentId={model.AppointmentId}"
-            };
-
-            var payResult = await _paypalService.CreatePaymentAsync(payRequest);
-
-            if (payResult.StatusCode != 200 || string.IsNullOrEmpty(payResult.Data?.ApprovalUrl))
-                throw new ErrorException(500, ErrorCode.Failed, "Không tạo được giao dịch PayPal");
-
-            // ❌ KHÔNG LƯU payment vào DB ở đây
-
-            return BaseResponseModel<PaymentResponse>.Success(new PaymentResponse
-            {
-                PayUrl = payResult.Data.ApprovalUrl,
-                QrCodeUrl = null
-            });
-        }
-
-
-
-        /*public async Task<BaseResponseModel<PaymentResponse>> CreateDepositAsync(POSTPaymentModelView model)
-        {
             await new POSTPaymentValidator().ValidateAndThrowAsync(model);
 
             var appointment = await _unitOfWork.GetRepository<Appointment>()
@@ -110,67 +74,59 @@ namespace BeautySpa.Services.Service
             };
 
             string? payUrl = null;
+            string? qrCodeUrl = null;
             var method = model.PaymentMethod?.Trim().ToLowerInvariant();
 
-            if (method == "paypal")
+            switch (method)
             {
-                var request = new CreatePayPalPaymentRequest
-                {
-                    Amount = model.Amount,
-                    Description = $"Thanh toán cọc lịch hẹn #{appointment.Id}",
-                    ReturnUrl = _config["Frontend:PaypalReturnUrl"],
-                    CancelUrl = _config["Frontend:PaypalCancelUrl"]
-                };
+                case "paypal":
+                    var paypalResp = await _paypalService.CreatePaymentAsync(new CreatePayPalPaymentRequest
+                    {
+                        Amount = model.Amount,
+                        Currency = "USD",
+                        Description = $"Thanh toán cọc lịch hẹn #{appointment.Id}",
+                        ReturnUrl = _config["PayPal:ReturnUrl"] + $"?appointmentId={appointment.Id}",
+                        CancelUrl = _config["PayPal:CancelUrl"] + $"?appointmentId={appointment.Id}"
+                    });
+                    if (paypalResp.Data == null || string.IsNullOrEmpty(paypalResp.Data.PaymentId))
+                        throw new ErrorException(400, ErrorCode.Failed, "Lỗi khi tạo thanh toán PayPal");
+                    payment.TransactionId = paypalResp.Data.PaymentId;
+                    payUrl = paypalResp.Data.ApprovalUrl;
+                    break;
 
-                var paypalResp = await _paypalService.CreatePaymentAsync(request);
-                if (paypalResp.Data == null || string.IsNullOrEmpty(paypalResp.Data.PaymentId))
-                    throw new ErrorException(400, ErrorCode.Failed, "Lỗi khi tạo thanh toán PayPal");
+                case "vnpay":
+                    var vnpayResp = await _vnpayService.CreatePaymentAsync(new CreateVnPayRequest
+                    {
+                        AppointmentId = appointment.Id,
+                        Amount = model.Amount,
+                        OrderInfo = $"{appointment.Id}",
+                        ReturnUrl = _config["VnPay:ReturnUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "Missing ReturnUrl")
+                    });
+                    if (vnpayResp.Data == null || vnpayResp.Data.TransactionId != "00")
+                        throw new ErrorException(400, ErrorCode.Failed, vnpayResp.Data?.Message ?? "Lỗi khi tạo thanh toán VNPAY");
+                    payment.TransactionId = vnpayResp.Data.TransactionId;
+                    payUrl = vnpayResp.Data.PayUrl;
+                    break;
 
-                payment.TransactionId = paypalResp.Data.PaymentId;
-                payUrl = paypalResp.Data.ApprovalUrl;
-            }
+                case "momo":
+                    var momoResp = await _momoService.CreatePaymentAsync(new OrderInfoModel
+                    {
+                        FullName = "Khách đặt lịch #" + appointment.Id,
+                        Amount = model.Amount,
+                        OrderInfo = $"Thanh toán cọc cho lịch hẹn {appointment.Id}"
+                    });
 
-            else if (method == "vnpay")
-            {
-                var request = new CreateVnPayRequest
-                {
-                    AppointmentId = appointment.Id,
-                    Amount = model.Amount,
-                    OrderInfo = $"{appointment.Id}",
-                    ReturnUrl = _config["VnPay:ReturnUrl"] ?? throw new ErrorException(500, ErrorCode.InternalServerError, "Missing ReturnUrl")
-                };
-                var vnpayResp = await _vnpayService.CreatePaymentAsync(request);
-                if (vnpayResp.Data == null || vnpayResp.Data.TransactionId != "00")
-                    throw new ErrorException(400, ErrorCode.Failed, vnpayResp.Data?.Message ?? "Lỗi khi tạo thanh toán VNPAY");
+                    if (momoResp.Data == null || momoResp.Data.ErrorCode != 0)
+                        throw new ErrorException(400, ErrorCode.Failed, momoResp.Data?.Message ?? "Lỗi khi tạo thanh toán MoMo");
 
-                payment.TransactionId = vnpayResp.Data.TransactionId;
-                payUrl = vnpayResp.Data.PayUrl;
-            }
-            else if (method == "momo")
-            {
-                var request = new CreatePaymentRequest
-                {
-                    OrderId = appointment.Id.ToString(),
-                    Amount = model.Amount,
-                    OrderInfo = $"{appointment.Id}"
-                };
-                var momoResp = await _momoService.CreatePaymentAsync(request);
-                if (momoResp.Data == null || momoResp.Data.ResultCode != 0)
-                    throw new ErrorException(400, ErrorCode.Failed, momoResp.Data?.Message ?? "Lỗi khi tạo thanh toán MoMo");
+                    payment.TransactionId = momoResp.Data.RequestId;
+                    payUrl = momoResp.Data.PayUrl;
+                    qrCodeUrl = momoResp.Data.QrCodeUrl;
+                    break;
 
-                payment.TransactionId = momoResp.Data.RequestId;
-                payUrl = momoResp.Data.PayUrl;
-            }
 
-            else if (method == "cash") 
-{
-                payment.Status = "waiting";
-                payment.PaymentDate = null;
-                payUrl = null;
-            }
-            else
-            {
-                throw new ErrorException(400, ErrorCode.InvalidInput, "Phương thức thanh toán không hợp lệ");
+                default:
+                    throw new ErrorException(400, ErrorCode.InvalidInput, "Phương thức thanh toán không hợp lệ");
             }
 
             await _unitOfWork.GetRepository<Payment>().InsertAsync(payment);
@@ -181,11 +137,12 @@ namespace BeautySpa.Services.Service
                 AppointmentId = appointment.Id,
                 Amount = model.Amount,
                 PaymentMethod = method,
-                PayUrl = payUrl ?? string.Empty
+                PayUrl = payUrl ?? string.Empty,
+                QrCodeUrl = qrCodeUrl
             };
 
             return BaseResponseModel<PaymentResponse>.Success(response);
-        }*/
+        }
 
         public async Task<BaseResponseModel<string>> RefundDepositAsync(RefundPaymentModelView model)
         {
@@ -221,7 +178,7 @@ namespace BeautySpa.Services.Service
                 if (result.Data == null || result.Data.Status?.ToLower() != "completed")
                     throw new ErrorException(400, ErrorCode.Failed, "Refund failed");
             }
-                
+
             else if (method == "vnpay")
             {
                 var request = new RefundVnPayRequest
@@ -235,7 +192,7 @@ namespace BeautySpa.Services.Service
                 if (result.Data?.ResponseCode != 0)
                     throw new ErrorException(400, ErrorCode.Failed, result.Data?.Message ?? "Refund failed");
             }
-            else if (method == "momo")
+            /*else if (method == "momo")
             {
                 var request = new RefundRequest
                 {
@@ -247,7 +204,7 @@ namespace BeautySpa.Services.Service
                 var result = await _momoService.RefundPaymentAsync(request);
                 if (result.Data?.ResultCode != "0")
                     throw new ErrorException(400, ErrorCode.Failed, result.Data?.Message ?? "Refund failed");
-            }
+            }*/
 
             payment.RefundAmount = refundAmount;
             payment.PlatformFee = fee;
@@ -272,6 +229,5 @@ namespace BeautySpa.Services.Service
             var result = _mapper.Map<GETPaymentModelView>(payment);
             return BaseResponseModel<GETPaymentModelView>.Success(result);
         }
-
     }
 }

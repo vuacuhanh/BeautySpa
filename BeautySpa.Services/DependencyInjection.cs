@@ -3,7 +3,6 @@ using BeautySpa.Services.Service;
 using Microsoft.Extensions.DependencyInjection;
 using BeautySpa.Repositories.UOW;
 using BeautySpa.Contract.Services.Interface;
-using BeautySpa.Services.Interface;
 
 
 namespace BeautySpa.Services
@@ -54,7 +53,7 @@ namespace BeautySpa.Services
             services.AddScoped<IPromotionAdminService, PromotionAdminService>();
             services.AddScoped<IRequestBecomeProvider, RequestBecomeProviderService>();
             services.AddScoped<IServicePromotionService, ServicePromotionService>();
-            services.AddScoped<IMomoService, MoMoService>();
+            services.AddScoped<IMomoService, MomoService>();
             services.AddScoped<IVnpayService, VnpayService>();
             services.AddScoped<IEsgooService, EsgooService>();
             services.AddScoped<IAppointmentService, AppointmentService>();
