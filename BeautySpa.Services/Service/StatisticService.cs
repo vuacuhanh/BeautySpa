@@ -6,7 +6,6 @@ using BeautySpa.Contract.Repositories.IUOW;
 using Microsoft.EntityFrameworkCore;
 using BeautySpa.Contract.Repositories.Entity;
 using Microsoft.AspNetCore.Http;
-using System.Globalization;
 using System.Security.Claims;
 
 namespace BeautySpa.Services.Service
@@ -24,19 +23,35 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<StatisticResultModelView>> GetAdminStatisticsAsync(StatisticFilterModelView filter)
         {
-            var appointments = _unitOfWork.GetRepository<Appointment>().Entities
-                .Where(a => a.DeletedTime == null && a.BookingStatus == "completed");
+            var allAppointments = _unitOfWork.GetRepository<Appointment>().Entities
+                .Where(a => a.DeletedTime == null);
 
             if (filter.FromDate.HasValue)
-                appointments = appointments.Where(a => a.AppointmentDate >= filter.FromDate);
+                allAppointments = allAppointments.Where(a => a.AppointmentDate >= filter.FromDate);
             if (filter.ToDate.HasValue)
-                appointments = appointments.Where(a => a.AppointmentDate <= filter.ToDate);
+                allAppointments = allAppointments.Where(a => a.AppointmentDate <= filter.ToDate);
 
-            var totalCommission = await appointments
+            var completedAppointments = allAppointments.Where(a => a.BookingStatus == "completed");
+
+            var totalAppointments = await allAppointments.CountAsync();
+            var completedCount = await allAppointments.CountAsync(a => a.BookingStatus == "completed");
+            var cancelledCount = await allAppointments.CountAsync(a => a.BookingStatus == "canceled");
+            var noShowCount = await allAppointments.CountAsync(a => a.BookingStatus == "no_show");
+
+            var totalRevenue = await completedAppointments.SumAsync(a => (decimal?)a.FinalPrice) ?? 0;
+            var totalCommission = await completedAppointments
                 .Include(a => a.Payment)
                 .SumAsync(a => (decimal?)a.Payment.PlatformFee) ?? 0;
 
-            var topProviders = await appointments
+            var revenueByMonth = await completedAppointments
+                .GroupBy(a => new { a.AppointmentDate.Year, a.AppointmentDate.Month })
+                .Select(g => new MonthlyRevenueModel
+                {
+                    Month = $"{g.Key.Year:D4}-{g.Key.Month:D2}",
+                    Revenue = g.Sum(x => x.FinalPrice)
+                }).ToListAsync();
+
+            var topProviders = await completedAppointments
                 .GroupBy(a => a.Provider!.ServiceProvider!.BusinessName)
                 .Select(g => new TopProviderModel
                 {
@@ -50,33 +65,29 @@ namespace BeautySpa.Services.Service
             var approvedProviders = await _unitOfWork.GetRepository<ServiceProvider>()
                 .Entities.CountAsync(p => p.IsApproved);
 
-            var revenueByMonth = await appointments
-                .GroupBy(a => a.AppointmentDate.ToString("yyyy-MM"))
-                .Select(g => new MonthlyRevenueModel
-                {
-                    Month = g.Key,
-                    Revenue = g.Sum(x => x.FinalPrice)
-                }).ToListAsync();
-
             return BaseResponseModel<StatisticResultModelView>.Success(new StatisticResultModelView
             {
+                TotalAppointments = totalAppointments,
+                CompletedCount = completedCount,
+                CancelledCount = cancelledCount,
+                NoShowCount = noShowCount,
+                TotalRevenue = totalRevenue,
                 TotalCommissionRevenue = totalCommission,
+                RevenueByMonth = revenueByMonth,
                 TopBookedProviders = topProviders,
                 ApprovedProviderCount = approvedProviders,
-                RevenueByMonth = revenueByMonth
+                TopServicesToday = new(),
+                TopServicesWeek = new(),
+                TopServicesYear = new()
             });
-        }
-
-        public async Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsAsync(StatisticFilterModelView filter, Guid providerId)
-        {
-            return await GetStatisticsForProvider(filter, providerId);
         }
 
         public async Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsByTokenAsync(StatisticFilterModelView filter)
         {
-            var userId = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var httpContext = _httpContextAccessor.HttpContext;
+            var providerIdClaim = httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (!Guid.TryParse(userId, out var providerId))
+            if (string.IsNullOrEmpty(providerIdClaim) || !Guid.TryParse(providerIdClaim, out var providerId))
                 throw new ErrorException(StatusCodes.Status401Unauthorized, ErrorCode.UnAuthorized, "Provider identity not found.");
 
             return await GetStatisticsForProvider(filter, providerId);
@@ -119,10 +130,10 @@ namespace BeautySpa.Services.Service
 
             var revenueByMonth = await query
                 .Where(a => a.BookingStatus == "completed")
-                .GroupBy(a => a.AppointmentDate.ToString("yyyy-MM"))
+                .GroupBy(a => new { a.AppointmentDate.Year, a.AppointmentDate.Month })
                 .Select(g => new MonthlyRevenueModel
                 {
-                    Month = g.Key,
+                    Month = $"{g.Key.Year:D4}-{g.Key.Month:D2}",
                     Revenue = g.Sum(x => x.FinalPrice)
                 }).ToListAsync();
 

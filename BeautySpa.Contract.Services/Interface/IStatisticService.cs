@@ -11,7 +11,6 @@ namespace BeautySpa.Contract.Services.Interface
     public interface IStatisticService
     {
         Task<BaseResponseModel<StatisticResultModelView>> GetAdminStatisticsAsync(StatisticFilterModelView filter);
-        Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsAsync(StatisticFilterModelView filter, Guid providerId);
         Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsByTokenAsync(StatisticFilterModelView filter);
     }
 }
