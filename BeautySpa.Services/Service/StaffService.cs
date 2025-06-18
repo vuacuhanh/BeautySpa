@@ -129,14 +129,14 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<GETStaffModelView>> GetByIdAsync(Guid id)
         {
-            var providerId = await GetProviderIdAsync();
-
             var staff = await _unitOfWork.GetRepository<Staff>()
                 .Entities.AsNoTracking()
                 .Include(s => s.StaffServiceCategories)
                 .ThenInclude(ssc => ssc.ServiceCategory)
-                .FirstOrDefaultAsync(s => s.Id == id && s.ProviderId == providerId && s.DeletedTime == null)
-                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
+                .FirstOrDefaultAsync(s => s.Id == id && s.DeletedTime == null);
+
+            if (staff == null)
+                throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Staff not found.");
 
             return BaseResponseModel<GETStaffModelView>.Success(_mapper.Map<GETStaffModelView>(staff));
         }
@@ -146,13 +146,11 @@ namespace BeautySpa.Services.Service
             if (page <= 0 || size <= 0)
                 throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid pagination.");
 
-            var providerId = await GetProviderIdAsync();
-
             var query = _unitOfWork.GetRepository<Staff>().Entities
                 .AsNoTracking()
                 .Include(s => s.StaffServiceCategories)
                 .ThenInclude(ssc => ssc.ServiceCategory)
-                .Where(s => s.ProviderId == providerId && s.DeletedTime == null)
+                .Where(s => s.DeletedTime == null)
                 .OrderByDescending(s => s.CreatedTime);
 
             var totalCount = await query.CountAsync();
@@ -183,15 +181,14 @@ namespace BeautySpa.Services.Service
 
             return BaseResponseModel<string>.Success("Staff permanently deleted.");
         }
+
         public async Task<BaseResponseModel<List<GETStaffModelView>>> GetByBranchAsync(Guid branchId)
         {
-            var providerId = await GetProviderIdAsync();
-
             var staffs = await _unitOfWork.GetRepository<Staff>().Entities
                 .AsNoTracking()
                 .Include(s => s.StaffServiceCategories)
                 .ThenInclude(ssc => ssc.ServiceCategory)
-                .Where(s => s.ProviderId == providerId && s.BranchId == branchId && s.DeletedTime == null)
+                .Where(s => s.BranchId == branchId && s.DeletedTime == null)
                 .ToListAsync();
 
             var result = _mapper.Map<List<GETStaffModelView>>(staffs);

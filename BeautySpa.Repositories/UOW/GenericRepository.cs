@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using BeautySpa.Contract.Repositories.IUOW;
 using BeautySpa.Core.Base;
 using BeautySpa.Repositories.Context;
@@ -111,6 +111,10 @@ namespace BeautySpa.Repositories.UOW
         {
             _dbSet.Remove(entity);
             return Task.CompletedTask;
+        }
+        public void HardDelete(T entity)
+        {
+            _dbSet.Remove(entity);
         }
 
 

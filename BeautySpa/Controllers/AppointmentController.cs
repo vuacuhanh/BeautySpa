@@ -25,14 +25,6 @@ namespace BeautySpa.API.Controllers
             return Ok(result);
         }
 
-        [HttpPut]
-        [SwaggerOperation(Summary = "Cập nhật thông tin lịch hẹn")]
-        public async Task<IActionResult> Update([FromBody] PUTAppointmentModelView model)
-        {
-            var result = await _service.UpdateAsync(model);
-            return Ok(result);
-        }
-
         [HttpPatch("status/{id}")]
         [SwaggerOperation(Summary = "Cập nhật trạng thái lịch hẹn (confirmed, checked_in, completed, canceled, no_show)")]
         public async Task<IActionResult> UpdateStatus(Guid id, [FromQuery] string status)
