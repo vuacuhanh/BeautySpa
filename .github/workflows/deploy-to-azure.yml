@@ -31,6 +31,6 @@ jobs:
       - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: BeautySpaAPI20250516125713
-          publish-profile: ${{ secrets.AZURE_CREDENTIALS }}
+          app-name: BeautySpa  # ✅ Đúng tên App bạn đã tạo trên Azure
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # ✅ Đặt đúng tên secrets
           package: ./publish

@@ -5,6 +5,7 @@ namespace BeautySpa.ModelViews.LocationModelViews
     public class GETSpaBranchLocationModelView
     {
         public Guid Id { get; set; }
+        public string? ImageUrl { get; set; } = string.Empty;
         public string BranchName { get; set; } = string.Empty;
         public string Street { get; set; } = string.Empty;
         public string District { get; set; } = string.Empty;

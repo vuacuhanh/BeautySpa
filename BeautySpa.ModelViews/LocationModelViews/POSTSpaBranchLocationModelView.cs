@@ -10,5 +10,6 @@
         public string Country { get; set; } = "Vietnam";
         public string? ProvinceId { get; set; }
         public string? DistrictId { get; set; }
+        public string? ImageUrl { get; set; } = string.Empty;
     }
 }
