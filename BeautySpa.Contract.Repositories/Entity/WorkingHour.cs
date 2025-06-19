@@ -12,6 +12,9 @@ namespace BeautySpa.Contract.Repositories.Entity
         public Guid? SpaBranchLocationId { get; set; }
         public virtual SpaBranchLocation? SpaBranchLocation { get; set; }
 
+        public Guid? ProviderId { get; set; }
+        public virtual ApplicationUsers? Provider { get; set; }
+
         public Guid? ServiceProviderId { get; set; }
         public virtual ServiceProvider? ServiceProvider { get; set; }
     }
