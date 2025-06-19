@@ -17,16 +17,18 @@ using Entity = BeautySpa.Contract.Repositories.Entity;
 
 namespace BeautySpa.Services.Service
 {
-    public class AppointmentService : IAppointmentService
+    public partial class AppointmentService : IAppointmentService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IHttpContextAccessor _context;
         private readonly IPaymentService _paymentService;
         private readonly INotificationService _notificationService;
+        private readonly IStaff _staffService;
 
         public AppointmentService(
             IUnitOfWork unitOfWork,
+            IStaff staffService,
             IMapper mapper,
             IHttpContextAccessor context,
             IPaymentService paymentService,
@@ -37,12 +39,12 @@ namespace BeautySpa.Services.Service
             _context = context;
             _paymentService = paymentService;
             _notificationService = notificationService;
+            _staffService = staffService;
         }
 
         private string CurrentUserId => Authentication.GetUserIdFromHttpContextAccessor(_context);
 
-
-        // Tạo đặt lịch
+        //tạo đặt lịch
         public async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAsync(POSTAppointmentModelView model)
         {
             var unitOfWorkImpl = _unitOfWork as UnitOfWork
@@ -59,26 +61,6 @@ namespace BeautySpa.Services.Service
             });
         }
 
-        private async Task ValidateWorkingHoursAsync(Guid branchId, DateTime date, TimeSpan startTime)
-        {
-            int dayOfWeek = (int)date.DayOfWeek;
-
-            var workingHour = await _unitOfWork.GetRepository<WorkingHour>()
-                .Entities
-                .FirstOrDefaultAsync(x =>
-                    x.SpaBranchLocationId == branchId &&
-                    x.DayOfWeek == dayOfWeek &&
-                    x.IsWorking &&
-                    x.DeletedTime == null);
-
-            if (workingHour == null)
-                throw new ErrorException(400, ErrorCode.Failed, "Chi nhánh không hoạt động vào ngày đã chọn.");
-
-            if (startTime < workingHour.OpeningTime || startTime >= workingHour.ClosingTime)
-                throw new ErrorException(400, ErrorCode.Failed,
-                    $"Chi nhánh chỉ hoạt động từ {workingHour.OpeningTime:hh\\:mm} đến {workingHour.ClosingTime:hh\\:mm}.");
-        }
-
         private async Task<BaseResponseModel<AppointmentCreatedResult>> CreateAppointmentInternalAsync(POSTAppointmentModelView model)
         {
             await new POSTAppointmentModelViewValidator().ValidateAndThrowAsync(model);
@@ -88,9 +70,20 @@ namespace BeautySpa.Services.Service
 
             var provider = await GetProviderAsync(model.SpaBranchLocationId);
 
-            // Dùng version async mới hơn
             await ValidateWorkingHoursAsync(model.SpaBranchLocationId, model.AppointmentDate, model.StartTime);
             await ValidateSlotAvailabilityAsync(provider, model);
+
+            if (model.StaffId.HasValue)
+            {
+                var staff = await _unitOfWork.GetRepository<Staff>()
+                    .Entities.FirstOrDefaultAsync(s =>
+                        s.Id == model.StaffId.Value &&
+                        s.BranchId == model.SpaBranchLocationId &&
+                        s.DeletedTime == null);
+
+                if (staff == null)
+                    throw new ErrorException(400, ErrorCode.Failed, "Nhân viên không hợp lệ cho chi nhánh này.");
+            }
 
             var (appointmentServices, originalTotal) = await BuildAppointmentServicesAsync(model, now);
             var discount = await CalculateTotalDiscountAsync(model, userId, originalTotal, now);
@@ -142,7 +135,6 @@ namespace BeautySpa.Services.Service
                 QrCodeUrl = paymentResult.Data?.QrCodeUrl
             });
         }
-
 
         // ---- Các phương thức phụ trợ ----
 
@@ -299,8 +291,7 @@ namespace BeautySpa.Services.Service
             decimal originalTotal,
             decimal discount,
             decimal finalPrice,
-            DateTimeOffset now
-            )
+            DateTimeOffset now)
         {
             var appointment = new Appointment
             {
@@ -308,6 +299,7 @@ namespace BeautySpa.Services.Service
                 AppointmentDate = model.AppointmentDate,
                 StartTime = model.StartTime,
                 SpaBranchLocationId = model.SpaBranchLocationId,
+                StaffId = model.StaffId,
                 Notes = model.Notes,
                 CustomerId = userId,
                 ProviderId = provider.ProviderId,
@@ -328,8 +320,27 @@ namespace BeautySpa.Services.Service
             return appointment;
         }
 
-
         // End tạo đặt lịch
+
+        private async Task ValidateWorkingHoursAsync(Guid branchId, DateTime date, TimeSpan startTime)
+        {
+            int dayOfWeek = (int)date.DayOfWeek;
+
+            var workingHour = await _unitOfWork.GetRepository<WorkingHour>()
+                .Entities
+                .FirstOrDefaultAsync(x =>
+                    x.SpaBranchLocationId == branchId &&
+                    x.DayOfWeek == dayOfWeek &&
+                    x.IsWorking &&
+                    x.DeletedTime == null);
+
+            if (workingHour == null)
+                throw new ErrorException(400, ErrorCode.Failed, "Chi nhánh không hoạt động vào ngày đã chọn.");
+
+            if (startTime < workingHour.OpeningTime || startTime >= workingHour.ClosingTime)
+                throw new ErrorException(400, ErrorCode.Failed,
+                    $"Chi nhánh chỉ hoạt động từ {workingHour.OpeningTime:hh\\:mm} đến {workingHour.ClosingTime:hh\\:mm}.");
+        }
 
         public async Task<BaseResponseModel<string>> AutoCancelUnpaidAppointmentsAsync()
         {
@@ -579,6 +590,7 @@ namespace BeautySpa.Services.Service
         {
             var query = _unitOfWork.GetRepository<Appointment>()
                 .Entities.AsNoTracking()
+                .Include(x => x.Staff)
                 .Include(x => x.AppointmentServices).ThenInclude(s => s.Service)
                 .Include(a => a.AppointmentServices)
                 .Where(x => x.DeletedTime == null)
@@ -596,6 +608,7 @@ namespace BeautySpa.Services.Service
             var appointment = await _unitOfWork.GetRepository<Appointment>()
                 .Entities.AsNoTracking()
                 .Include(x => x.AppointmentServices).ThenInclude(s => s.Service)
+                .Include(x => x.Staff)
                 .FirstOrDefaultAsync(x => x.Id == id && x.DeletedTime == null)
                 ?? throw new ErrorException(404, ErrorCode.NotFound, "Không tìm thấy lịch.");
 
@@ -637,6 +650,7 @@ namespace BeautySpa.Services.Service
             .Entities
             .Where(a => a.CustomerId.ToString() == currentUserId)
             .Include(x => x.BranchLocation)
+            .Include(x => x.Staff)
             .Include(a => a.AppointmentServices)
                 .ThenInclude(s => s.Service)
                 .Include(a => a.Payment)

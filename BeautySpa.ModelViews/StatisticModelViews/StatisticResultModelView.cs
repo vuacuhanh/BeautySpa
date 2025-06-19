@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BeautySpa.ModelViews.StatisticModelViews
+﻿namespace BeautySpa.ModelViews.StatisticModelViews
 {
     public class StatisticResultModelView
     {
@@ -26,19 +20,19 @@ namespace BeautySpa.ModelViews.StatisticModelViews
 
     public class TopServiceModel
     {
-        public string ServiceName { get; set; }
+        public string? ServiceName { get; set; }
         public int TotalBooked { get; set; }
     }
 
     public class MonthlyRevenueModel
     {
-        public string Month { get; set; } // Format: yyyy-MM
+        public string? Month { get; set; } // Format: yyyy-MM
         public decimal Revenue { get; set; }
     }
 
     public class TopProviderModel
     {
-        public string ProviderName { get; set; }
+        public string? ProviderName { get; set; }
         public int TotalAppointments { get; set; }
     }
 }

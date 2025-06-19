@@ -139,7 +139,7 @@ namespace BeautySpa.Services.Service
                 .FirstOrDefaultAsync(r => r.Id == requestId && r.RequestStatus == "pending" && r.DeletedTime == null)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Request Not Found.");
 
-            var user = await userRepo.GetByIdAsync(request.UserId)
+            var user = await userRepo.GetByIdAsync(request.UserId!)
                 ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "User Not Found.");
 
             if (user.ServiceProvider != null)
@@ -317,11 +317,11 @@ namespace BeautySpa.Services.Service
             };
 
             var randomPassword = CoreHelper.GenerateRandomPassword(8);
-            var createResult = await userManager.CreateAsync(newUser, randomPassword);
+            var createResult = await userManager!.CreateAsync(newUser, randomPassword);
             if (!createResult.Succeeded)
                 throw new ErrorException(500, ErrorCode.InternalServerError, string.Join("; ", createResult.Errors.Select(e => e.Description)));
 
-            if (!await roleManager.RoleExistsAsync("Provider"))
+            if (!await roleManager!.RoleExistsAsync("Provider"))
                 await roleManager.CreateAsync(new ApplicationRoles { Name = "Provider" });
 
             await userManager.AddToRoleAsync(newUser, "Provider");

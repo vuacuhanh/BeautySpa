@@ -5,6 +5,7 @@
         public Guid Id { get; set; }
         public DateTime AppointmentDate { get; set; }
         public TimeSpan StartTime { get; set; }
+        public string? StaffName { get; set; }
         public string BookingStatus { get; set; } = string.Empty;
         public string? Notes { get; set; }
         public decimal OriginalTotalPrice { get; set; }
@@ -21,4 +22,3 @@
         public bool IsReviewed { get; set; }
     }
 }
-

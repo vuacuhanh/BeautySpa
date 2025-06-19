@@ -41,7 +41,7 @@ namespace BeautySpa.Services.Service
             var totalRevenue = await completedAppointments.SumAsync(a => (decimal?)a.FinalPrice) ?? 0;
             var totalCommission = await completedAppointments
                 .Include(a => a.Payment)
-                .SumAsync(a => (decimal?)a.Payment.PlatformFee) ?? 0;
+                .SumAsync(a => (decimal?)a.Payment!.PlatformFee) ?? 0;
 
             var revenueByMonth = await completedAppointments
                 .GroupBy(a => new { a.AppointmentDate.Year, a.AppointmentDate.Month })
@@ -110,21 +110,21 @@ namespace BeautySpa.Services.Service
             var topToday = await query
                 .Where(a => a.AppointmentDate == today)
                 .SelectMany(a => a.AppointmentServices)
-                .GroupBy(s => s.Service.ServiceName)
+                .GroupBy(s => s.Service!.ServiceName)
                 .Select(g => new TopServiceModel { ServiceName = g.Key, TotalBooked = g.Sum(s => s.Quantity) })
                 .OrderByDescending(x => x.TotalBooked).Take(5).ToListAsync();
 
             var topWeek = await query
                 .Where(a => a.AppointmentDate >= firstDayOfWeek)
                 .SelectMany(a => a.AppointmentServices)
-                .GroupBy(s => s.Service.ServiceName)
+                .GroupBy(s => s.Service!.ServiceName)
                 .Select(g => new TopServiceModel { ServiceName = g.Key, TotalBooked = g.Sum(s => s.Quantity) })
                 .OrderByDescending(x => x.TotalBooked).Take(5).ToListAsync();
 
             var topYear = await query
                 .Where(a => a.AppointmentDate >= firstDayOfYear)
                 .SelectMany(a => a.AppointmentServices)
-                .GroupBy(s => s.Service.ServiceName)
+                .GroupBy(s => s.Service!.ServiceName)
                 .Select(g => new TopServiceModel { ServiceName = g.Key, TotalBooked = g.Sum(s => s.Quantity) })
                 .OrderByDescending(x => x.TotalBooked).Take(5).ToListAsync();
 
