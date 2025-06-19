@@ -35,6 +35,7 @@ namespace BeautySpa.Services.Service
             IQueryable<ServiceProvider> query = _unitOfWork.GetRepository<ServiceProvider>()
                 .Entities
                 .AsNoTracking()
+                .Include(sp => sp.Provider)
                 .Include(sp => sp.ServiceImages)
                 .Include(p => p.ServiceProviderCategories)
                 .ThenInclude(spc => spc.ServiceCategory)
@@ -79,6 +80,7 @@ namespace BeautySpa.Services.Service
             IQueryable<ServiceProvider> query = _unitOfWork.GetRepository<ServiceProvider>()
                 .Entities
                 .AsNoTracking()
+                .Include(sp => sp.Provider)
                 .Include(x => x.ServiceImages)
                 .Include(p => p.ServiceProviderCategories)
                 .ThenInclude(spc => spc.ServiceCategory);
@@ -256,6 +258,7 @@ namespace BeautySpa.Services.Service
 
             var entity = await _unitOfWork.GetRepository<ServiceProvider>()
                 .Entities
+                .Include(sp => sp.Provider)
                 .Include(sp => sp.ServiceImages)
                 .Include(sp => sp.ServiceProviderCategories)
                     .ThenInclude(spc => spc.ServiceCategory)
@@ -277,7 +280,6 @@ namespace BeautySpa.Services.Service
                 result.ProvinceName = mainBranch.ProvinceName;
                 result.DistrictName = mainBranch.DistrictName;
             }
-
             return BaseResponseModel<GETServiceProviderModelViews>.Success(result);
         }
     }
