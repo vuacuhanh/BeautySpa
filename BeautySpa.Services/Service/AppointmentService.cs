@@ -111,8 +111,11 @@ namespace BeautySpa.Services.Service
                 PaymentMethod = paymentMethod
             });
 
-            if (paymentResult.StatusCode != 200 || string.IsNullOrEmpty(paymentResult.Data?.PayUrl))
+            if (paymentResult.StatusCode != 200 ||
+            (paymentMethod != "cash" && string.IsNullOrEmpty(paymentResult.Data?.PayUrl)))
+            {
                 throw new ErrorException(400, ErrorCode.Failed, "Tạo giao dịch thanh toán thất bại.");
+            }
 
             var startDateTime = model.AppointmentDate.Date + model.StartTime;
 
@@ -308,7 +311,7 @@ namespace BeautySpa.Services.Service
                 CreatedBy = CurrentUserId,
                 CreatedTime = DateTime.UtcNow,
                 AppointmentServices = appointmentServices,
-                BookingStatus = "pending"
+                BookingStatus = model.PaymentMethod?.ToLower() == "cash" ? "waiting_payment" : "pending"
             };
 
             await _unitOfWork.GetRepository<Appointment>().InsertAsync(appointment);
@@ -650,10 +653,25 @@ namespace BeautySpa.Services.Service
             .Include(x => x.Staff)
             .Include(a => a.AppointmentServices)
                 .ThenInclude(s => s.Service)
+                .Include(a => a.Payment)
             .OrderByDescending(a => a.AppointmentDate)
             .ToListAsync();
 
             var result = _mapper.Map<List<GETAppointmentModelView>>(appointments);
+            for (int i = 0; i < appointments.Count; i++)
+            {
+                var appointment = appointments[i];
+                var payment = appointment.Payment;
+                result[i].DepositAmount = payment?.Status == "refunded" ? 0 : payment?.Amount;
+                result[i].IsPaid = payment?.Status == "completed" ||
+                    (appointment.BookingStatus == "completed" && payment?.PaymentMethod?.ToLower() == "cash");
+
+                var hasReview = await _unitOfWork.GetRepository<Review>()
+                .Entities
+                .AnyAsync(r => r.AppointmentId == appointment.Id && r.DeletedTime == null);
+                result[i].IsReviewed = hasReview;
+            }
+
             return BaseResponseModel<List<GETAppointmentModelView>>.Success(result);
         }
 

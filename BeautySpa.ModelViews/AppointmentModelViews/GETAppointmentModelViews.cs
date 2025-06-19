@@ -17,6 +17,8 @@
         public string Street { get; set; } = string.Empty;
         public string DistrictName { get; set; } = string.Empty;
         public string ProvinceName { get; set; } = string.Empty;
+        public decimal? DepositAmount { get; set; }  
+        public bool IsPaid { get; set; }             
+        public bool IsReviewed { get; set; }
     }
 }
-

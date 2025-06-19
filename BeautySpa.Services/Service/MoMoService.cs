@@ -32,7 +32,7 @@ namespace BeautySpa.Services.Service
                 $"&notifyUrl={_options.Value.NotifyUrl}" +
                 $"&extraData=";
 
-            var signature = ComputeHmacSha256(rawData, _options.Value.SecretKey);
+            var signature = ComputeHmacSha256(rawData, _options.Value.SecretKey!);
 
             var client = new RestClient(_options.Value.MomoApiUrl!);
             var request = new RestRequest() { Method = Method.Post };
@@ -57,7 +57,7 @@ namespace BeautySpa.Services.Service
             request.AddParameter("application/json", JsonConvert.SerializeObject(requestData), ParameterType.RequestBody);
 
             var response = await client.ExecuteAsync(request);
-            var momoResponse = JsonConvert.DeserializeObject<MomoCreatePaymentResponseModel>(response.Content);
+            var momoResponse = JsonConvert.DeserializeObject<MomoCreatePaymentResponseModel>(response.Content!);
             return BaseResponseModel<MomoCreatePaymentResponseModel>.Success(momoResponse);
 
         }

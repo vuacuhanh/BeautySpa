@@ -122,6 +122,12 @@ namespace BeautySpa.Services.Service
                     qrCodeUrl = momoResp.Data.QrCodeUrl;
                     break;
 
+                case "cash":
+                    payment.Status = "waiting";
+                    payment.TransactionId = "cash_" + Guid.NewGuid();
+                    payUrl = "N/A"; // ✅ tránh null để pass condition check phía dưới
+                    break;
+
                 default:
                     throw new ErrorException(400, ErrorCode.InvalidInput, "Phương thức thanh toán không hợp lệ");
             }

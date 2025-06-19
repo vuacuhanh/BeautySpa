@@ -21,6 +21,8 @@ namespace BeautySpa.ModelViews.ServiceProviderModelViews
         public string? ProvinceName { get; set; }
         public string? DistrictName { get; set; }
         public string Status { get; set; } = "pending";
+        public string PhoneNumber { get; set; } = string.Empty; 
+        public string? Email { get; set; } 
         public Guid ProviderId { get; set; }
         public TimeSpan? OpenTime { get; set; }
         public TimeSpan? CloseTime { get; set; }

@@ -11,7 +11,7 @@ public class StaffMapping : Profile
             .ForMember(dest => dest.ServiceCategoryIds,
                 opt => opt.MapFrom(src => src.StaffServiceCategories.Select(x => x.ServiceCategoryId)))
             .ForMember(dest => dest.ServiceCategoryNames,
-                opt => opt.MapFrom(src => src.StaffServiceCategories.Select(x => x.ServiceCategory.CategoryName)));
+                opt => opt.MapFrom(src => src.StaffServiceCategories.Select(x => x.ServiceCategory!.CategoryName)));
 
         CreateMap<POSTStaffModelView, Staff>()
             .ForMember(dest => dest.StaffServiceCategories, opt => opt.Ignore());
