@@ -411,7 +411,7 @@ namespace BeautySpa.Services.Service
 
                 if (appointment.Payment != null)
                 {
-                    if (appointment.Payment.PaymentMethod?.ToLower() == "cash" && appointment.Payment.Status == "waiting")
+                    if (appointment.Payment.Status == "waiting" || appointment.Payment.Status == "pending")
                     {
                         appointment.Payment.Status = "completed";
                         appointment.Payment.PaymentDate = now.UtcDateTime;
