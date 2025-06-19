@@ -651,6 +651,11 @@ namespace BeautySpa.Services.Service
                 result[i].DepositAmount = payment?.Status == "refunded" ? 0 : payment?.Amount;
                 result[i].IsPaid = payment?.Status == "completed" ||
                     (appointment.BookingStatus == "completed" && payment?.PaymentMethod?.ToLower() == "cash");
+
+                var hasReview = await _unitOfWork.GetRepository<Review>()
+                .Entities
+                .AnyAsync(r => r.AppointmentId == appointment.Id && r.DeletedTime == null);
+                result[i].IsReviewed = hasReview;
             }
 
             return BaseResponseModel<List<GETAppointmentModelView>>.Success(result);
