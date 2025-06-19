@@ -645,10 +645,13 @@ namespace BeautySpa.Services.Service
             var result = _mapper.Map<List<GETAppointmentModelView>>(appointments);
             for (int i = 0; i < appointments.Count; i++)
             {
-                var payment = appointments[i].Payment;
+                var appointment = appointments[i];
+                var payment = appointment.Payment;
                 result[i].DepositAmount = payment?.Status == "refunded" ? 0 : payment?.Amount;
-                result[i].IsPaid = payment?.Status == "completed";
+                result[i].IsPaid = payment?.Status == "completed" ||
+                    (appointment.BookingStatus == "completed" && payment?.PaymentMethod?.ToLower() == "cash");
             }
+
             return BaseResponseModel<List<GETAppointmentModelView>>.Success(result);
         }
 
