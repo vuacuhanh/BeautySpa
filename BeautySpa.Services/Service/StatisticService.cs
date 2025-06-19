@@ -8,6 +8,8 @@ using BeautySpa.Contract.Repositories.Entity;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BeautySpa.Services.Service
 {
@@ -22,27 +24,23 @@ namespace BeautySpa.Services.Service
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<BaseResponseModel<StatisticResultModelView>> GetAdminStatisticsAsync(StatisticFilterModelView filter)
+        public async Task<BaseResponseModel<StatisticResultAdminModelView>> GetAdminStatisticsAsync(StatisticFilterModelView filter)
         {
             var appointmentRepo = _unitOfWork.GetRepository<Appointment>();
-            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
-            var userRoleRepo = _unitOfWork.GetRepository<ApplicationUserRoles>();
-            var roleRepo = _unitOfWork.GetRepository<ApplicationRoles>();
-
-            var allAppointments = _unitOfWork.GetRepository<Appointment>()
-            .Entities
-            .Include(a => a.Provider)!.ThenInclude(p => p.ServiceProvider)
-            .Include(a => a.Payment)
-            .Where(a => a.DeletedTime == null);
+            var allAppointments = appointmentRepo.Entities
+                .Include(a => a.Provider)!.ThenInclude(p => p.ServiceProvider)
+                .Include(a => a.Payment)
+                .Where(a => a.DeletedTime == null);
 
             if (filter.FromDate.HasValue)
                 allAppointments = allAppointments.Where(a => a.AppointmentDate >= filter.FromDate);
+
             if (filter.ToDate.HasValue)
                 allAppointments = allAppointments.Where(a => a.AppointmentDate <= filter.ToDate);
 
             var completedAppointments = allAppointments.Where(a => a.BookingStatus == "completed");
 
-            // ✅ Top 5 spa theo số lượng đặt lịch completed
+            // ✅ Top 5 spa theo số lượng lịch hoàn thành
             var topSpaByBooking = await completedAppointments
                 .GroupBy(a => a.Provider!.ServiceProvider!.BusinessName)
                 .Select(g => new TopProviderModel
@@ -60,31 +58,29 @@ namespace BeautySpa.Services.Service
                 .Select(g => new TopProviderModel
                 {
                     ProviderName = g.Key,
-                    TotalAppointments = (int)g.Sum(x => x.FinalPrice)
+                    TotalAppointments = 0, // tránh nhầm, không dùng field này
+                    TotalRevenue = g.Sum(x => x.FinalPrice)
                 })
-                .OrderByDescending(x => x.TotalAppointments)
+                .OrderByDescending(x => x.TotalRevenue)
                 .Take(5)
                 .ToListAsync();
 
-            // ✅ Tổng hoa hồng
+            // ✅ Tổng hoa hồng đã nhận (PlatformFee)
             var totalCommission = await completedAppointments
                 .Where(a => a.Payment != null && a.Payment.PlatformFee > 0)
                 .SumAsync(a => (decimal?)a.Payment!.PlatformFee) ?? 0;
 
-            // ✅ Tổng tiền cọc (đã thanh toán)
+            // ✅ Tổng tiền cọc đã thanh toán
             var totalDeposit = await completedAppointments
                 .Where(a => a.Payment != null && a.Payment.Status == "completed")
                 .SumAsync(a => (decimal?)a.Payment!.Amount) ?? 0;
 
-            // ✅ Đếm tài khoản user / provider
-            var userRoleQuery = from ur in userRoleRepo.Entities
-                                join r in roleRepo.Entities on ur.RoleId equals r.Id
-                                select new { ur.UserId, r.NormalizedName };
+            // ✅ Tổng tài khoản từ UserManager
+            var userManager = _httpContextAccessor.HttpContext!.RequestServices.GetRequiredService<UserManager<ApplicationUsers>>();
+            var userCount = (await userManager.GetUsersInRoleAsync("Customer")).Count;
+            var providerCount = (await userManager.GetUsersInRoleAsync("Provider")).Count;
 
-            var userCount = await userRoleQuery.CountAsync(x => x.NormalizedName == "CUSTOMER");
-            var providerCount = await userRoleQuery.CountAsync(x => x.NormalizedName == "PROVIDER");
-
-            return BaseResponseModel<StatisticResultModelView>.Success(new StatisticResultModelView
+            return BaseResponseModel<StatisticResultAdminModelView>.Success(new StatisticResultAdminModelView
             {
                 TopBookedProviders = topSpaByBooking,
                 TopRevenueProviders = topSpaByRevenue,
@@ -96,7 +92,7 @@ namespace BeautySpa.Services.Service
         }
 
 
-        public async Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsByTokenAsync(StatisticFilterModelView filter)
+        public async Task<BaseResponseModel<StatisticResultProviderModelView>> GetProviderStatisticsByTokenAsync(StatisticFilterModelView filter)
         {
             var httpContext = _httpContextAccessor.HttpContext;
             var providerIdClaim = httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -107,7 +103,8 @@ namespace BeautySpa.Services.Service
             return await GetStatisticsForProvider(filter, providerId);
         }
 
-        private async Task<BaseResponseModel<StatisticResultModelView>> GetStatisticsForProvider(StatisticFilterModelView filter, Guid providerId)
+
+        private async Task<BaseResponseModel<StatisticResultProviderModelView>> GetStatisticsForProvider(StatisticFilterModelView filter, Guid providerId)
         {
             var query = _unitOfWork.GetRepository<Appointment>().Entities
                 .Where(a => a.DeletedTime == null && a.ProviderId == providerId);
@@ -118,7 +115,7 @@ namespace BeautySpa.Services.Service
                 query = query.Where(a => a.AppointmentDate <= filter.ToDate);
 
             var today = DateTime.Today;
-            var firstDayOfWeek = today.AddDays(-(int)today.DayOfWeek + 1); // Monday
+            var firstDayOfWeek = today.AddDays(-(int)today.DayOfWeek + 1);
             var firstDayOfYear = new DateTime(today.Year, 1, 1);
 
             var topToday = await query
@@ -151,7 +148,7 @@ namespace BeautySpa.Services.Service
                     Revenue = g.Sum(x => x.FinalPrice)
                 }).ToListAsync();
 
-            return BaseResponseModel<StatisticResultModelView>.Success(new StatisticResultModelView
+            return BaseResponseModel<StatisticResultProviderModelView>.Success(new StatisticResultProviderModelView
             {
                 TotalAppointments = await query.CountAsync(),
                 CompletedCount = await query.CountAsync(x => x.BookingStatus == "completed"),
