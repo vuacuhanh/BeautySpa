@@ -36,6 +36,10 @@ namespace BeautySpa.Contract.Repositories.Entity
         public virtual Payment? Payment { get; set; }
         public virtual Review? Review { get; set; }
 
+        public Guid? StaffId { get; set; }
+        public virtual Staff? Staff { get; set; }
+
+
         public virtual ICollection<AppointmentService> AppointmentServices { get; set; } = new List<AppointmentService>();
     }
 }
