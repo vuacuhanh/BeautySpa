@@ -492,7 +492,8 @@ namespace BeautySpa.Services.Service
                 {
                     UserId = appointment.CustomerId,
                     Title = "Check-in thành công",
-                    Message = "Chúc bạn có trải nghiệm làm đẹp tuyệt vời tại Spa."
+                    Message = "Chúc bạn có trải nghiệm làm đẹp tuyệt vời tại Spa.",
+                    NotificationType = "appointment"
                 });
             }
             else if (status.Equals("confirmed", StringComparison.OrdinalIgnoreCase))
