@@ -28,7 +28,6 @@
     {
         public string? ServiceName { get; set; }
         public int TotalBooked { get; set; }
-        public decimal TotalRevenue { get; set; }
     }
 
     public class MonthlyRevenueModel
