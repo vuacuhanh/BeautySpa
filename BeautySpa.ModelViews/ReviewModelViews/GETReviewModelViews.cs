@@ -7,6 +7,7 @@
         public string? Comment { get; set; }
         public string? ProviderResponse { get; set; }
 
+
         public Guid AppointmentId { get; set; }
         public Guid CustomerId { get; set; }
         public Guid ProviderId { get; set; }

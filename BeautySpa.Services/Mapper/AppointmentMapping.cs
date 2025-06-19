@@ -13,6 +13,7 @@ namespace BeautySpa.Services.Mapper
                 .ForMember(dest => dest.BranchName, opt => opt.MapFrom(src => src.BranchLocation.BranchName))
                 .ForMember(dest => dest.Street, opt => opt.MapFrom(src => src.BranchLocation.Street))
                 .ForMember(dest => dest.DistrictName, opt => opt.MapFrom(src => src.BranchLocation.DistrictName))
+                .ForMember(dest => dest.IsReviewed, opt => opt.Ignore())
                 .ForMember(dest => dest.ProvinceName, opt => opt.MapFrom(src => src.BranchLocation.ProvinceName));
 
             CreateMap<AppointmentService, AppointmentServiceDetail>()
