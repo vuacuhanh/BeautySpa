@@ -123,9 +123,9 @@ namespace BeautySpa.Services.Service
                     break;
 
                 case "cash":
-                    payment.Status = "waiting"; 
+                    payment.Status = "waiting";
                     payment.TransactionId = "cash_" + Guid.NewGuid();
-                    payUrl = null;
+                    payUrl = "N/A"; // ✅ tránh null để pass condition check phía dưới
                     break;
 
                 default:
