@@ -145,6 +145,20 @@ namespace BeautySpa.Services.Service
             await genericRepository.SaveAsync();
         }
 
+        public async Task<List<GETReviewModelViews>> GetByProviderIdAsync(Guid providerId)
+        {
+            if (providerId == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "ProviderId không hợp lệ.");
+
+            var reviews = await _unitOfWork.GetRepository<Review>()
+                .Entities
+                .Where(r => r.ProviderId == providerId && !r.DeletedTime.HasValue)
+                .OrderByDescending(r => r.CreatedTime)
+                .ToListAsync();
+
+            return _mapper.Map<List<GETReviewModelViews>>(reviews);
+        }
+
         // Xóa mềm review (set DeletedTime, DeletedBy)
         public async Task DeleteAsync(Guid id)
         {

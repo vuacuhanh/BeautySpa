@@ -58,5 +58,14 @@ namespace BeautySpa.API.Controllers
             await _service.DeleteAsync(id);
             return Ok(new BaseResponseModel<string>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, "Delete successful"));
         }
+
+        [HttpGet("by-provider/{providerId}")]
+        [SwaggerOperation(Summary = "Lấy danh sách đánh giá theo ProviderId")]
+        public async Task<IActionResult> GetByProviderId(Guid providerId)
+        {
+            var result = await _service.GetByProviderIdAsync(providerId);
+            return Ok(new BaseResponseModel<List<GETReviewModelViews>>(StatusCodes.Status200OK, ResponseCodeConstants.SUCCESS, result));
+        }
+
     }
 }
