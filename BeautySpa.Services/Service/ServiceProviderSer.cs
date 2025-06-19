@@ -248,5 +248,37 @@ namespace BeautySpa.Services.Service
             var mapped = _mapper.Map<List<GETServiceProviderModelViews>>(providers);
             return BaseResponseModel<List<GETServiceProviderModelViews>>.Success(mapped);
         }
+
+        public async Task<BaseResponseModel<GETServiceProviderModelViews>> GetByProviderIdAsync(Guid providerId)
+        {
+            if (providerId == Guid.Empty)
+                throw new ErrorException(StatusCodes.Status400BadRequest, ErrorCode.InvalidInput, "Invalid Provider ID.");
+
+            var entity = await _unitOfWork.GetRepository<ServiceProvider>()
+                .Entities
+                .Include(sp => sp.ServiceImages)
+                .Include(sp => sp.ServiceProviderCategories)
+                    .ThenInclude(spc => spc.ServiceCategory)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(sp => sp.ProviderId == providerId && sp.DeletedTime == null)
+                ?? throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Service Provider not found.");
+
+            var result = _mapper.Map<GETServiceProviderModelViews>(entity);
+
+            var mainBranch = await _unitOfWork.GetRepository<SpaBranchLocation>()
+                .Entities.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ServiceProviderId == entity.Id && x.BranchName == "Cơ sở chính" && x.DeletedTime == null);
+
+            if (mainBranch != null)
+            {
+                result.AddressDetail = mainBranch.Street;
+                result.ProvinceId = mainBranch.ProvinceId;
+                result.DistrictId = mainBranch.DistrictId;
+                result.ProvinceName = mainBranch.ProvinceName;
+                result.DistrictName = mainBranch.DistrictName;
+            }
+
+            return BaseResponseModel<GETServiceProviderModelViews>.Success(result);
+        }
     }
 }
