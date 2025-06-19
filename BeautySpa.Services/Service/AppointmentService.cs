@@ -118,8 +118,11 @@ namespace BeautySpa.Services.Service
                 PaymentMethod = paymentMethod
             });
 
-            if (paymentResult.StatusCode != 200 || string.IsNullOrEmpty(paymentResult.Data?.PayUrl))
+            if (paymentResult.StatusCode != 200 ||
+            (paymentMethod != "cash" && string.IsNullOrEmpty(paymentResult.Data?.PayUrl)))
+            {
                 throw new ErrorException(400, ErrorCode.Failed, "Tạo giao dịch thanh toán thất bại.");
+            }
 
             var startDateTime = model.AppointmentDate.Date + model.StartTime;
 
