@@ -319,7 +319,7 @@ namespace BeautySpa.Services.Service
                 CreatedBy = CurrentUserId,
                 CreatedTime = DateTime.UtcNow,
                 AppointmentServices = appointmentServices,
-                BookingStatus = "waiting_payment" // ✅ sửa đúng tại đây
+                BookingStatus = model.PaymentMethod?.ToLower() == "cash" ? "pending" : "waiting_payment"
             };
 
             await _unitOfWork.GetRepository<Appointment>().InsertAsync(appointment);
