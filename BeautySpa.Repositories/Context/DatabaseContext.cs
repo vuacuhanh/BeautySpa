@@ -200,6 +200,12 @@ namespace BeautySpa.Repositories.Context
             .WithMany()
             .HasForeignKey(s => s.BranchId)
             .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<WorkingHour>()
+            .HasOne(wh => wh.Provider)
+            .WithMany(u => u.WorkingHours)
+            .HasForeignKey(wh => wh.ProviderId)
+            .OnDelete(DeleteBehavior.Restrict);
             // Precision configs
             builder.Entity<Payment>().Property(p => p.Amount).HasPrecision(10, 2);
             builder.Entity<Payment>().Property(p => p.RefundAmount).HasPrecision(10, 2);
