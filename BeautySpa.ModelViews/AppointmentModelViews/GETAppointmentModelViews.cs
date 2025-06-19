@@ -16,6 +16,8 @@
         public string Street { get; set; } = string.Empty;
         public string DistrictName { get; set; } = string.Empty;
         public string ProvinceName { get; set; } = string.Empty;
+        public decimal? DepositAmount { get; set; }  // null nếu chưa thanh toán
+        public bool IsPaid { get; set; }             // true nếu đã thanh toán
     }
 }
 

@@ -638,10 +638,17 @@ namespace BeautySpa.Services.Service
             .Include(x => x.BranchLocation)
             .Include(a => a.AppointmentServices)
                 .ThenInclude(s => s.Service)
+                .Include(a => a.Payment)
             .OrderByDescending(a => a.AppointmentDate)
             .ToListAsync();
 
             var result = _mapper.Map<List<GETAppointmentModelView>>(appointments);
+            for (int i = 0; i < appointments.Count; i++)
+            {
+                var payment = appointments[i].Payment;
+                result[i].DepositAmount = payment?.Status == "refunded" ? 0 : payment?.Amount;
+                result[i].IsPaid = payment?.Status == "completed";
+            }
             return BaseResponseModel<List<GETAppointmentModelView>>.Success(result);
         }
 
