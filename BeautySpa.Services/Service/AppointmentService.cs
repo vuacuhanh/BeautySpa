@@ -81,6 +81,7 @@ namespace BeautySpa.Services.Service
                         s.BranchId == model.SpaBranchLocationId &&
                         s.DeletedTime == null);
 
+
                 if (staff == null)
                     throw new ErrorException(400, ErrorCode.Failed, "Nhân viên không hợp lệ cho chi nhánh này.");
             }
@@ -172,7 +173,7 @@ namespace BeautySpa.Services.Service
                     a.AppointmentDate == model.AppointmentDate &&
                     new[] { "pending", "confirmed", "checked_in" }.Contains(a.BookingStatus) &&
                     a.DeletedTime == null &&
-                    a.StartTime < endTime)
+                    a.StartTime < endTime)            
                 .CountAsync();
 
             if (slotUsed >= provider.MaxAppointmentsPerSlot)
