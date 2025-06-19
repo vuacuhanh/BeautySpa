@@ -10,7 +10,7 @@ namespace BeautySpa.Contract.Services.Interface
 {
     public interface IStatisticService
     {
-        Task<BaseResponseModel<StatisticResultModelView>> GetAdminStatisticsAsync(StatisticFilterModelView filter);
-        Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsByTokenAsync(StatisticFilterModelView filter);
+        Task<BaseResponseModel<StatisticResultAdminModelView>> GetAdminStatisticsAsync(StatisticFilterModelView filter);
+        Task<BaseResponseModel<StatisticResultProviderModelView>> GetProviderStatisticsByTokenAsync(StatisticFilterModelView filter);
     }
 }

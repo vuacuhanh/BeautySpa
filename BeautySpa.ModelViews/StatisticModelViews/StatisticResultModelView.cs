@@ -1,6 +1,6 @@
 ﻿namespace BeautySpa.ModelViews.StatisticModelViews
 {
-    public class StatisticResultModelView
+    public class StatisticResultProviderModelView
     {
         public int TotalAppointments { get; set; }
         public decimal TotalRevenue { get; set; }
@@ -12,7 +12,10 @@
         public List<TopServiceModel> TopServicesYear { get; set; } = new();
         public List<MonthlyRevenueModel> RevenueByMonth { get; set; } = new();
 
-        // Admin only
+    }
+
+    public class StatisticResultAdminModelView
+    {
         public decimal TotalCommissionRevenue { get; set; }
         public decimal TotalDepositAmount { get; set; }
         public int ApprovedProviderCount { get; set; }
@@ -25,6 +28,7 @@
     {
         public string? ServiceName { get; set; }
         public int TotalBooked { get; set; }
+        public decimal TotalRevenue { get; set; }
     }
 
     public class MonthlyRevenueModel
@@ -37,5 +41,7 @@
     {
         public string? ProviderName { get; set; }
         public int TotalAppointments { get; set; }
+        public decimal TotalRevenue { get; set; }
+
     }
 }
