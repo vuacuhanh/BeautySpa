@@ -51,5 +51,12 @@ namespace BeautySpa.API.Controllers
         {
             return Ok(await _service.DeleteAsync(id));
         }
+
+        [HttpGet("provider/{providerId}/branch/{branchId}")]
+        [SwaggerOperation(Summary = "Lấy giờ làm việc theo ProviderId và BranchId")]
+        public async Task<IActionResult> GetByProviderAndBranch(Guid providerId, Guid branchId)
+        {
+            return Ok(await _service.GetByProviderAndBranchAsync(providerId, branchId));
+        }
     }
 }
