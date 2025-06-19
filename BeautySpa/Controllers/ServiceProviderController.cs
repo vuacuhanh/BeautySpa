@@ -58,5 +58,12 @@ namespace BeautySpa.API.Controllers
             var result = await _providerService.GetByCategory(categoryId);
             return Ok(result);
         }
+
+        [HttpGet("by-user/{providerId:guid}")]
+        [SwaggerOperation(Summary = "Lấy thông tin provider theo userId (ProviderId)")]
+        public async Task<IActionResult> GetByProviderId([FromRoute] Guid providerId)
+        {
+            return Ok(await _providerService.GetByProviderIdAsync(providerId));
+        }
     }
 }
