@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using BeautySpa.Contract.Repositories.Entity;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
+using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace BeautySpa.Services.Service
 {
@@ -23,8 +24,16 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<StatisticResultModelView>> GetAdminStatisticsAsync(StatisticFilterModelView filter)
         {
-            var allAppointments = _unitOfWork.GetRepository<Appointment>().Entities
-                .Where(a => a.DeletedTime == null);
+            var appointmentRepo = _unitOfWork.GetRepository<Appointment>();
+            var userRepo = _unitOfWork.GetRepository<ApplicationUsers>();
+            var userRoleRepo = _unitOfWork.GetRepository<ApplicationUserRoles>();
+            var roleRepo = _unitOfWork.GetRepository<ApplicationRoles>();
+
+            var allAppointments = _unitOfWork.GetRepository<Appointment>()
+            .Entities
+            .Include(a => a.Provider)!.ThenInclude(p => p.ServiceProvider)
+            .Include(a => a.Payment)
+            .Where(a => a.DeletedTime == null);
 
             if (filter.FromDate.HasValue)
                 allAppointments = allAppointments.Where(a => a.AppointmentDate >= filter.FromDate);
@@ -33,25 +42,8 @@ namespace BeautySpa.Services.Service
 
             var completedAppointments = allAppointments.Where(a => a.BookingStatus == "completed");
 
-            var totalAppointments = await allAppointments.CountAsync();
-            var completedCount = await allAppointments.CountAsync(a => a.BookingStatus == "completed");
-            var cancelledCount = await allAppointments.CountAsync(a => a.BookingStatus == "canceled");
-            var noShowCount = await allAppointments.CountAsync(a => a.BookingStatus == "no_show");
-
-            var totalRevenue = await completedAppointments.SumAsync(a => (decimal?)a.FinalPrice) ?? 0;
-            var totalCommission = await completedAppointments
-                .Include(a => a.Payment)
-                .SumAsync(a => (decimal?)a.Payment!.PlatformFee) ?? 0;
-
-            var revenueByMonth = await completedAppointments
-                .GroupBy(a => new { a.AppointmentDate.Year, a.AppointmentDate.Month })
-                .Select(g => new MonthlyRevenueModel
-                {
-                    Month = $"{g.Key.Year:D4}-{g.Key.Month:D2}",
-                    Revenue = g.Sum(x => x.FinalPrice)
-                }).ToListAsync();
-
-            var topProviders = await completedAppointments
+            // ✅ Top 5 spa theo số lượng đặt lịch completed
+            var topSpaByBooking = await completedAppointments
                 .GroupBy(a => a.Provider!.ServiceProvider!.BusinessName)
                 .Select(g => new TopProviderModel
                 {
@@ -62,25 +54,47 @@ namespace BeautySpa.Services.Service
                 .Take(5)
                 .ToListAsync();
 
-            var approvedProviders = await _unitOfWork.GetRepository<ServiceProvider>()
-                .Entities.CountAsync(p => p.IsApproved);
+            // ✅ Top 5 spa theo doanh thu
+            var topSpaByRevenue = await completedAppointments
+                .GroupBy(a => a.Provider!.ServiceProvider!.BusinessName)
+                .Select(g => new TopProviderModel
+                {
+                    ProviderName = g.Key,
+                    TotalAppointments = (int)g.Sum(x => x.FinalPrice)
+                })
+                .OrderByDescending(x => x.TotalAppointments)
+                .Take(5)
+                .ToListAsync();
+
+            // ✅ Tổng hoa hồng
+            var totalCommission = await completedAppointments
+                .Where(a => a.Payment != null && a.Payment.PlatformFee > 0)
+                .SumAsync(a => (decimal?)a.Payment!.PlatformFee) ?? 0;
+
+            // ✅ Tổng tiền cọc (đã thanh toán)
+            var totalDeposit = await completedAppointments
+                .Where(a => a.Payment != null && a.Payment.Status == "completed")
+                .SumAsync(a => (decimal?)a.Payment!.Amount) ?? 0;
+
+            // ✅ Đếm tài khoản user / provider
+            var userRoleQuery = from ur in userRoleRepo.Entities
+                                join r in roleRepo.Entities on ur.RoleId equals r.Id
+                                select new { ur.UserId, r.NormalizedName };
+
+            var userCount = await userRoleQuery.CountAsync(x => x.NormalizedName == "CUSTOMER");
+            var providerCount = await userRoleQuery.CountAsync(x => x.NormalizedName == "PROVIDER");
 
             return BaseResponseModel<StatisticResultModelView>.Success(new StatisticResultModelView
             {
-                TotalAppointments = totalAppointments,
-                CompletedCount = completedCount,
-                CancelledCount = cancelledCount,
-                NoShowCount = noShowCount,
-                TotalRevenue = totalRevenue,
+                TopBookedProviders = topSpaByBooking,
+                TopRevenueProviders = topSpaByRevenue,
                 TotalCommissionRevenue = totalCommission,
-                RevenueByMonth = revenueByMonth,
-                TopBookedProviders = topProviders,
-                ApprovedProviderCount = approvedProviders,
-                TopServicesToday = new(),
-                TopServicesWeek = new(),
-                TopServicesYear = new()
+                TotalDepositAmount = totalDeposit,
+                TotalUserCount = userCount,
+                ApprovedProviderCount = providerCount
             });
         }
+
 
         public async Task<BaseResponseModel<StatisticResultModelView>> GetProviderStatisticsByTokenAsync(StatisticFilterModelView filter)
         {

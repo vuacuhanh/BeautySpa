@@ -14,8 +14,11 @@
 
         // Admin only
         public decimal TotalCommissionRevenue { get; set; }
+        public decimal TotalDepositAmount { get; set; }
         public int ApprovedProviderCount { get; set; }
+        public int TotalUserCount { get; set; }
         public List<TopProviderModel> TopBookedProviders { get; set; } = new();
+        public List<TopProviderModel> TopRevenueProviders { get; set; } = new();
     }
 
     public class TopServiceModel
