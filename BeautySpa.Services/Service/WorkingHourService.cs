@@ -119,18 +119,20 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<List<GETWorkingHourModelViews>>> GetByProviderAndBranchAsync(Guid providerId, Guid branchId)
         {
-            var workingHours = await _unitOfWork.GetRepository<WorkingHour>()
-                .Entities.AsNoTracking()
-                .Include(x => x.SpaBranchLocation!)
-                .Where(x => x.ProviderId == providerId
-                            && x.SpaBranchLocationId == branchId
-                            && x.DeletedTime == null)
+            var repo = _unitOfWork.GetRepository<WorkingHour>().Entities.AsNoTracking();
+
+            var all = await repo
+                .Where(x => x.SpaBranchLocationId == branchId && x.DeletedTime == null)
                 .ToListAsync();
 
-            var result = workingHours
-                .Select(x => _mapper.Map<GETWorkingHourModelViews>(x))
-                .ToList();
+            // Lấy giờ làm riêng của nhân viên
+            var providerHours = all.Where(x => x.ProviderId == providerId).ToList();
 
+            // Nếu chưa có thì fallback sang giờ mặc định của chi nhánh
+            if (!providerHours.Any())
+                providerHours = all.Where(x => x.ProviderId == null).ToList();
+
+            var result = providerHours.Select(x => _mapper.Map<GETWorkingHourModelViews>(x)).ToList();
             return BaseResponseModel<List<GETWorkingHourModelViews>>.Success(result);
         }
     }

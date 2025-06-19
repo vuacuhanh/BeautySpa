@@ -166,7 +166,6 @@ namespace BeautySpa.Services.Service
 
         public async Task<BaseResponseModel<List<GETSpaBranchLocationModelView>>> GetByProviderAsync(Guid providerId)
         {
-            //  Tìm ServiceProvider theo ProviderId (là userId)
             var serviceProvider = await _unitOfWork.GetRepository<ServiceProvider>()
                 .Entities.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.DeletedTime == null);
@@ -174,9 +173,9 @@ namespace BeautySpa.Services.Service
             if (serviceProvider == null)
                 throw new ErrorException(StatusCodes.Status404NotFound, ErrorCode.NotFound, "Provider not found.");
 
-            // Truy vấn nhánh theo ServiceProviderId (internal GUID)
             IQueryable<SpaBranchLocation> query = _unitOfWork.GetRepository<SpaBranchLocation>()
                 .Entities.AsNoTracking()
+                .Include(x => x.WorkingHours) 
                 .Where(x => x.ServiceProviderId == serviceProvider.Id && x.DeletedTime == null);
 
             List<SpaBranchLocation> raw = await query.ToListAsync();
