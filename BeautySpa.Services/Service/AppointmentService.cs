@@ -159,6 +159,27 @@ namespace BeautySpa.Services.Service
                 throw new ErrorException(400, ErrorCode.Failed, $"Outside working hours. Open: {provider.OpenTime:hh\\:mm}, Close: {provider.CloseTime:hh\\:mm}");
         }
 
+        //private async Task ValidateSlotAvailabilityAsync(ServiceProvider provider, POSTAppointmentModelView model)
+        //{
+        //    int maxDuration = await _unitOfWork.GetRepository<Entity.Service>()
+        //        .Entities.Where(s => model.Services.Select(x => x.ServiceId).Contains(s.Id))
+        //        .MaxAsync(s => s.DurationMinutes);
+
+        //    TimeSpan endTime = model.StartTime + TimeSpan.FromMinutes(maxDuration);
+
+        //    var slotUsed = await _unitOfWork.GetRepository<Appointment>()
+        //        .Entities.Where(a =>
+        //            a.ProviderId == provider.ProviderId &&
+        //            a.AppointmentDate == model.AppointmentDate &&
+        //            new[] { "pending", "confirmed", "checked_in" }.Contains(a.BookingStatus) &&
+        //            a.DeletedTime == null &&
+        //            a.StartTime < endTime)            
+        //        .CountAsync();
+
+        //    if (slotUsed >= provider.MaxAppointmentsPerSlot)
+        //        throw new ErrorException(400, ErrorCode.Failed, $"Time slot fully booked. Used: {slotUsed}, Max: {provider.MaxAppointmentsPerSlot}");
+        //}
+
         private async Task ValidateSlotAvailabilityAsync(ServiceProvider provider, POSTAppointmentModelView model)
         {
             int maxDuration = await _unitOfWork.GetRepository<Entity.Service>()
@@ -167,18 +188,46 @@ namespace BeautySpa.Services.Service
 
             TimeSpan endTime = model.StartTime + TimeSpan.FromMinutes(maxDuration);
 
+            // ✅ Check trùng lịch theo slot tổng thể của Provider
             var slotUsed = await _unitOfWork.GetRepository<Appointment>()
-                .Entities.Where(a =>
+                .Entities
+                .Include(a => a.AppointmentServices).ThenInclude(s => s.Service)
+                .Where(a =>
                     a.ProviderId == provider.ProviderId &&
                     a.AppointmentDate == model.AppointmentDate &&
                     new[] { "pending", "confirmed", "checked_in" }.Contains(a.BookingStatus) &&
                     a.DeletedTime == null &&
-                    a.StartTime < endTime)            
-                .CountAsync();
+                    a.StartTime < endTime &&
+                    (a.StartTime + TimeSpan.FromMinutes(
+                        a.AppointmentServices.Max(s => s.Service.DurationMinutes))) > model.StartTime
+                ).CountAsync();
 
             if (slotUsed >= provider.MaxAppointmentsPerSlot)
-                throw new ErrorException(400, ErrorCode.Failed, $"Time slot fully booked. Used: {slotUsed}, Max: {provider.MaxAppointmentsPerSlot}");
+                throw new ErrorException(400, ErrorCode.Failed, $"Khung giờ đã đầy. Đã đặt: {slotUsed}, Tối đa: {provider.MaxAppointmentsPerSlot}");
+
+            // ✅ Ràng buộc trùng lịch nhân viên
+            if (model.StaffId.HasValue)
+            {
+                var staffConflict = await _unitOfWork.GetRepository<Appointment>()
+                    .Entities
+                    .Include(a => a.AppointmentServices).ThenInclude(s => s.Service)
+                    .AnyAsync(a =>
+                        a.StaffId == model.StaffId &&
+                        a.AppointmentDate == model.AppointmentDate &&
+                        new[] { "pending", "confirmed", "checked_in" }.Contains(a.BookingStatus) &&
+                        a.DeletedTime == null &&
+                        a.StartTime < endTime &&
+                        (a.StartTime + TimeSpan.FromMinutes(
+                            a.AppointmentServices.Max(s => s.Service.DurationMinutes))) > model.StartTime
+                    );
+
+                if (staffConflict)
+                {
+                    throw new ErrorException(400, ErrorCode.Failed, "Nhân viên đã có lịch trong khung giờ này.");
+                }
+            }
         }
+
 
         private async Task<(List<Entity.AppointmentService>, decimal)> BuildAppointmentServicesAsync(POSTAppointmentModelView model, DateTimeOffset now)
         {
